@@ -1,6 +1,7 @@
 services:
   web:
     image: ghcr.io/tingclarice/onyxa:latest
+    container_name: onyxa
     init: true
     restart: unless-stopped
     ports:
