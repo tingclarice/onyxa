@@ -22,53 +22,44 @@ logic from UI, persistence, and external services.
 
 ## Feature structure
 
-Use this structure as needed; create folders only when they contain real code:
+Start with this simple structure. Create other folders only when actual code
+needs them; do not scaffold extra architecture layers in advance:
 
 ```text
 src/features/<feature>/
-  domain/                     # Business types, invariants, pure business logic
-  application/
-    use-cases/                # Operations and orchestration
-    ports/                    # Interfaces the use cases need from the outside
-  infrastructure/             # Database, storage, external API, mock adapters
-  presentation/
-    components/               # Feature UI, including Server Components
-    hooks/                    # Client interaction hooks
-  server/
-    composition.ts            # Wire concrete adapters into use cases
-    queries.ts                # Server-only read entry points
-    actions.ts                # Next.js Server Functions for client invocation
-  contracts.ts                # Client-safe input/result types and schemas
+  types/                      # Types, interfaces, input/output schemas
+  ui/                         # Feature components and UI hooks
+  services/                   # Business logic and server operations
 ```
 
-Feature names describe business capabilities, such as `receipts`, `inventory`,
-or `transactions`. Establish boundaries from actual behavior; a URL or database
-table does not automatically require its own feature.
+The three main packages are `invoice-processing`, `inventory-intelligence`, and
+`procurement-pricing`. Establish boundaries from actual behavior; a URL or
+database table does not automatically require its own feature.
 
 ## Dependencies and boundaries
 
-- `domain/` depends only on pure, framework-independent code. It must not import
-  React, Next.js, database clients, SDKs, request/session APIs, or adapters.
-- `application/` depends on the domain and on ports it owns. It must not import
-  presentation, infrastructure, Next.js, or concrete database/SDK types.
-- Ports describe business needs. Infrastructure implements them and maps
-  provider/database records to application or domain types.
-- Use cases receive dependencies explicitly, usually as function arguments or
-  a small dependency object. Use plain functions and TypeScript interfaces;
-  a dependency injection container, base repository, or class hierarchy is not
-  required.
-- `server/composition.ts` owns concrete wiring. Server queries and actions call
-  the wired use cases. UI must not instantiate adapters or access a database.
-- Presentation uses feature contracts and server entry points. Client modules
-  may import Server Functions from a dedicated `"use server"` module, but must
+- Hexagonal architecture governs dependencies, not the number of folders.
+  Preserve the boundaries below within separate files in the simple structure.
+- Keep client-safe types, contracts, and dependency interfaces in `types/`.
+  They must not import UI, Next.js, database clients, or provider SDKs.
+- Keep business functions in `services/` independent of React, Next.js,
+  request/session APIs, and concrete database or SDK implementations. Receive
+  external dependencies through typed interfaces when needed.
+- Keep external-service adapters, server entry points, and dependency wiring
+  in separate service files. Adapters implement the interfaces business logic
+  consumes and map provider records into feature types. Add an adapter folder
+  only when the existing files need that organization.
+- UI uses feature types and server entry points. It must not instantiate
+  adapters or access a database. Client modules may import Server Functions
+  from a dedicated `"use server"` module, but must
   never import server queries, composition, adapters, or secrets.
 - Mark server entry points and modules containing server-only data access or
   credentials with `import "server-only"`. Dedicated action modules use
   `"use server"`; keep their helpers in separate server-only modules.
-- Keep business rules in the domain and application. Next.js redirects, cache
-  invalidation, cookies, and transport error mapping belong at the server edge.
+- Keep Next.js redirects, cache invalidation, cookies, and transport error
+  mapping in server entry points, separate from pure business logic.
 - Import another feature only through an explicit public contract or
-  application/server entry point. Never import its private adapters or UI
+  service entry point. Never import its private adapters or UI
   internals. Keep feature dependencies acyclic; compose cross-feature workflows
   through explicit use cases and ports when needed.
 - Keep client-safe exports separate from server-only exports. Do not create a
@@ -82,11 +73,12 @@ table does not automatically require its own feature.
 - Do not call the application over HTTP from itself: no `fetch("/api/...")`,
   Axios wrappers for internal endpoints, or server-to-server calls to this
   application's own origin.
-- For reads, prefer Server Components calling feature server queries directly.
-  Queries call application use cases through the composition module. Ordinary
-  server-only functions do not need the `"use server"` directive.
+- For reads, prefer Server Components calling feature server queries directly,
+  for example `services/queries.ts`. Queries call business functions with their
+  dependencies wired at the server edge. Ordinary server-only functions do not
+  need the `"use server"` directive.
 - For client-triggered mutations, use Next.js Server Functions in feature
-  `server/actions.ts` modules with a file-level `"use server"` directive. Export
+  `services/actions.ts` modules with a file-level `"use server"` directive. Export
   only async Server Functions from those modules. Use React action mechanisms
   and pending/error handling appropriate to the interaction.
 - Do not make Server Actions the default query transport. Prefer URL search
