@@ -34,7 +34,8 @@ The existing scan endpoint is a migration target documented in `AGENTS.md`.
 
 ## Getting started
 
-**Requirements:** Node.js 20+ and [pnpm](https://pnpm.io) (`npm install -g pnpm`)
+**Requirements:** Node.js 22+ (Docker uses Node.js 24) and pnpm 10.32.1
+(`npm install -g pnpm@10.32.1`)
 
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
@@ -45,6 +46,39 @@ pnpm dev                    # http://localhost:3000
 
 Keep local environment files at the repository root and never commit secrets.
 If adding an `.env.example`, include placeholder values only.
+
+## Docker deployment
+
+The Dockerfile builds Next.js standalone output and runs it as a non-root user
+on container port `3000`. The build uses the frozen pnpm lockfile; local
+dependencies, build output, and environment files are excluded by `.dockerignore`.
+
+The workflow in `.github/workflows/deploy.yml` builds and pushes
+`ghcr.io/tingclarice/onyxa:latest`, copies `docker-compose.yml` to
+`/home/deployer/onyxa`, and runs:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Compose pulls the published image without requiring source code on the VPS.
+The host port defaults to `3000`. To change it, set `APP_PORT` in the VPS shell
+or in `/home/deployer/onyxa/.env`. This file configures Compose interpolation;
+it is not automatically passed into the application container.
+
+For a local image build and smoke test:
+
+```bash
+docker build -t onyxa:local .
+docker run --rm --init -p 3000:3000 onyxa:local
+```
+
+The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
+by the workflow. No application credentials are currently required by the source;
+when integrations need them, pass them explicitly at runtime instead of baking
+them into the image. Google fonts are downloaded during the build, so the
+builder needs outbound network access.
 
 ## Contributing
 - Use pnpm only (no `package-lock.json`)
