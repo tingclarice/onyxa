@@ -21,7 +21,7 @@ import {
   type ScanReceipt,
   type ScanReceiptItem,
 } from "@/lib/contracts/scan";
-import { formatDate, formatRupiah } from "@/lib/format";
+import { formatDate, formatRupiah } from "@/lib/utils/format";
 
 const emptyReceipt: ScanReceipt = {
   supplier_name: "",

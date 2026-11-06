@@ -22,7 +22,7 @@ import {
   getItem,
   removeItemAlias,
 } from "@/lib/api/items";
-import { formatDate, formatRupiah } from "@/lib/format";
+import { formatDate, formatRupiah } from "@/lib/utils/format";
 
 function ItemDetailSkeleton() {
   return (

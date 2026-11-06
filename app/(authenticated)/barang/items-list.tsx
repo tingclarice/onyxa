@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { getItems } from "@/lib/api/items";
-import { formatDate, formatRupiah } from "@/lib/format";
+import { formatDate, formatRupiah } from "@/lib/utils/format";
 
 const noItems: Awaited<ReturnType<typeof getItems>> = [];
 

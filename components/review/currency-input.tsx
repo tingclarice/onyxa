@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { CircleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
 
 type CurrencyInputProps = {
