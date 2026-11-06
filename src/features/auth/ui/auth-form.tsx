@@ -1,59 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-type AuthMode = "login" | "signup";
-
-type AuthFormValues = {
-  name?: string;
-  email: string;
-  password: string;
-  businessName?: string;
-};
-
-function createAuthSchema(mode: AuthMode) {
-  return z
-    .object({
-      name: z.string().optional(),
-      email: z
-        .string({ error: "Masukkan email kamu." })
-        .min(1, { error: "Email harus diisi." })
-        .email({ error: "Masukkan alamat email yang benar." }),
-      password: z
-        .string({ error: "Kata sandi harus diisi." })
-        .min(mode === "signup" ? 8 : 1, {
-          error:
-            mode === "signup"
-              ? "Kata sandi minimal 8 karakter."
-              : "Kata sandi harus diisi.",
-        }),
-      businessName: z.string().optional(),
-    })
-    .superRefine((values, context) => {
-      if (mode === "signup" && !values.name?.trim()) {
-        context.addIssue({
-          code: "custom",
-          path: ["name"],
-          message: "Nama harus diisi.",
-        });
-      }
-      if (mode === "signup" && !values.businessName?.trim()) {
-        context.addIssue({
-          code: "custom",
-          path: ["businessName"],
-          message: "Nama usaha harus diisi.",
-        });
-      }
-    });
-}
+import { loginAction, signupAction } from "@/features/auth/services/actions";
+import { createAuthSchema, type AuthFormValues, type AuthMode, type AuthResult } from "@/features/auth/types/auth";
 
 function FormField({
   id,
@@ -84,12 +41,17 @@ function FormField({
 }
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const isSignup = mode === "signup";
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<AuthResult | null>(null);
   const schema = createAuthSchema(mode);
   const {
     register,
     handleSubmit,
+    resetField,
     formState: { errors, isSubmitting },
   } = useForm<AuthFormValues>({
     resolver: zodResolver(schema),
@@ -102,14 +64,22 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   });
 
   function submitForm(values: AuthFormValues) {
-    void values;
-    // TODO: Replace this UI-only handler with the backend auth call.
-    toast.info("Autentikasi akan tersedia setelah layanan akun terhubung.");
-  }
-
-  function startGoogleAuth() {
-    // TODO: Connect this button to the Google sign-in provider.
-    toast.info("Masuk dengan Google akan tersedia setelah autentikasi terhubung.");
+    setResult(null);
+    startTransition(async () => {
+      try {
+        const nextResult = await (isSignup ? signupAction(values) : loginAction(values));
+        if (nextResult.status === "authenticated") {
+          queryClient.clear();
+          router.replace("/beranda");
+          router.refresh();
+          return;
+        }
+        setResult(nextResult);
+        if (nextResult.status === "confirmation-required") resetField("password");
+      } catch {
+        setResult({ status: "error", message: "Koneksi terputus. Silakan coba lagi." });
+      }
+    });
   }
 
   return (
@@ -134,33 +104,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         </p>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={startGoogleAuth}
-      >
-        <span
-          aria-hidden="true"
-          className="text-lg font-bold text-emerald-700"
-        >
-          G
-        </span>
-        {isSignup ? "Daftar dengan Google" : "Masuk dengan Google"}
-      </Button>
-
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-background px-3 text-sm text-muted-foreground">
-            atau pakai email
-          </span>
-        </div>
-      </div>
-
       <form className="space-y-4" onSubmit={handleSubmit(submitForm)} noValidate>
+        {result && (
+          <p
+            role={result.status === "error" ? "alert" : "status"}
+            className={result.status === "error" ? "text-sm text-destructive" : "text-sm text-accent"}
+          >
+            {result.message}
+          </p>
+        )}
         {isSignup && (
           <FormField id="name" label="Nama" error={errors.name?.message}>
             <Input
@@ -206,7 +158,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               {...register("password")}
             />
             <button
-              id="lupa-password"
+              id="toggle-password"
               type="button"
               aria-label={passwordVisible ? "Sembunyikan password" : "Lihat password"}
               aria-pressed={passwordVisible}
@@ -241,24 +193,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           </FormField>
         )}
 
-        {!isSignup && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() =>
-                toast.info(
-                  "Fitur lupa password akan tersedia setelah autentikasi terhubung.",
-                )
-              }
-              className="min-h-12 text-base font-medium text-accent underline-offset-4 hover:underline"
-            >
-              Lupa password?
-            </button>
-          </div>
-        )}
-
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSignup ? "Daftar" : "Masuk"}
+        <Button type="submit" className="w-full" disabled={isSubmitting || isPending}>
+          {isPending ? "Memproses..." : isSignup ? "Daftar" : "Masuk"}
         </Button>
       </form>
 

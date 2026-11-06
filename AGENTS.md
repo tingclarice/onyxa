@@ -156,8 +156,12 @@ coherent steps that keep its callers working.
 - Receipt scanning uses the Server Function in
   `src/features/invoice-processing/services/actions.ts`; do not recreate an API
   route or HTTP fetch wrapper. It currently returns synthetic demo receipts.
-  Add authentication and server-side image validation before connecting real
-  merchant data or external OCR services.
+  It requires an authenticated user. Add server-side image validation before
+  connecting real merchant data or external OCR services.
+- Authentication lives in `src/features/auth/` using `types/`, `ui/`, and
+  `services/`. Use `requireUser()` in protected Server Functions; a layout guard
+  alone does not protect direct calls. Supabase clients belong in `src/lib/supabase/`.
+  Use the publishable key for user sessions, never a secret/service-role key.
 - Move remaining feature-specific mock data from `src/lib/api/` and feature UI
   folders into their owning features when that behavior is migrated. These mock
   modules are ordinary functions, not HTTP endpoints. Preserve reusable UI

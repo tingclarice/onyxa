@@ -42,12 +42,49 @@ returns demo receipts for the editable review flow.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
+cp .env.example .env        # fill in the Supabase URL and publishable key
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
 
 Keep local environment files at the repository root and never commit secrets.
-If adding an `.env.example`, include placeholder values only.
+The committed `.env.example` contains placeholder values only.
+
+## Supabase authentication
+
+Email/password signup, login, email confirmation, and sign-out use Next.js Server
+Functions in `src/features/auth/services/actions.ts`. Supabase sessions live in
+HTTP-only cookies. `src/proxy.ts` refreshes sessions, and the authenticated layout
+and protected Server Functions verify the user server-side. Production cookies
+require HTTPS. Google sign-in and password recovery are not implemented.
+
+Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in the root `.env`. Authentication
+does not use `SUPABASE_SECRET_KEY` or a service-role key. These settings are read
+at runtime, so the same Docker image can be deployed without baking in keys.
+
+In the Supabase dashboard:
+
+1. Enable the Email provider and email/password signup. Keep **Confirm email**
+   enabled if accounts should require verification.
+2. Set **Authentication > URL Configuration > Site URL** to the application's
+   public origin (for example, `http://localhost:3000` in local development and
+   your HTTPS domain in production). Allow the corresponding confirmation URL.
+3. In **Email Templates > Confirm signup**, use this confirmation link:
+
+   ```html
+   <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}">Konfirmasi email</a>
+   ```
+
+The confirmation link opens a page; the user clicks **Konfirmasi email** to
+submit the token to a Server Function. Opening or prefetching the page does not
+consume the token. The default Supabase confirmation template must be updated
+for this flow. If confirmation is disabled, successful signup logs in immediately.
+Name and business name are stored as user metadata, not as authorization roles
+or a merchant database record. Existing inventory/settings data remains mocked.
+
+Run authentication regression tests with `pnpm test:auth`. They use a fake auth
+provider and do not create Supabase accounts or send emails. Live testing needs
+a test account and the dashboard configuration above.
 
 ## Docker deployment
 
@@ -66,20 +103,20 @@ docker compose up -d
 
 Compose pulls the published image without requiring source code on the VPS.
 The host port defaults to `3000`. To change it, set `APP_PORT` in the VPS shell
-or in `/home/deployer/onyxa/.env`. This file configures Compose interpolation;
-it is not automatically passed into the application container.
+or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL` and
+`SUPABASE_PUBLISHABLE_KEY` there too; Compose passes only these explicitly named
+variables to the application container. The workflow does not upload this file.
 
 For a local image build and smoke test:
 
 ```bash
 docker build -t onyxa:local .
-docker run --rm --init -p 3000:3000 onyxa:local
+docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. No application credentials are currently required by the source;
-when integrations need them, pass them explicitly at runtime instead of baking
-them into the image. Google fonts are downloaded during the build, so the
+by the workflow. Provision the Supabase runtime variables on the VPS before
+deployment. Google fonts are downloaded during the build, so the
 builder needs outbound network access.
 
 ## Contributing
