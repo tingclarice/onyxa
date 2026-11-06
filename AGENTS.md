@@ -6,25 +6,26 @@ Use **package by feature** for ownership and **hexagonal architecture** inside
 each feature. Group business capabilities together, then separate their core
 logic from UI, persistence, and external services.
 
-- Place business features under root-level `features/<feature>/`.
-- Keep root-level `app/` as the Next.js routing and composition layer. Route
+- Place business features under `src/features/<feature>/`.
+- Keep `src/app/` as the Next.js routing and composition layer. Route
   files delegate to features; they do not contain business rules or database
   queries.
 - Keep feature-specific components, hooks, schemas, and logic in their feature.
   Do not add global `services/`, `repositories/`, or `use-cases/` folders that
   scatter one feature across the project.
-- Keep generic UI primitives in `components/ui/`, shared application shell UI
-  in `components/`, and genuinely feature-independent utilities and technical
-  clients in `lib/`. Shared code must not import feature internals.
-- Follow the existing root-level layout and `@/*` alias. Do not introduce `src/`
-  as part of an unrelated change.
+- Keep generic UI primitives in `src/components/ui/`, shared application shell
+  UI in `src/components/`, and genuinely feature-independent utilities and
+  technical clients in `src/lib/`. Shared code must not import feature internals.
+- Keep application code under `src/`; `@/*` resolves to `src/*`. Keep `public/`,
+  project configuration, environment files, and this `AGENTS.md` at the root.
+  Do not create a competing root-level `app/` directory.
 
 ## Feature structure
 
 Use this structure as needed; create folders only when they contain real code:
 
 ```text
-features/<feature>/
+src/features/<feature>/
   domain/                     # Business types, invariants, pure business logic
   application/
     use-cases/                # Operations and orchestration
@@ -76,7 +77,7 @@ table does not automatically require its own feature.
 ## Next.js server communication: no internal API
 
 - **Do not create internal REST, GraphQL, RPC, or Route Handler endpoints for
-  this application's own UI.** Do not add `app/api/**/route.ts`, Pages API
+  this application's own UI.** Do not add `src/app/api/**/route.ts`, Pages API
   routes, or equivalent endpoints elsewhere to bypass this rule.
 - Do not call the application over HTTP from itself: no `fetch("/api/...")`,
   Axios wrappers for internal endpoints, or server-to-server calls to this
@@ -160,13 +161,13 @@ These rules are the target architecture, not a claim that all current code
 already complies. Apply them to new work and migrate touched behavior in
 coherent steps that keep its callers working.
 
-- Existing `app/api/scan/route.ts` and the `/api/scan` fetch in `lib/api/scan.ts`
-  violate the target communication rule. When migrating receipt scanning,
-  replace this path with a feature-owned Server Function and update its hook,
-  contracts, and callers together before removing the old endpoint.
-- Move feature-specific code from `lib/api/`, `lib/hooks/`, `lib/contracts/`,
-  and feature UI folders into its owning feature when that behavior is migrated.
-  Preserve reusable UI primitives and shared shell components.
+- Existing `src/app/api/scan/route.ts` and the `/api/scan` fetch in
+  `src/lib/api/scan.ts` violate the target communication rule. When migrating
+  receipt scanning, replace this path with a feature-owned Server Function and
+  update its hook, contracts, and callers together before removing the old endpoint.
+- Move feature-specific code from `src/lib/api/`, `src/lib/hooks/`,
+  `src/lib/contracts/`, and feature UI folders into its owning feature when that
+  behavior is migrated. Preserve reusable UI primitives and shared shell components.
 - Put mock persistence and fake external services behind the same application
   ports as real adapters. Do not hardcode mock responses in pages or actions.
 - Do not reorganize the entire application solely to implement an unrelated

@@ -16,11 +16,20 @@ the saved data into insights such as price increases and slow-moving items.
 Next.js, TypeScript, Tailwind CSS, shadcn/ui, Gemini Flash API, OCR API
 
 ## Project structure
-apps/web Frontend (Next.js)
-apps/api Backend and database
-packages/ai OCR and extraction pipeline
-contracts Shared data schema between web, api, and ai
-docs Project documentation
+```text
+src/
+  app/          Next.js routes, layouts, and global styles
+  components/   Shared UI components and application shell
+  lib/          Utilities and existing data-access modules
+public/         Static assets
+```
+
+New business features belong in `src/features/<feature>/`, using package by
+feature with hexagonal boundaries as defined in [AGENTS.md](AGENTS.md).
+The `@/*` import alias resolves to `src/*`. Configuration and environment files
+remain at the repository root. Use Next.js Server Functions for client-triggered
+mutations and server-only queries for reads; do not add internal API endpoints.
+The existing scan endpoint is a migration target documented in `AGENTS.md`.
 
 
 ## Getting started
@@ -30,13 +39,12 @@ docs Project documentation
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in your own keys
-cd apps/web
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
 
-Never commit `.env`. Only `.env.example` (with empty values) belongs in the repo.
+Keep local environment files at the repository root and never commit secrets.
+If adding an `.env.example`, include placeholder values only.
 
 ## Contributing
 - Use pnpm only (no `package-lock.json`)
