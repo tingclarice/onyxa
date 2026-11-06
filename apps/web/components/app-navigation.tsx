@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navigationItems = [
-  { href: "/", label: "Beranda", icon: LayoutDashboard },
+  { href: "/beranda", label: "Beranda", icon: LayoutDashboard },
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/transaksi", label: "Transaksi", icon: ClipboardList },
   { href: "/barang", label: "Barang", icon: Package },
