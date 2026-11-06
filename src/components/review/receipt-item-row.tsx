@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfidenceField } from "@/components/review/confidence-field";
 import { CurrencyInput } from "@/components/review/currency-input";
-import type { ScanReceiptItem } from "@/lib/contracts/scan";
+import type { ScanReceiptItem } from "@/features/invoice-processing/types/scan";
 
 type ReceiptItemRowProps = {
   item: ScanReceiptItem;

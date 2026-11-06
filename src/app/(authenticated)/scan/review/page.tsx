@@ -15,12 +15,12 @@ import { CurrencyInput } from "@/components/review/currency-input";
 import { ReceiptItemRow } from "@/components/review/receipt-item-row";
 import { StatusBadge } from "@/components/review/status-badge";
 import { Button } from "@/components/ui/button";
-import { useScanReceipt } from "@/lib/hooks/use-scan-receipt";
+import { useScanReceipt } from "@/features/invoice-processing/ui/use-scan-receipt";
 import {
   ScanReceiptSchema,
   type ScanReceipt,
   type ScanReceiptItem,
-} from "@/lib/contracts/scan";
+} from "@/features/invoice-processing/types/scan";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 
 const emptyReceipt: ScanReceipt = {

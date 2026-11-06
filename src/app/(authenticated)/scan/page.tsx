@@ -13,12 +13,12 @@ import {
   Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useScanReceipt } from "@/lib/hooks/use-scan-receipt";
+import { useScanReceipt } from "@/features/invoice-processing/ui/use-scan-receipt";
 import {
   ScanReceiptError,
+  type ScanReceipt,
   type ScanReceiptErrorCode,
-} from "@/lib/api/scan";
-import type { ScanReceipt } from "@/lib/contracts/scan";
+} from "@/features/invoice-processing/types/scan";
 
 type QueueStatus = "queued" | "scanning" | "done" | "failed";
 

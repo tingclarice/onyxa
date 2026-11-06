@@ -42,3 +42,18 @@ export const ScanReceiptSchema = z.object({
 
 export type ScanReceiptItem = z.infer<typeof ScanReceiptItemSchema>;
 export type ScanReceipt = z.infer<typeof ScanReceiptSchema>;
+
+export type ScanReceiptErrorCode =
+  | "unreadable_image"
+  | "duplicate_receipt"
+  | "upload_failed";
+
+export class ScanReceiptError extends Error {
+  constructor(
+    message: string,
+    readonly code: ScanReceiptErrorCode,
+  ) {
+    super(message);
+    this.name = "ScanReceiptError";
+  }
+}

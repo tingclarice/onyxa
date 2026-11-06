@@ -1,8 +1,7 @@
-import { NextResponse } from "next/server";
 import {
   ScanReceiptSchema,
   type ScanReceipt,
-} from "@/lib/contracts/scan";
+} from "@/features/invoice-processing/types/scan";
 
 const receipts: ScanReceipt[] = [
   {
@@ -121,16 +120,13 @@ const receipts: ScanReceipt[] = [
   },
 ].map((receipt) => ScanReceiptSchema.parse(receipt));
 
-export async function POST() {
+export async function getMockReceipt(): Promise<ScanReceipt> {
   await new Promise((resolve) => setTimeout(resolve, 700));
 
   const receipt = receipts[Math.floor(Math.random() * receipts.length)];
   if (!receipt) {
-    return NextResponse.json(
-      { error: "Contoh struk tidak tersedia." },
-      { status: 500 },
-    );
+    throw new Error("Contoh struk tidak tersedia.");
   }
 
-  return NextResponse.json(receipt);
+  return ScanReceiptSchema.parse(receipt);
 }

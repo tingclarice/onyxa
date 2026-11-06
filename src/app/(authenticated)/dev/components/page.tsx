@@ -7,7 +7,7 @@ import {
   ReceiptItemRow,
   StatusBadge,
 } from "@/components/review";
-import type { ScanReceiptItem } from "@/lib/contracts/scan";
+import type { ScanReceiptItem } from "@/features/invoice-processing/types/scan";
 
 const initialItems: ScanReceiptItem[] = [
   {

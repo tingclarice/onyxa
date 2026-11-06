@@ -20,6 +20,7 @@ Next.js, TypeScript, Tailwind CSS, shadcn/ui, Gemini Flash API, OCR API
 src/
   app/          Next.js routes, layouts, and global styles
   components/   Shared UI components and application shell
+  features/     Business features with types, UI, and services
   lib/          Utilities and existing data-access modules
 public/         Static assets
 ```
@@ -29,7 +30,8 @@ feature with hexagonal boundaries as defined in [AGENTS.md](AGENTS.md).
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered
 mutations and server-only queries for reads; do not add internal API endpoints.
-The existing scan endpoint is a migration target documented in `AGENTS.md`.
+Receipt scanning calls a Server Function in `invoice-processing`; it currently
+returns demo receipts for the editable review flow.
 
 
 ## Getting started

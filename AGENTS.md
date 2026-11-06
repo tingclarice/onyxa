@@ -153,13 +153,15 @@ These rules are the target architecture, not a claim that all current code
 already complies. Apply them to new work and migrate touched behavior in
 coherent steps that keep its callers working.
 
-- Existing `src/app/api/scan/route.ts` and the `/api/scan` fetch in
-  `src/lib/api/scan.ts` violate the target communication rule. When migrating
-  receipt scanning, replace this path with a feature-owned Server Function and
-  update its hook, contracts, and callers together before removing the old endpoint.
-- Move feature-specific code from `src/lib/api/`, `src/lib/hooks/`,
-  `src/lib/contracts/`, and feature UI folders into its owning feature when that
-  behavior is migrated. Preserve reusable UI primitives and shared shell components.
+- Receipt scanning uses the Server Function in
+  `src/features/invoice-processing/services/actions.ts`; do not recreate an API
+  route or HTTP fetch wrapper. It currently returns synthetic demo receipts.
+  Add authentication and server-side image validation before connecting real
+  merchant data or external OCR services.
+- Move remaining feature-specific mock data from `src/lib/api/` and feature UI
+  folders into their owning features when that behavior is migrated. These mock
+  modules are ordinary functions, not HTTP endpoints. Preserve reusable UI
+  primitives and shared shell components.
 - Put mock persistence and fake external services behind the same application
   ports as real adapters. Do not hardcode mock responses in pages or actions.
 - Do not reorganize the entire application solely to implement an unrelated
