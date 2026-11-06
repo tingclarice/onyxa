@@ -123,13 +123,28 @@ Mutation: Client/form -> Server Function -> use case -> port -> adapter
 The arrows above show runtime calls. Source dependencies point inward:
 infrastructure implements core-owned ports; the core never imports adapters.
 
+## Type safety
+
+- Do not use TypeScript `any` in project-owned code, explicitly or implicitly.
+  This includes `as any`, `any[]`, generic arguments, and aliases hiding `any`.
+- Interfaces are allowed for every function, including callable interfaces and
+  input/output contracts. They are optional; preserve dependency boundaries
+  whether a function uses an interface or a directly typed signature.
+- Use concrete types, constrained generics, or discriminated unions for known
+  data. Use `unknown` for untrusted or genuinely unknown values, then narrow or
+  validate them before use. Treat untyped dependency results as `unknown` at
+  the boundary so `any` cannot leak into application code.
+- Keep TypeScript strict mode enabled. Do not bypass these rules with type-check
+  suppressions, lint-disable comments, or unchecked assertions.
+
 ## Keep the architecture proportional
 
 - Preserve the boundaries even for small features, but do not generate empty
   layers or pass-through abstractions. Add a port when a use case actually
   needs persistence, an external service, or another replaceable dependency.
-- Keep pure calculations pure. Do not create an interface for every function,
-  a repository for every table, or a use-case class for every button.
+- Keep pure calculations pure. Interfaces for functions are allowed; they do
+  not require wrapper classes or extra layers. Do not require a repository for
+  every table or a use-case class for every button.
 - Keep a feature's contracts and validation local until another real consumer
   needs them. Do not duplicate domain models just to populate every layer.
 - Test meaningful domain rules and use cases without Next.js or a real database,
