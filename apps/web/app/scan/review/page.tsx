@@ -49,6 +49,8 @@ export default function ReceiptReviewPage() {
   const didLoad = useRef(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [isSaved, setIsSaved] = useState(false);
+  const [receiptReady, setReceiptReady] = useState(false);
+  const [receiptLoadError, setReceiptLoadError] = useState(false);
   const {
     control,
     register,
@@ -83,12 +85,43 @@ export default function ReceiptReviewPage() {
   useEffect(() => {
     if (didLoad.current) return;
     didLoad.current = true;
+    const receiptId = new URLSearchParams(window.location.search).get(
+      "receiptId",
+    );
+    if (receiptId) {
+      const storageKey = `onyxa:scan-review:${receiptId}`;
+      const storedReceipt = window.sessionStorage.getItem(storageKey);
+      if (storedReceipt) {
+        window.sessionStorage.removeItem(storageKey);
+        try {
+          const parsedReceipt = ScanReceiptSchema.safeParse(
+            JSON.parse(storedReceipt),
+          );
+          if (parsedReceipt.success) {
+            window.setTimeout(() => {
+              reset(parsedReceipt.data);
+              setReceiptReady(true);
+            }, 0);
+            return;
+          }
+        } catch {
+          window.setTimeout(() => {
+            setReceiptLoadError(true);
+          }, 0);
+          return;
+        }
+      }
+    }
     loadReceipt(undefined);
-  }, [loadReceipt]);
+  }, [loadReceipt, reset]);
 
   useEffect(() => {
     if (scanMutation.data) {
-      reset(scanMutation.data);
+      const timer = window.setTimeout(() => {
+        reset(scanMutation.data);
+        setReceiptReady(true);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [reset, scanMutation.data]);
 
@@ -100,6 +133,8 @@ export default function ReceiptReviewPage() {
   );
 
   function retryScan() {
+    setReceiptLoadError(false);
+    setReceiptReady(false);
     scanMutation.reset();
     scanMutation.mutate(undefined);
   }
@@ -141,7 +176,20 @@ export default function ReceiptReviewPage() {
     toast.success("Struk berhasil disimpan.");
   }
 
-  if (scanMutation.isPending || !scanMutation.data) {
+  if (receiptLoadError) {
+    return (
+      <div className="mx-auto flex min-h-[70dvh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
+        <p role="alert" className="text-base text-destructive">
+          Hasil scan tidak bisa dibuka. Silakan coba scan ulang.
+        </p>
+        <Button type="button" onClick={retryScan}>
+          Coba lagi
+        </Button>
+      </div>
+    );
+  }
+
+  if (scanMutation.isPending || !receiptReady) {
     return (
       <div className="mx-auto flex min-h-[70dvh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
         {scanMutation.isError ? (
