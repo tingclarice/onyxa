@@ -11,12 +11,20 @@ type ReceiptItemRowProps = {
   item: ScanReceiptItem;
   onChange: (item: ScanReceiptItem) => void;
   onChangeMatchedItem: () => void;
+  errors?: {
+    raw_name?: string;
+    qty?: string;
+    unit?: string;
+    unit_price?: string;
+    line_total?: string;
+  };
 };
 
 function ReceiptItemRow({
   item,
   onChange,
   onChangeMatchedItem,
+  errors,
 }: ReceiptItemRowProps) {
   const rowId = useId();
 
@@ -30,6 +38,7 @@ function ReceiptItemRow({
         label="Nama barang"
         value={item.raw_name}
         confidence={item.confidence}
+        error={errors?.raw_name}
         onChange={(event) =>
           onChange({ ...item, raw_name: event.currentTarget.value })
         }
@@ -49,6 +58,7 @@ function ReceiptItemRow({
             inputMode="decimal"
             min="0"
             step="any"
+            aria-invalid={Boolean(errors?.qty) || undefined}
             value={item.qty}
             onChange={(event) =>
               onChange({
@@ -57,6 +67,9 @@ function ReceiptItemRow({
               })
             }
           />
+          {errors?.qty && (
+            <p className="text-sm font-medium text-destructive">{errors.qty}</p>
+          )}
         </div>
         <div className="min-w-0 space-y-2">
           <label
@@ -68,10 +81,14 @@ function ReceiptItemRow({
           <Input
             id={`${rowId}-unit`}
             value={item.unit}
+            aria-invalid={Boolean(errors?.unit) || undefined}
             onChange={(event) =>
               onChange({ ...item, unit: event.currentTarget.value })
             }
           />
+          {errors?.unit && (
+            <p className="text-sm font-medium text-destructive">{errors.unit}</p>
+          )}
         </div>
       </div>
 
@@ -80,12 +97,14 @@ function ReceiptItemRow({
           id={`${rowId}-unit-price`}
           label="Harga satuan"
           value={item.unit_price}
+          error={errors?.unit_price}
           onValueChange={(unit_price) => onChange({ ...item, unit_price })}
         />
         <CurrencyInput
           id={`${rowId}-line-total`}
           label="Jumlah harga"
           value={item.line_total}
+          error={errors?.line_total}
           onValueChange={(line_total) => onChange({ ...item, line_total })}
         />
       </div>

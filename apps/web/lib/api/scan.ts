@@ -2,9 +2,11 @@ import { ScanReceiptSchema, type ScanReceipt } from "@/lib/contracts/scan";
 
 const scanEndpoint = "/api/scan";
 
-export async function scanReceipt(file: File): Promise<ScanReceipt> {
-  const formData = new FormData();
-  formData.append("file", file);
+export async function scanReceipt(file?: File): Promise<ScanReceipt> {
+  const formData = file ? new FormData() : undefined;
+  if (file && formData) {
+    formData.append("file", file);
+  }
 
   const response = await fetch(scanEndpoint, {
     method: "POST",
