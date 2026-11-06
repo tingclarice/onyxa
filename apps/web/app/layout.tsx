@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppNavigation } from "@/components/app-navigation";
+import { QueryProvider } from "@/components/query-provider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -26,10 +27,12 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${plusJakartaSans.variable} ${geistMono.variable}`}>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-        <div className="min-h-dvh md:flex">
-          <AppNavigation />
-          <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
-        </div>
+        <QueryProvider>
+          <div className="min-h-dvh md:flex">
+            <AppNavigation />
+            <main className="min-w-0 flex-1 pb-20 md:pb-0">{children}</main>
+          </div>
+        </QueryProvider>
       </body>
     </html>
   );
