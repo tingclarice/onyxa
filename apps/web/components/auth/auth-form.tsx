@@ -206,6 +206,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               {...register("password")}
             />
             <button
+              id="lupa-password"
               type="button"
               aria-label={passwordVisible ? "Sembunyikan password" : "Lihat password"}
               aria-pressed={passwordVisible}
