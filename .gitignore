@@ -1,0 +1,12 @@
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+.vscode/
+.idea/
+.github/copilot-instructions.md
