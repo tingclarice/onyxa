@@ -19,6 +19,23 @@ let logoutOptions: unknown;
 let cookieWritesEnabled = false;
 let revalidations = 0;
 let scanCalls = 0;
+const demoReceipt = {
+  supplier_name: "Contoh pemasok",
+  date: "2026-11-06",
+  items: [
+    {
+      raw_name: "Contoh barang",
+      qty: 1,
+      unit: "pcs",
+      unit_price: 1000,
+      line_total: 1000,
+      confidence: 0.9,
+      matched_item: null,
+    },
+  ],
+  total: 1000,
+  overall_confidence: 0.9,
+};
 
 const fakeClient = {
   auth: {
@@ -57,7 +74,7 @@ mock.module(pathToFileURL(resolve("src/lib/supabase/server.ts")).href, { namedEx
   },
 } });
 mock.module(pathToFileURL(resolve("src/features/invoice-processing/services/mock-receipts.ts")).href, { namedExports: {
-  async getMockReceipt() { scanCalls++; return {}; },
+  async getMockReceipt() { scanCalls++; return demoReceipt; },
 } });
 
 const sessionModule = import("@/features/auth/services/session");
@@ -163,4 +180,15 @@ test("direct scan action calls require authentication even without a layout", as
   const { scanReceiptAction } = await import("@/features/invoice-processing/services/actions");
   await assert.rejects(scanReceiptAction(), TestRedirect);
   assert.equal(scanCalls, 0);
+});
+
+test("scan action without an image continues returning the authenticated demo flow", async () => {
+  user = { id: "verified-user", email: "owner@example.com" };
+  const { scanReceiptAction } = await import("@/features/invoice-processing/services/actions");
+
+  assert.deepEqual(await scanReceiptAction(), {
+    ok: true,
+    result: { receipt: demoReceipt },
+  });
+  assert.equal(scanCalls, 1);
 });

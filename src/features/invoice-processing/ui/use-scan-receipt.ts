@@ -47,7 +47,12 @@ export function useScanReceipt() {
         imageUrl = uploadResult.imageUrl;
       }
 
-      return ScanReceiptResultSchema.parse(await scanReceiptAction(imageUrl));
+      const scanResult = await scanReceiptAction(imageUrl);
+      if (!scanResult.ok) {
+        throw new ScanReceiptError(scanResult.message, scanResult.code);
+      }
+
+      return ScanReceiptResultSchema.parse(scanResult.result);
     },
   });
 }

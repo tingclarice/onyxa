@@ -74,6 +74,16 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
       return "Penyimpanan Cloudinary belum disiapkan. Minta pengelola aplikasi memeriksa pengaturannya.";
     case "cloudinary_upload_failed":
       return "Foto belum berhasil disimpan. Periksa koneksi dan pengaturan Cloudinary, lalu coba lagi.";
+    case "cloudinary_image_invalid":
+      return "Alamat foto nota tidak valid. Pilih ulang foto nota.";
+    case "cloudinary_image_unavailable":
+      return "Foto di Cloudinary tidak dapat diakses. Coba unggah ulang nota.";
+    case "gemini_not_configured":
+      return "Pemrosesan nota belum disiapkan. Minta pengelola aplikasi memeriksa GEMINI_API_KEY.";
+    case "gemini_request_failed":
+      return "Gemini belum dapat membaca nota. Periksa koneksi lalu coba lagi.";
+    case "invalid_model_output":
+      return "Hasil pembacaan nota belum dapat diproses. Coba unggah ulang foto.";
     case "file_too_large":
       return "Ukuran foto maksimal 8 MB. Pilih foto yang lebih kecil.";
   }
@@ -214,8 +224,8 @@ export default function ScanPage() {
           nota sekaligus.
         </p>
         <p className="text-sm text-muted-foreground">
-          Foto disimpan di Cloudinary. Data nota yang muncul masih contoh
-          sampai pemrosesan OCR terhubung.
+          Foto disimpan di Cloudinary, lalu Gemini menyiapkan data awal untuk
+          dicek dan diperbaiki.
         </p>
       </header>
 

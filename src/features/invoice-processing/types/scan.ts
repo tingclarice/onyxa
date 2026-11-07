@@ -15,7 +15,7 @@ export const ScanReceiptItemSchema = z.object({
   }),
   qty: z
     .number({ error: "Jumlah harus berupa angka." })
-    .positive({ error: "Jumlah harus lebih dari 0." }),
+    .nonnegative({ error: "Jumlah tidak boleh kurang dari 0." }),
   unit: z.string({ error: "Satuan harus diisi." }).min(1, {
     error: "Satuan harus diisi.",
   }),
@@ -36,7 +36,9 @@ export const ScanReceiptSchema = z.object({
   supplier_name: z
     .string({ error: "Nama pemasok harus diisi." })
     .min(1, { error: "Nama pemasok harus diisi." }),
-  date: z.iso.date({ error: "Tanggal nota belum benar." }),
+  date: z.union([z.iso.date(), z.literal("")], {
+    error: "Tanggal nota belum benar.",
+  }),
   items: z
     .array(ScanReceiptItemSchema, { error: "Daftar barang belum benar." })
     .min(1, { error: "Tambahkan setidaknya satu barang." }),
@@ -65,7 +67,33 @@ export type ScanReceiptErrorCode =
   | "upload_failed"
   | "cloudinary_not_configured"
   | "cloudinary_upload_failed"
+  | "cloudinary_image_invalid"
+  | "cloudinary_image_unavailable"
+  | "gemini_not_configured"
+  | "gemini_request_failed"
+  | "invalid_model_output"
   | "file_too_large";
+
+export interface ReceiptImage {
+  readonly bytes: Uint8Array;
+  readonly mimeType: string;
+}
+
+export interface ReceiptImageSource {
+  load(imageUrl: string): Promise<ReceiptImage>;
+}
+
+export interface ReceiptExtractionProvider {
+  extract(image: ReceiptImage): Promise<unknown>;
+}
+
+export type ScanReceiptActionResult =
+  | { ok: true; result: ScanReceiptResult }
+  | {
+      ok: false;
+      code: ScanReceiptErrorCode;
+      message: string;
+    };
 
 export type UploadReceiptImageResult =
   | { ok: true; imageUrl: string }

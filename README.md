@@ -2,19 +2,19 @@
 
 Scan-first purchasing and expense tracker for Indonesian small businesses (UMKM).
 
-Staff photograph a supplier receipt. The current prototype uploads the image to
-Cloudinary and returns demo receipt data for the editable review flow. OCR and
-Gemini extraction are not yet connected.
+Staff photograph a supplier receipt. The app uploads the image to Cloudinary,
+uses Gemini to extract a draft, and opens it in an editable review flow. Opening
+the review screen without an image still loads demo receipt data.
 
 ## Features
-- **Receipt scanner**: Cloudinary photo upload and editable demo receipt review; OCR + Gemini integration is pending
+- **Receipt scanner**: Cloudinary photo upload, Gemini receipt extraction, and editable review
 - **Price change alerts**: flags when a supplier raises the unit price of an item
 - **Slow-moving detector**: flags items that haven't been repurchased in an unusually long time
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack
 Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, Supabase Auth,
-Gemini Flash API, OCR API
+Google Gen AI SDK
 
 ## Project structure
 ```text
@@ -43,7 +43,7 @@ Receipt upload and scanning call Server Functions in `invoice-processing`.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in Supabase/Cloudinary settings; add DATABASE_URL when ready
+cp .env.example .env        # fill in Supabase/Cloudinary/Gemini settings
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
@@ -52,6 +52,14 @@ Keep local environment files at the repository root and never commit secrets.
 The committed `.env.example` contains placeholder values only.
 Cloudinary uploads require an authenticated user and accept JPEG, PNG, WebP,
 HEIC, or HEIF images up to 8 MB.
+
+Create a Gemini API key in
+[Google AI Studio](https://aistudio.google.com/apikey) and set it as
+`GEMINI_API_KEY` in the root `.env`. The key is read only by server-side code;
+do not rename it to a `NEXT_PUBLIC_` variable. Image uploads are read back from
+the configured Cloudinary cloud and sent to Gemini for draft extraction. Review
+the extracted values before using them; confidence is a review heuristic, not a
+probability. No receipt persistence is implemented.
 
 ## Prisma and PostgreSQL
 
@@ -111,6 +119,11 @@ environment file. Uploads use an unsigned preset from a server action; no
 Cloudinary API secret is required or exposed to the browser. Restrict the preset
 to image uploads and a dedicated folder. For sensitive production receipts,
 add a signed-upload flow and explicit retention/access controls.
+Set the server-only `GEMINI_API_KEY` in the same local `.env` file. For CloudPanel
+deployments, add `GEMINI_API_KEY` to the app's runtime environment (or to the
+`.env` file used by Docker Compose); the deployment workflow does not transfer
+secrets. The key is read at runtime and does not need to be included in the
+Docker image or build arguments.
 
 In the Supabase dashboard:
 
@@ -169,9 +182,9 @@ docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the Supabase and Cloudinary runtime variables on the
-VPS before deployment. Google fonts are downloaded during the build, so the
-builder needs outbound network access.
+by the workflow. Provision the Supabase, Cloudinary, and Gemini runtime variables
+on the VPS before deployment. Google fonts are downloaded during the build, so
+the builder needs outbound network access.
 
 ## Contributing
 - Use pnpm only (no `package-lock.json`)

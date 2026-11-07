@@ -17,6 +17,7 @@ import { StatusBadge } from "@/components/review/status-badge";
 import { Button } from "@/components/ui/button";
 import { useScanReceipt } from "@/features/invoice-processing/ui/use-scan-receipt";
 import {
+  ScanReceiptError,
   ScanReceiptSchema,
   ScanReceiptResultSchema,
   type ScanReceipt,
@@ -49,6 +50,7 @@ export default function ReceiptReviewPage() {
   const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
+  const [selectedImageFile, setSelectedImageFile] = useState<File>();
   const [isSaved, setIsSaved] = useState(false);
   const [receiptReady, setReceiptReady] = useState(false);
   const [receiptLoadError, setReceiptLoadError] = useState(false);
@@ -143,14 +145,23 @@ export default function ReceiptReviewPage() {
     setReceiptLoadError(false);
     setReceiptReady(false);
     scanMutation.reset();
-    scanMutation.mutate(undefined);
+    scanMutation.mutate(selectedImageFile);
   }
 
   function handleImageSelected(file?: File) {
     if (!file) return;
     if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    setSelectedImageFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     scanMutation.mutate(file);
+  }
+
+  function getScanErrorMessage(): string {
+    if (scanMutation.error instanceof ScanReceiptError) {
+      return scanMutation.error.message;
+    }
+
+    return "Struk belum bisa dibuka. Coba lagi, ya.";
   }
 
   function updateItem(index: number, item: ScanReceiptItem) {
@@ -202,7 +213,7 @@ export default function ReceiptReviewPage() {
         {scanMutation.isError ? (
           <>
             <p role="alert" className="text-base text-destructive">
-              Struk belum bisa dibuka. Coba lagi, ya.
+              {getScanErrorMessage()}
             </p>
             <Button type="button" onClick={retryScan}>
               Coba lagi
@@ -263,9 +274,10 @@ export default function ReceiptReviewPage() {
                   type="file"
                   accept="image/*"
                   className="sr-only"
-                  onChange={(event) =>
-                    handleImageSelected(event.currentTarget.files?.[0])
-                  }
+                  onChange={(event) => {
+                    handleImageSelected(event.currentTarget.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
                 />
               </label>
             </div>
