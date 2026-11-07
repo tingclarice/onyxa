@@ -22,42 +22,79 @@ logic from UI, persistence, and external services.
 
 ## Feature structure
 
-Start with this simple structure. Create other folders only when actual code
-needs them; do not scaffold extra architecture layers in advance:
+Use these five folders for each feature. Read the folder's `README.md` before
+working in it. Add other folders only when actual code needs them; do not add
+implementation stubs just to fill out the structure.
 
 ```text
 src/features/<feature>/
-  types/                      # Types, interfaces, input/output schemas
-  ui/                         # Feature components and UI hooks
-  services/                   # Business logic and server operations
+  ui/                         # Delivery: React UI, Next.js server entry points
+    README.md
+  types/                      # Contracts: types, DTOs, validation schemas, ports
+    README.md
+  core/                       # Pure business rules and calculations
+    README.md
+  repository/                 # Data adapters: Prisma queries and external SDKs
+    README.md
+  services/                   # Use cases: coordinate repository ports and core
+    README.md
 ```
 
 The three main packages are `invoice-processing`, `inventory-intelligence`, and
 `procurement-pricing`. Establish boundaries from actual behavior; a URL or
 database table does not automatically require its own feature.
 
+## Architecture change approval
+
+- Preserve this architecture when implementing or reviewing work.
+- If an agent or its owner wants to change the architecture, the agent must
+  ask its owner to obtain explicit approval from **Felix** before proceeding.
+  An owner agent's request alone is not approval from Felix.
+- This includes changing the feature-based organization, renaming or replacing
+  layers, changing layer responsibilities or dependency direction, and making
+  exceptions to the no-internal-API rule.
+- Keep the proposed change pending until Felix approves it. Continue independent
+  work that fits the existing architecture. Silence is not approval.
+- A direct instruction from Felix to change the architecture counts as approval
+  for that stated scope. If his approval is already recorded in the task context,
+  follow it without requesting the same approval again.
+- Routine implementation inside the agreed layers, and authorized refactoring
+  of legacy code into those layers, do not require a new architecture approval.
+
 ## Dependencies and boundaries
 
-- Hexagonal architecture governs dependencies, not the number of folders.
-  Preserve the boundaries below within separate files in the simple structure.
-- Keep client-safe types, contracts, and dependency interfaces in `types/`.
-  They must not import UI, Next.js, database clients, or provider SDKs.
-- Keep business functions in `services/` independent of React, Next.js,
-  request/session APIs, and concrete database or SDK implementations. Receive
-  external dependencies through typed interfaces when needed.
-- Keep external-service adapters, server entry points, and dependency wiring
-  in separate service files. Adapters implement the interfaces business logic
-  consumes and map provider records into feature types. Add an adapter folder
-  only when the existing files need that organization.
-- UI uses feature types and server entry points. It must not instantiate
-  adapters or access a database. Client modules may import Server Functions
-  from a dedicated `"use server"` module, but must
-  never import server queries, composition, adapters, or secrets.
+- `ui/` is the delivery layer: components, UI hooks, request parsing, and response
+  presentation. Keep UI state and formatting here, but no business decisions or
+  database queries. Next.js Server Functions replace API routes/controllers in
+  this project; do not introduce Express or internal Route Handlers.
+- `types/` defines contracts: TypeScript types, interfaces, DTOs, input schemas,
+  and repository ports. Keep it independent of the other feature layers, React,
+  Next.js, Prisma, and provider SDKs. Do not leak ORM/provider types into contracts.
+- Use `core/` consistently; do not create a second `domain/` folder. Core accepts
+  data, applies business rules, and returns data. It may depend on `types/`, but
+  never UI, services, repositories, frameworks, database drivers, or HTTP clients.
+  Pass the current date and other varying dependencies as inputs to keep it pure.
+- `repository/` implements the ports in `types/`. Keep Prisma queries, external
+  API/SDK calls, and persistence/provider-to-contract mapping here. Repositories
+  perform data access, not pricing, forecasting, or authorization policy decisions.
+  Apply the trusted owner/tenant scope in every relevant query; business-rule
+  separation is not permission to omit ownership filters.
+- `services/` orchestrates use cases: load through repository ports, call core
+  functions, and persist through ports when needed. It must not contain the math,
+  raw Prisma queries, HTTP calls, Next.js cookie handling, or React code.
+- Preserve hexagonal dependency direction: services receive typed repository
+  dependencies from `types/`, rather than importing concrete repository modules.
+  Runtime calls reach repositories; source dependencies of core/services stay
+  independent of adapters. No dependency-injection container is required.
+- Wire concrete repositories into services at the server-only delivery boundary,
+  for example in `ui/queries.ts` or a helper used by `ui/actions.ts`. Client UI
+  must never import repositories, server queries, server wiring, or credentials.
+  It may import Server Functions from a dedicated `"use server"` module.
 - Mark server entry points and modules containing server-only data access or
   credentials with `import "server-only"`. Dedicated action modules use
   `"use server"`; keep their helpers in separate server-only modules.
 - Keep Next.js redirects, cache invalidation, cookies, and transport error
-  mapping in server entry points, separate from pure business logic.
+  mapping in delivery entry points, separate from core and services.
 - Import another feature only through an explicit public contract or
   service entry point. Never import its private adapters or UI
   internals. Keep feature dependencies acyclic; compose cross-feature workflows
@@ -74,11 +111,11 @@ database table does not automatically require its own feature.
   Axios wrappers for internal endpoints, or server-to-server calls to this
   application's own origin.
 - For reads, prefer Server Components calling feature server queries directly,
-  for example `services/queries.ts`. Queries call business functions with their
+  for example `ui/queries.ts`. Queries call services with their repository
   dependencies wired at the server edge. Ordinary server-only functions do not
   need the `"use server"` directive.
 - For client-triggered mutations, use Next.js Server Functions in feature
-  `services/actions.ts` modules with a file-level `"use server"` directive. Export
+  `ui/actions.ts` modules with a file-level `"use server"` directive. Export
   only async Server Functions from those modules. Use React action mechanisms
   and pending/error handling appropriate to the interaction.
 - Do not make Server Actions the default query transport. Prefer URL search
@@ -97,7 +134,7 @@ database table does not automatically require its own feature.
 - Return minimal React-serializable results and explicit expected-error data.
   Keep credentials, raw database records, SDK objects, and internal error details
   on the server.
-- External services may be called from infrastructure adapters. Reserve Route
+- External services may be called from repository adapters. Reserve Route
   Handlers for genuine inbound external integrations, such as webhooks or
   provider callbacks, when required by the task. Explain why that integration
   requires HTTP; it must not become an internal UI API.
@@ -109,12 +146,14 @@ database table does not automatically require its own feature.
   fetching and cache ownership.
 
 ```text
-Read:     Server Component -> server query -> use case -> port -> adapter
-Mutation: Client/form -> Server Function -> use case -> port -> adapter
+Read:     ui/ Server Component -> ui/ query -> services/ -> repository port
+Mutation: ui/ client/form -> ui/ Server Function -> services/ -> repository port
+Rules:    services/ -> core/ -> types/
+Data:     repository implementation -> database or external provider
 ```
 
-The arrows above show runtime calls. Source dependencies point inward:
-infrastructure implements core-owned ports; the core never imports adapters.
+The arrows above show runtime calls. Repository implementations satisfy ports
+declared in `types/`; core and services never import concrete adapters.
 
 ## Type safety
 
@@ -132,8 +171,8 @@ infrastructure implements core-owned ports; the core never imports adapters.
 
 ## Keep the architecture proportional
 
-- Preserve the boundaries even for small features, but do not generate empty
-  layers or pass-through abstractions. Add a port when a use case actually
+- Keep the five documented folders, but do not generate extra layers or
+  pass-through code. Add a port when a use case actually
   needs persistence, an external service, or another replaceable dependency.
 - Keep pure calculations pure. Interfaces for functions are allowed; they do
   not require wrapper classes or extra layers. Do not require a repository for
@@ -158,13 +197,13 @@ coherent steps that keep its callers working.
   route or HTTP fetch wrapper. It currently returns synthetic demo receipts.
   It requires an authenticated user. Add server-side image validation before
   connecting real merchant data or external OCR services.
-- Authentication lives in `src/features/auth/` using `types/`, `ui/`, and
-  `services/`. Use `requireUser()` in protected Server Functions; a layout guard
+- Authentication lives in `src/features/auth/`. Use `requireUser()` in
+  protected Server Functions; a layout guard
   alone does not protect direct calls. Supabase clients belong in `src/lib/supabase/`.
   Use the publishable key for user sessions, never a secret/service-role key.
 - PostgreSQL application data uses Prisma, with models in `prisma/schema.prisma`
   and a server-only, lazy client from `getPrisma()` in `src/lib/prisma.ts`.
-  Keep Prisma imports and database queries in feature service adapters. Map
+  Keep Prisma imports and database queries in feature `repository/` adapters. Map
   records into feature contracts before returning them to UI or core logic.
   The schema currently has no models; add tables only for implemented features.
   Regenerate the client after schema changes. Do not edit generated client code
@@ -177,6 +216,10 @@ coherent steps that keep its callers working.
   ports as real adapters. Do not hardcode mock responses in pages or actions.
 - Do not reorganize the entire application solely to implement an unrelated
   task. Record remaining architecture violations without adding new ones.
+- Existing auth and scan modules still mix some core, repository, and delivery
+  responsibilities under `services/`. The folder guides describe the target
+  placement. Move implementation files only in an authorized code-refactoring
+  task; a scaffolding/documentation task must not move or rewrite them.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
