@@ -1,24 +1,22 @@
-# Invoice processing: core/
+# Invoice processing: core/ — small rules and calculations
 
-The pure business library: data in, processing, data out.
+Pure helper functions called by services: data in → data out, or throw a typed error.
 
-## Feature responsibilities
+## In this feature
 
-Pure invoice validation, line-total reconciliation, category constraints, and rules for accepting corrected data. Treat extraction output as a draft; do not invoke OCR, Gemini, or Prisma here.
+Receipt rules, used by services and (for instant feedback) by the browser.
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `receipt-image-rules.ts` | `getReceiptImageProblem` — type and 8 MB size check |
+| `receipt-review-rules.ts` | `LOW_CONFIDENCE_THRESHOLD` (0.8), `isLowConfidence`, `sumLineTotals`, `hasTotalMismatch`, `countFieldsNeedingReview` |
 
-- Depend only on feature contracts and other pure helpers. Receive dates and other varying values as inputs. Use `core/` consistently instead of introducing a parallel `domain/` folder.
-- No React, Next.js, Prisma, database drivers, repositories, HTTP clients, provider SDKs, request cookies, or implicit I/O.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Names: `checkX` throws when the rule fails · `isX`/`hasX`/`canX` return a boolean · `calculateX`/`buildX`/`chooseX` return data.
+- Put numbers like `7` days or `0.8` confidence in named constants.
+- Time and other changing values are parameters.
+- May import: this feature's `types/` and other `core/` files.
+- Never: database, `fetch`, `process.env`, React, Next.js.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-No core implementation is created by this scaffolding task.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

@@ -19,16 +19,24 @@ Gemini Flash API, OCR API
 ## Project structure
 ```text
 src/
-  app/          Next.js routes, layouts, and global styles
-  components/   Shared UI components and application shell
-  features/     Features with ui, types, core, repository, and services layers
-  lib/          Utilities and existing data-access modules
+  app/          Next.js routes only; each page renders a feature's UI
+  components/   Shared UI primitives and application shell
+  features/     One folder per feature: ui, services, core, repository, types
+  lib/          Feature-independent helpers (formatting, Prisma client, transactions)
 public/         Static assets
 prisma/         Application database schema and Mermaid review diagram
 ```
 
-New business features belong in `src/features/<feature>/`, using package by
-feature with hexagonal boundaries as defined in [AGENTS.md](AGENTS.md).
+Inside each feature the flow goes one way, so it is easy to follow:
+
+```text
+ui/  →  services/  →  core/        (rules and calculations)
+                   →  repository/  (database and outside services)
+types/  shared shapes used by all of them
+```
+
+The UI calls one service function per action; the service calls core rules and
+repository functions directly. See [AGENTS.md](AGENTS.md) for the full rules.
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered
 mutations and server-only queries for reads; do not add internal API endpoints.
@@ -158,11 +166,11 @@ Selection stays in an HTTP-only cookie and is rechecked against current membersh
 Account/business changes reset the relevant client cache. Business profile, alert
 preferences, members and invitations use PostgreSQL, with owner-only mutations.
 
-`src/features/business-management/` owns this capability, with contracts/ports in
-`types/`, pure policies in `core/`, injected use cases in `services/`, Prisma
-adapters in `repository/`, and delivery/wiring in `ui/`. Its public `server.ts`
-entry exposes authorized business context without exposing private adapters.
-The existing auth feature uses the same layers.
+`src/features/business-management/` owns this capability: forms and pages in
+`ui/`, use cases such as `acceptInvitation` in `services/`, permission and
+invitation rules in `core/`, Prisma queries in `repository/`, and shapes in
+`types/`. Its public `server.ts` entry gives other features the active business.
+The auth and invoice-processing features use the same layers.
 
 Apply the committed database migration before using business features:
 

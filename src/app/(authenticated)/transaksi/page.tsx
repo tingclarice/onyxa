@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, FileText, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { StatusBadge } from "@/components/review/status-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

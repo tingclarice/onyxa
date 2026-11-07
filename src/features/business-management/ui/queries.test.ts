@@ -1,8 +1,15 @@
+// Tests the server-side reads used by pages, with an in-memory database.
 import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Actor, Membership } from "../types/business";
+import {
+  database,
+  installInMemoryDatabase,
+  resetDatabase,
+} from "../testing/in-memory-database";
+import { business, openInvitation } from "../testing/sample-data";
 
 class TestRedirect extends Error {
   constructor(readonly destination: string) {
@@ -12,27 +19,26 @@ class TestRedirect extends Error {
 const businessId = "bdf50100-0000-4000-8000-000000000001";
 const otherBusinessId = "bdf50100-0000-4000-8000-000000000002";
 let actor: Actor | null = null;
-let memberships: Membership[] = [];
-let selection: string | undefined;
-let providerCalls = 0;
-let recipientQuery: string | undefined;
-const member: Membership = {
+let cookieValue: string | undefined;
+let receiptReads = 0;
+
+const membership: Membership = {
   id: "member",
   businessId,
   userId: "user",
   email: "staff@example.com",
   role: "STAFF",
   removedAt: null,
-  business: {
-    id: businessId,
-    name: "Kedai Andi",
-    businessType: "OTHER",
-    priceIncreaseThresholdPercent: 5,
-    priceIncreaseAlertsEnabled: true,
-    slowMovingAlertsEnabled: true,
-  },
+  business: { ...business, id: businessId },
 };
-mock.module("server-only", {});
+const secondMembership: Membership = {
+  ...membership,
+  id: "second-member",
+  businessId: otherBusinessId,
+  business: { ...business, id: otherBusinessId },
+};
+
+installInMemoryDatabase();
 mock.module("next/navigation", {
   namedExports: {
     redirect(destination: string): never {
@@ -43,12 +49,7 @@ mock.module("next/navigation", {
 mock.module("next/headers", {
   namedExports: {
     async cookies() {
-      return {
-        get() {
-          const value = selection;
-          return value ? { value } : undefined;
-        },
-      };
+      return { get: () => (cookieValue ? { value: cookieValue } : undefined) };
     },
   },
 });
@@ -62,98 +63,89 @@ mock.module(pathToFileURL(resolve("src/features/auth/server.ts")).href, {
 });
 mock.module(
   pathToFileURL(
-    resolve("src/features/business-management/repository/prisma-business.ts"),
+    resolve("src/features/invoice-processing/repository/demo-receipt-reader.ts"),
   ).href,
   {
     namedExports: {
-      createBusinessStore: () => ({
-        async listMemberships(userId: string) {
-          return memberships.filter((member) => member.userId === userId);
-        },
-        async listRecipientInvitations(email: string) {
-          recipientQuery = email;
-          return [];
-        },
-      }),
-    },
-  },
-);
-mock.module(
-  pathToFileURL(
-    resolve("src/features/invoice-processing/services/mock-receipts.ts"),
-  ).href,
-  {
-    namedExports: {
-      async getMockReceipt() {
-        providerCalls++;
+      async readReceiptFromImage() {
+        receiptReads++;
         return {};
       },
     },
   },
 );
 const queries = import("./queries");
+
 beforeEach(() => {
+  resetDatabase();
   actor = { id: "user", email: "Staff@Example.com" };
-  memberships = [];
-  selection = undefined;
-  providerCalls = 0;
-  recipientQuery = undefined;
+  cookieValue = undefined;
+  receiptReads = 0;
 });
 
-test("a business-free account stays authenticated and business-only operations redirect", async () => {
-  const entries = await queries;
-  assert.equal((await entries.getBusinessWorkspace()).active, null);
+test("an account without a business stays logged in, and business-only actions redirect", async () => {
+  const { getBusinessWorkspace, requireActiveBusiness } = await queries;
+  assert.equal((await getBusinessWorkspace()).active, null);
   await assert.rejects(
-    entries.requireActiveBusiness(),
+    requireActiveBusiness(),
     (error: unknown) =>
       error instanceof TestRedirect && error.destination === "/beranda",
   );
   const { scanReceiptAction } = await import(
-    "@/features/invoice-processing/services/actions"
+    "@/features/invoice-processing/ui/actions"
   );
   await assert.rejects(
     scanReceiptAction(),
     (error: unknown) =>
       error instanceof TestRedirect && error.destination === "/beranda",
   );
-  assert.equal(providerCalls, 0);
+  assert.equal(receiptReads, 0);
 });
 
-test("selection cookies are account-bound and cannot invent membership", async () => {
-  memberships = [
-    member,
-    {
-      ...member,
-      id: "second-member",
-      businessId: otherBusinessId,
-      business: { ...member.business, id: otherBusinessId },
-    },
-  ];
-  selection = `another-user:${otherBusinessId}`;
+test("the saved business cookie belongs to one account and cannot invent a membership", async () => {
+  const { getBusinessWorkspace } = await queries;
+  resetDatabase({ members: [membership, secondMembership] });
+
+  cookieValue = `another-user:${otherBusinessId}`;
+  assert.equal((await getBusinessWorkspace()).active?.businessId, businessId);
+
+  cookieValue = `user:${otherBusinessId}`;
   assert.equal(
-    (await (await queries).getBusinessWorkspace()).active?.businessId,
-    businessId,
-  );
-  selection = `user:${otherBusinessId}`;
-  assert.equal(
-    (await (await queries).getBusinessWorkspace()).active?.businessId,
+    (await getBusinessWorkspace()).active?.businessId,
     otherBusinessId,
   );
-  memberships = [];
-  assert.equal((await (await queries).getBusinessWorkspace()).active, null);
+
+  resetDatabase();
+  assert.equal((await getBusinessWorkspace()).active, null);
 });
 
-test("inbox identity always comes from the trusted session, even without a business or proof cookie", async () => {
-  selection = "forged-user:forged-business";
-  await (await queries).getBusinessWorkspace();
-  assert.equal(recipientQuery, "staff@example.com");
+test("the inbox email always comes from the trusted session, never from a cookie", async () => {
+  const { getBusinessWorkspace } = await queries;
+  resetDatabase({
+    invitations: [
+      { ...openInvitation, expiresAt: "2099-01-01T00:00:00Z" },
+      {
+        ...openInvitation,
+        id: "other",
+        email: "other@example.com",
+        emailKey: "other@example.com",
+        expiresAt: "2099-01-01T00:00:00Z",
+      },
+    ],
+  });
+  cookieValue = "forged-user:forged-business";
+  const staffInbox = (await getBusinessWorkspace()).invitations;
+  assert.deepEqual(staffInbox.map((i) => i.emailKey), ["staff@example.com"]);
+
   actor = { id: "other-user", email: "other@example.com" };
-  await (await queries).getBusinessWorkspace();
-  assert.equal(recipientQuery, "other@example.com");
+  const otherInbox = (await getBusinessWorkspace()).invitations;
+  assert.deepEqual(otherInbox.map((i) => i.emailKey), ["other@example.com"]);
+
   actor = null;
   await assert.rejects(
-    (await queries).getBusinessWorkspace(),
+    getBusinessWorkspace(),
     (error: unknown) =>
       error instanceof TestRedirect && error.destination === "/masuk",
   );
+  assert.ok(database.calls > 0);
 });

@@ -1,30 +1,28 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/features/auth/server";
-import { ACTIVE_BUSINESS_COOKIE } from "@/lib/session-cookies";
-import { createBusinessStore } from "../repository/prisma-business";
-import { getBusinessSettings, getWorkspace } from "../services/business-access";
 import { identifierSchema } from "../types/business";
+import { getWorkspace } from "../services/workspace-service";
+import { getBusinessSettings } from "../services/business-service";
+import { readActiveBusinessId } from "./active-business-cookie";
 
+/** The logged-in user + their businesses, active business and inbox. */
 export const getBusinessWorkspace = cache(async () => {
   const actor = await requireUser();
-  const selection = (await cookies())
-    .get(ACTIVE_BUSINESS_COOKIE)
-    ?.value.split(":");
-  const parsed = identifierSchema.safeParse(
-    selection?.[0] === actor.id ? selection[1] : undefined,
+
+  const savedBusinessId = identifierSchema.safeParse(
+    await readActiveBusinessId(actor.id),
   );
   const workspace = await getWorkspace(
     actor,
-    parsed.success ? parsed.data : undefined,
-    new Date(),
-    createBusinessStore(),
+    savedBusinessId.success ? savedBusinessId.data : undefined,
   );
+
   return { actor, ...workspace };
 });
 
+/** For pages that need a business. Redirects to /beranda when there is none. */
 export async function requireActiveBusiness() {
   const workspace = await getBusinessWorkspace();
   if (!workspace.active) redirect("/beranda");
@@ -33,10 +31,5 @@ export async function requireActiveBusiness() {
 
 export async function getSettings() {
   const { actor, membership } = await requireActiveBusiness();
-  return getBusinessSettings(
-    actor,
-    membership.businessId,
-    new Date(),
-    createBusinessStore(),
-  );
+  return getBusinessSettings(actor, membership.businessId);
 }

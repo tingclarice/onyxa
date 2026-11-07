@@ -73,53 +73,6 @@ export interface ActionResult {
   message: string;
 }
 
-export interface BusinessRepository {
-  listMemberships(userId: string): Promise<Membership[]>;
-  findMembership(
-    businessId: string,
-    userId: string,
-  ): Promise<Membership | null>;
-  findMemberByEmail(
-    businessId: string,
-    emailKey: string,
-  ): Promise<Membership | null>;
-  listMembers(businessId: string): Promise<Membership[]>;
-  listRecipientInvitations(emailKey: string): Promise<Invitation[]>;
-  findRecipientInvitation(
-    invitationId: string,
-    emailKey: string,
-  ): Promise<Invitation | null>;
-  findBusinessInvitation(
-    id: string,
-    businessId: string,
-  ): Promise<Invitation | null>;
-  listBusinessInvitations(businessId: string): Promise<Invitation[]>;
-  createBusiness(
-    input: BusinessProfileInput,
-    owner: { userId: string; email: string; role: "OWNER" },
-  ): Promise<Business>;
-  updateProfile(businessId: string, input: BusinessProfileInput): Promise<void>;
-  updateAlerts(businessId: string, input: AlertPreferences): Promise<void>;
-  createInvitation(input: NewInvitation): Promise<void>;
-  closeInvitation(
-    id: string,
-    businessId: string,
-    now: Date,
-    outcome: "accepted" | "revoked",
-  ): Promise<number>;
-  saveMembership(
-    businessId: string,
-    userId: string,
-    email: string,
-    role: MemberRole,
-  ): Promise<void>;
-}
-export interface BusinessStore extends BusinessRepository {
-  transaction<T>(
-    run: (repository: BusinessRepository) => Promise<T>,
-  ): Promise<T>;
-}
-
 export type BusinessErrorCode =
   | "not_member"
   | "owner_required"

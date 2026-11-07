@@ -1,20 +1,19 @@
-# Inventory intelligence: ui/
+# Inventory intelligence: ui/ — what the user sees
 
-Delivery: receive input, invoke use cases, and present output.
+Shows pages and forms, reads input, and calls **one service function** per action.
 
-## Feature responsibilities
+## In this feature
 
 Inventory lists/details, restock-entry or correction forms, and forecast/status presentation. Display forecasts as inferred estimates and show insufficient-history states returned by services.
 
-## Boundaries
+Not built yet. Add files here only when the feature is implemented.
 
-- Use feature contracts and service entry points. Server-only wiring may import concrete repositories to inject into services. Client components must never import repositories, credentials, or server-only wiring.
-- No business calculations, raw Prisma queries, or direct external-provider calls. This project uses Next.js Server Functions; do not create internal API routes or Express controllers.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- `queries.ts` (server-only): reads for Server Components → call services.
+- `actions.ts` (`"use server"`): mutations. Steps: get user → validate form → call one service in `try/catch` → safe error message → `revalidatePath` / cookie / `redirect`.
+- May import: this feature's `services/` and `types/`; other features' `server.ts`; `@/components`, `@/lib`.
+- Client components may import pure `core/` functions **only** for instant on-screen calculations (approved option B exception).
+- Never: `repository/`, Prisma, business rules.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

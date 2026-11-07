@@ -1,9 +1,7 @@
 import "server-only";
 import NextAuth, { AuthError } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { authenticate } from "../services/authentication";
-import { createAccountRepository } from "../repository/prisma-accounts";
-import { passwords } from "../repository/passwords";
+import { loginWithPassword } from "../services/account-service";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
@@ -11,13 +9,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      authorize: (credentials) =>
-        authenticate(
-          credentials,
-          new Date(),
-          createAccountRepository(),
-          passwords,
-        ),
+      // Auth.js calls this when signIn("credentials", ...) runs.
+      authorize: (credentials) => loginWithPassword(credentials),
     }),
   ],
   callbacks: {

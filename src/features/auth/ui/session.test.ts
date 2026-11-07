@@ -55,25 +55,21 @@ mock.module(pathToFileURL(resolve("src/features/auth/ui/authjs.ts")).href, {
   },
 });
 mock.module(
-  pathToFileURL(resolve("src/features/auth/repository/passwords.ts")).href,
-  { namedExports: { passwords: { hash: async () => "hashed" } } },
-);
-mock.module(
-  pathToFileURL(resolve("src/features/auth/repository/prisma-accounts.ts"))
-    .href,
+  pathToFileURL(resolve("src/features/auth/services/account-service.ts")).href,
   {
     namedExports: {
-      createAccountRepository: () => ({
-        async findUser(trustedId: string) {
-          reads++;
-          assert.equal(trustedId, id);
-          return user;
-        },
-        async createAccount() {
-          created++;
-          return { id, email: "user@example.com", name: "User" };
-        },
-      }),
+      async getUserById(trustedId: string) {
+        reads++;
+        assert.equal(trustedId, id);
+        return user;
+      },
+      async registerAccount() {
+        created++;
+        return { id, email: "user@example.com", name: "User" };
+      },
+      async loginWithPassword() {
+        return null;
+      },
     },
   },
 );
@@ -98,7 +94,7 @@ test("anonymous, malformed and deleted-account sessions cannot access protected 
   assert.equal(await getCurrentUser(), null);
   await assert.rejects(requireUser(), TestRedirect);
 });
-test("trusted session ID resolves fresh identity from the account repository", async () => {
+test("trusted session ID resolves fresh identity from the account service", async () => {
   session = { user: { id, email: "forged@example.com" } };
   user = { id, email: "real@example.com", name: "Real" };
   assert.deepEqual(await (await queries).requireUser(), user);

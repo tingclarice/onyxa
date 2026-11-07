@@ -1,20 +1,19 @@
-# Procurement pricing: core/
+# Procurement pricing: core/ — small rules and calculations
 
-The pure business library: data in, processing, data out.
+Pure helper functions called by services: data in → data out, or throw a typed error.
 
-## Feature responsibilities
+## In this feature
 
 Pure unit-price normalization, EMA baselines, variance calculations, and alert classification. Use comparable units and explicit inputs; do not fetch history or call provider SDKs here.
 
-## Boundaries
+Not built yet. Add files here only when the feature is implemented.
 
-- Depend only on feature contracts and other pure helpers. Receive dates and other varying values as inputs. Use `core/` consistently instead of introducing a parallel `domain/` folder.
-- No React, Next.js, Prisma, database drivers, repositories, HTTP clients, provider SDKs, request cookies, or implicit I/O.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Names: `checkX` throws when the rule fails · `isX`/`hasX`/`canX` return a boolean · `calculateX`/`buildX`/`chooseX` return data.
+- Put numbers like `7` days or `0.8` confidence in named constants.
+- Time and other changing values are parameters.
+- May import: this feature's `types/` and other `core/` files.
+- Never: database, `fetch`, `process.env`, React, Next.js.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

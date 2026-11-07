@@ -54,21 +54,6 @@ export interface CredentialAccount extends AuthUser, LoginState {
   passwordHash: string;
   loginVersion: number;
 }
-export interface AccountRepository {
-  findCredentials(email: string): Promise<CredentialAccount | null>;
-  findUser(id: string): Promise<AuthUser | null>;
-  createAccount(input: {
-    email: string;
-    name: string;
-    passwordHash: string;
-  }): Promise<AuthUser>;
-  recordLogin(id: string, version: number, state: LoginState): Promise<boolean>;
-}
-export interface PasswordHasher {
-  hash(password: string): Promise<string>;
-  verify(password: string, encoded: string): Promise<boolean>;
-  dummyVerify(password: string): Promise<void>;
-}
 export class AccountExistsError extends Error {
   constructor() {
     super("account_exists");

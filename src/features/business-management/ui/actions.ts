@@ -1,19 +1,16 @@
 "use server";
 
+// Server Functions for business forms. Each one follows the same steps:
+//   1. get the logged-in user
+//   2. validate the form
+//   3. call ONE service function
+//   4. turn errors into a safe message
+//   5. refresh the page / save the cookie / redirect
+
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/features/auth/server";
-import { createBusinessStore } from "../repository/prisma-business";
-import {
-  createBusiness,
-  getMembership,
-  inviteMember,
-  respondToInvitation,
-  revokeInvitation,
-  updateAlerts,
-  updateBusiness,
-} from "../services/business-access";
 import {
   alertPreferencesSchema,
   businessProfileSchema,
@@ -21,58 +18,79 @@ import {
   invitationSchema,
   type ActionResult,
 } from "../types/business";
-import { fields, perform, selectBusiness } from "./action-runtime";
-
-const businessIdSchema = z.object({ businessId: identifierSchema });
+import {
+  createBusiness,
+  updateAlertPreferences,
+  updateBusinessProfile,
+} from "../services/business-service";
+import { getMembershipInBusiness } from "../services/workspace-service";
+import {
+  acceptInvitation,
+  declineInvitation,
+  inviteMember,
+  revokeInvitation,
+} from "../services/invitation-service";
+import { toErrorResult } from "./error-messages";
+import { saveActiveBusiness } from "./active-business-cookie";
+import { readFormFields } from "./form-fields";
 
 export async function createBusinessAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
-    const input = businessProfileSchema.parse(fields(formData));
-    return createBusiness(actor, input, createBusinessStore());
-  });
-  if (!outcome.ok) return outcome.result;
-  await selectBusiness(actor.id, outcome.value.id);
+
+  let businessId: string;
+  try {
+    const input = businessProfileSchema.parse(readFormFields(formData));
+    const business = await createBusiness(actor, input);
+    businessId = business.id;
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
+  await saveActiveBusiness(actor.id, businessId);
   revalidatePath("/", "layout");
   redirect("/beranda");
 }
 
 export async function switchBusinessAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
-    const { businessId } = businessIdSchema.parse(fields(formData));
-    return getMembership(actor, businessId, createBusinessStore());
-  });
-  if (!outcome.ok) return outcome.result;
-  await selectBusiness(actor.id, outcome.value.businessId);
+
+  let businessId: string;
+  try {
+    const input = z
+      .object({ businessId: identifierSchema })
+      .parse(readFormFields(formData));
+    const membership = await getMembershipInBusiness(actor, input.businessId);
+    businessId = membership.businessId;
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
+  await saveActiveBusiness(actor.id, businessId);
   revalidatePath("/", "layout");
   redirect("/beranda");
 }
 
 export async function inviteMemberAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
+
+  try {
     const input = invitationSchema
       .extend({ businessId: identifierSchema })
-      .parse(fields(formData));
-    return inviteMember(
-      actor,
-      input.businessId,
-      input.email,
-      new Date(),
-      createBusinessStore(),
-    );
-  });
-  if (!outcome.ok) return outcome.result;
+      .parse(readFormFields(formData));
+    await inviteMember(actor, input.businessId, input.email);
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
   revalidatePath("/", "layout");
   return {
     status: "success",
@@ -80,95 +98,100 @@ export async function inviteMemberAction(
   };
 }
 
+/** The Yes / No buttons in the inbox. */
 export async function respondInvitationAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
+
+  let joinedBusinessId: string | null = null;
+  try {
     const input = z
       .object({
         invitationId: identifierSchema,
         decision: z.enum(["accept", "dismiss"]),
       })
-      .parse(fields(formData));
-    return respondToInvitation(
-      actor,
-      input.invitationId,
-      input.decision,
-      new Date(),
-      createBusinessStore(),
-    );
-  });
-  if (!outcome.ok) return outcome.result;
-  if (outcome.value) {
-    await selectBusiness(actor.id, outcome.value);
-    revalidatePath("/", "layout");
+      .parse(readFormFields(formData));
+
+    if (input.decision === "accept") {
+      joinedBusinessId = await acceptInvitation(actor, input.invitationId);
+    } else {
+      await declineInvitation(actor, input.invitationId);
+    }
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
+  revalidatePath("/", "layout");
+  if (joinedBusinessId) {
+    await saveActiveBusiness(actor.id, joinedBusinessId);
     redirect("/beranda");
   }
-  revalidatePath("/", "layout");
   return { status: "success", message: "Undangan ditolak." };
 }
 
 export async function revokeInvitationAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
-    const input = businessIdSchema
-      .extend({ invitationId: identifierSchema })
-      .parse(fields(formData));
-    await revokeInvitation(
-      actor,
-      input.businessId,
-      input.invitationId,
-      new Date(),
-      createBusinessStore(),
-    );
-  });
-  if (!outcome.ok) return outcome.result;
+
+  try {
+    const input = z
+      .object({ businessId: identifierSchema, invitationId: identifierSchema })
+      .parse(readFormFields(formData));
+    await revokeInvitation(actor, input.businessId, input.invitationId);
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
   revalidatePath("/", "layout");
   return { status: "success", message: "Undangan dibatalkan." };
 }
 
 export async function updateProfileAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
+
+  try {
     const input = businessProfileSchema
       .extend({ businessId: identifierSchema })
-      .parse(fields(formData));
-    await updateBusiness(
-      actor,
-      input.businessId,
-      { name: input.name, businessType: input.businessType },
-      createBusinessStore(),
-    );
-  });
-  if (!outcome.ok) return outcome.result;
+      .parse(readFormFields(formData));
+    await updateBusinessProfile(actor, input.businessId, {
+      name: input.name,
+      businessType: input.businessType,
+    });
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
   revalidatePath("/", "layout");
   return { status: "success", message: "Profil usaha tersimpan." };
 }
 
 export async function updateAlertsAction(
-  _state: ActionResult | null,
+  _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
   const actor = await requireUser();
-  const outcome = await perform(async () => {
-    const data = fields(formData);
-    const businessId = identifierSchema.parse(data.businessId);
+
+  try {
+    const fields = readFormFields(formData);
+    const businessId = identifierSchema.parse(fields.businessId);
+    // Checkboxes send "on" when ticked and nothing when not.
     const input = alertPreferencesSchema.parse({
-      priceIncreaseThresholdPercent: Number(data.priceIncreaseThresholdPercent),
-      priceIncreaseAlertsEnabled: data.priceIncreaseAlertsEnabled === "on",
-      slowMovingAlertsEnabled: data.slowMovingAlertsEnabled === "on",
+      priceIncreaseThresholdPercent: Number(fields.priceIncreaseThresholdPercent),
+      priceIncreaseAlertsEnabled: fields.priceIncreaseAlertsEnabled === "on",
+      slowMovingAlertsEnabled: fields.slowMovingAlertsEnabled === "on",
     });
-    await updateAlerts(actor, businessId, input, createBusinessStore());
-  });
-  if (!outcome.ok) return outcome.result;
+    await updateAlertPreferences(actor, businessId, input);
+  } catch (error) {
+    return toErrorResult(error);
+  }
+
   revalidatePath("/", "layout");
   return { status: "success", message: "Pengaturan peringatan tersimpan." };
 }

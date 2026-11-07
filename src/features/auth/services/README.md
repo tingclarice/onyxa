@@ -1,20 +1,21 @@
-# Authentication: services/
+# Authentication: services/ — the high-level steps
 
-Application use cases: coordinate repository ports and core rules.
+One exported function per user action. Each reads like a recipe: find → check → save.
 
-## Feature responsibilities
+## In this feature
 
-Register accounts and authorize credentials through injected account and password ports. Signup creates no business or membership. Keep failed-login policy in core.
+Account use cases. Signup creates only an account (no business).
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `account-service.ts` | `registerAccount`, `loginWithPassword`, `getUserById` |
 
-- Depend on `types/` and `core/`. Receive repository implementations through typed interfaces; server-only delivery code wires concrete adapters. Keep source dependencies independent of repository implementations.
-- No embedded math/business algorithms, raw database/ORM queries, direct external fetches, React, Next.js cookies, redirects, or cache invalidation.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Calls `repository/` functions directly (plain imports) and `core/` functions for every rule.
+- Several writes that must succeed together go inside `runInTransaction(async (db) => ...)` from `@/lib/database-transaction`; pass `db` as the last argument to each repository call.
+- Takes `now: Date = new Date()` as an optional last parameter when time matters.
+- May call another feature's `services/`.
+- Never: inline math/rules, Prisma queries, `fetch`, React, Next.js cookies/redirects.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

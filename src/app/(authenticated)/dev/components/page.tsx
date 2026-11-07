@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { StatusBadge } from "@/components/status-badge";
 import {
   ConfidenceField,
   CurrencyInput,
   ReceiptItemRow,
-  StatusBadge,
-} from "@/components/review";
+} from "@/features/invoice-processing/ui/review";
 import type { ScanReceiptItem } from "@/features/invoice-processing/types/scan";
 
 const initialItems: ScanReceiptItem[] = [

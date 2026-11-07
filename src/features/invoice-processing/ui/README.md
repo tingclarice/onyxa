@@ -1,24 +1,24 @@
-# Invoice processing: ui/
+# Invoice processing: ui/ — what the user sees
 
-Delivery: receive input, invoke use cases, and present output.
+Shows pages and forms, reads input, and calls **one service function** per action.
 
-## Feature responsibilities
+## In this feature
 
-Image selection, editable autofill/review screens, confidence presentation, and thin scan/confirmation Server Functions. User edits are authoritative when confirmed; do not perform OCR or business calculations in UI.
+Receipt photo selection, scan queue and editable review screen. User edits are authoritative when confirmed.
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `actions.ts` | `uploadReceiptImageAction`, `scanReceiptAction` (need a user with an active business) |
+| `use-scan-receipt.ts` | client hook: check photo → upload → scan |
+| `scan-receipt-page.tsx, review-receipt-page.tsx` | the /scan and /scan/review pages (the review page uses `core/receipt-review-rules` for live totals) |
+| `review/` | receipt review components |
 
-- Use feature contracts and service entry points. Server-only wiring may import concrete repositories to inject into services. Client components must never import repositories, credentials, or server-only wiring.
-- No business calculations, raw Prisma queries, or direct external-provider calls. This project uses Next.js Server Functions; do not create internal API routes or Express controllers.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- `queries.ts` (server-only): reads for Server Components → call services.
+- `actions.ts` (`"use server"`): mutations. Steps: get user → validate form → call one service in `try/catch` → safe error message → `revalidatePath` / cookie / `redirect`.
+- May import: this feature's `services/` and `types/`; other features' `server.ts`; `@/components`, `@/lib`.
+- Client components may import pure `core/` functions **only** for instant on-screen calculations (approved option B exception).
+- Never: `repository/`, Prisma, business rules.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-`use-scan-receipt.ts` already lives here. The current scan Server Function remains in `../services/actions.ts` until an authorized code migration.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.
