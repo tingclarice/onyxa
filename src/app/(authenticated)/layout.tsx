@@ -1,6 +1,9 @@
 import { Suspense, type ReactNode } from "react";
 import { AppNavigation } from "@/components/app-navigation";
-import { requireUser } from "@/features/auth/services/session";
+import {
+  isLocalAuthBypassEnabled,
+  requireUser,
+} from "@/features/auth/services/session";
 import { SignOutButton } from "@/features/auth/ui/sign-out-button";
 
 export default function AuthenticatedLayout({
@@ -30,6 +33,15 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
         <AppNavigation />
       </Suspense>
       <main className="min-w-0 flex-1 pb-20 md:pb-0">
+        {isLocalAuthBypassEnabled() && (
+          <p
+            role="status"
+            className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+          >
+            Mode tes lokal: autentikasi Supabase dilewati. Jangan gunakan
+            bypass ini di production.
+          </p>
+        )}
         <header className="flex justify-end border-b border-border px-4 py-2">
           <SignOutButton />
         </header>

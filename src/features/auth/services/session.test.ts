@@ -19,6 +19,22 @@ let logoutOptions: unknown;
 let cookieWritesEnabled = false;
 let revalidations = 0;
 let scanCalls = 0;
+const originalNodeEnv = process.env.NODE_ENV;
+const originalDevAuthBypass = process.env.DEV_AUTH_BYPASS;
+
+function setNodeEnv(value: string | undefined): void {
+  if (value === undefined) {
+    Reflect.deleteProperty(process.env, "NODE_ENV");
+    return;
+  }
+
+  Object.defineProperty(process.env, "NODE_ENV", {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+}
 const demoReceipt = {
   supplier_name: "Contoh pemasok",
   date: "2026-11-06",
@@ -81,6 +97,12 @@ const sessionModule = import("@/features/auth/services/session");
 const actionsModule = import("@/features/auth/services/actions");
 
 beforeEach(() => {
+  setNodeEnv(originalNodeEnv);
+  if (originalDevAuthBypass === undefined) {
+    delete process.env.DEV_AUTH_BYPASS;
+  } else {
+    process.env.DEV_AUTH_BYPASS = originalDevAuthBypass;
+  }
   user = null;
   errorCode = null;
   hasSession = true;
@@ -177,12 +199,36 @@ test("sign-out clears the current session and redirects only on success", async 
 });
 
 test("direct scan action calls require authentication even without a layout", async () => {
+  setNodeEnv("test");
+  delete process.env.DEV_AUTH_BYPASS;
   const { scanReceiptAction } = await import("@/features/invoice-processing/services/actions");
   await assert.rejects(scanReceiptAction(), TestRedirect);
   assert.equal(scanCalls, 0);
 });
 
+test("local development bypass supplies a fixed identity without Supabase", async () => {
+  setNodeEnv("development");
+  process.env.DEV_AUTH_BYPASS = "true";
+  const { requireUser } = await sessionModule;
+
+  assert.deepEqual(await requireUser(), {
+    id: "local-development-auth-bypass",
+    email: "local-dev@onyxa.invalid",
+  });
+  assert.equal(cookieWritesEnabled, false);
+});
+
+test("development bypass flag is ignored outside development", async () => {
+  setNodeEnv("production");
+  process.env.DEV_AUTH_BYPASS = "true";
+  const { requireUser } = await sessionModule;
+
+  await assert.rejects(requireUser(), TestRedirect);
+});
+
 test("scan action without an image continues returning the authenticated demo flow", async () => {
+  setNodeEnv("test");
+  delete process.env.DEV_AUTH_BYPASS;
   user = { id: "verified-user", email: "owner@example.com" };
   const { scanReceiptAction } = await import("@/features/invoice-processing/services/actions");
 

@@ -70,6 +70,11 @@ export type ScanReceiptErrorCode =
   | "cloudinary_image_invalid"
   | "cloudinary_image_unavailable"
   | "gemini_not_configured"
+  | "gemini_invalid_key"
+  | "gemini_access_denied"
+  | "gemini_model_unavailable"
+  | "gemini_quota_exceeded"
+  | "gemini_request_rejected"
   | "gemini_request_failed"
   | "invalid_model_output"
   | "file_too_large";

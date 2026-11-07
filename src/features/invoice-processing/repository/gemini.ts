@@ -65,24 +65,74 @@ async function requestGemini(
   image: ReceiptImage,
 ): Promise<string | undefined> {
   const client = new GoogleGenAI({ apiKey });
-  const interaction = await client.interactions.create({
+  const response = await client.models.generateContent({
     model: "gemini-3.8-flash",
-    input: [
-      { type: "text", text: extractionInstructions },
+    contents: [
       {
-        type: "image",
-        data: Buffer.from(image.bytes).toString("base64"),
-        mime_type: image.mimeType,
+        role: "user",
+        parts: [
+          { text: extractionInstructions },
+          {
+            inlineData: {
+              mimeType: image.mimeType,
+              data: Buffer.from(image.bytes).toString("base64"),
+            },
+          },
+        ],
       },
     ],
-    response_format: {
-      type: "text",
-      mime_type: "application/json",
-      schema: receiptJsonSchema,
+    config: {
+      responseMimeType: "application/json",
+      responseJsonSchema: receiptJsonSchema,
+      temperature: 0,
     },
   });
 
-  return interaction.output_text;
+  return response.text;
+}
+
+function getGeminiErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+
+  const status: unknown = error.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+function getSafeGeminiError(error: unknown): ScanReceiptError {
+  switch (getGeminiErrorStatus(error)) {
+    case 400:
+      return new ScanReceiptError(
+        "Permintaan ke Gemini ditolak. Pastikan model mendukung pemrosesan gambar dan coba lagi.",
+        "gemini_request_rejected",
+      );
+    case 401:
+      return new ScanReceiptError(
+        "GEMINI_API_KEY tidak dikenali. Periksa API key di environment lokal, lalu mulai ulang server.",
+        "gemini_invalid_key",
+      );
+    case 403:
+      return new ScanReceiptError(
+        "Akses Gemini ditolak. Periksa izin API key dan ketersediaan Gemini API di Google AI Studio.",
+        "gemini_access_denied",
+      );
+    case 404:
+      return new ScanReceiptError(
+        "Model Gemini yang dipilih tidak tersedia untuk API key ini.",
+        "gemini_model_unavailable",
+      );
+    case 429:
+      return new ScanReceiptError(
+        "Kuota atau batas permintaan Gemini tercapai. Cek kuota Google AI Studio atau coba lagi nanti.",
+        "gemini_quota_exceeded",
+      );
+    default:
+      return new ScanReceiptError(
+        "Gemini belum dapat memproses foto nota. Periksa koneksi atau coba lagi.",
+        "gemini_request_failed",
+      );
+  }
 }
 
 export function createGeminiReceiptExtractor(
@@ -102,11 +152,8 @@ export function createGeminiReceiptExtractor(
       let output: string | undefined;
       try {
         output = await generate(apiKey, image);
-      } catch {
-        throw new ScanReceiptError(
-          "Gemini belum dapat memproses foto nota. Periksa koneksi atau coba lagi.",
-          "gemini_request_failed",
-        );
+      } catch (error) {
+        throw getSafeGeminiError(error);
       }
 
       if (!output?.trim()) {

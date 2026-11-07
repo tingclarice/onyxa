@@ -88,15 +88,6 @@ export default function ComponentsPreviewPage() {
             key={index}
             item={item}
             onChange={(updatedItem) => updateItem(index, updatedItem)}
-            onChangeMatchedItem={() =>
-              updateItem(index, {
-                ...item,
-                matched_item:
-                  item.matched_item === "Gula Pasir"
-                    ? "Gula Kristal"
-                    : "Gula Pasir",
-              })
-            }
           />
         ))}
       </section>

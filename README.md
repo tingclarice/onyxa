@@ -61,6 +61,13 @@ the configured Cloudinary cloud and sent to Gemini for draft extraction. Review
 the extracted values before using them; confidence is a review heuristic, not a
 probability. No receipt persistence is implemented.
 
+To test Gemini locally before Supabase Auth is configured, set
+`DEV_AUTH_BYPASS=true` in the root `.env` and restart `pnpm dev`. The app will
+show a local-testing banner and use a fixed development identity. This setting
+is ignored unless `NODE_ENV=development`; never enable authentication bypasses
+in production. Remove the setting or set it to `false` when local testing is
+finished.
+
 ## Prisma and PostgreSQL
 
 Prisma 7.10.1 defines eight proposed PostgreSQL application models in

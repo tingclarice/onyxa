@@ -80,6 +80,16 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
       return "Foto di Cloudinary tidak dapat diakses. Coba unggah ulang nota.";
     case "gemini_not_configured":
       return "Pemrosesan nota belum disiapkan. Minta pengelola aplikasi memeriksa GEMINI_API_KEY.";
+    case "gemini_invalid_key":
+      return "GEMINI_API_KEY tidak dikenali. Periksa nilainya di .env, lalu mulai ulang server.";
+    case "gemini_access_denied":
+      return "Google menolak akses Gemini. Periksa akses Gemini API untuk API key tersebut.";
+    case "gemini_model_unavailable":
+      return "Model Gemini tidak tersedia. Perbarui pilihan model atau periksa akses API.";
+    case "gemini_quota_exceeded":
+      return "Kuota Gemini tercapai. Periksa kuota Google AI Studio atau coba lagi nanti.";
+    case "gemini_request_rejected":
+      return "Gemini menolak format permintaan. Coba foto lain atau hubungi pengelola aplikasi.";
     case "gemini_request_failed":
       return "Gemini belum dapat membaca nota. Periksa koneksi lalu coba lagi.";
     case "invalid_model_output":

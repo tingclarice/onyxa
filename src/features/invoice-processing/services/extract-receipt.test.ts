@@ -275,3 +275,31 @@ test("Gemini provider failures are translated without exposing provider details"
       !error.message.includes("private provider response"),
   );
 });
+
+test("Gemini API status codes map to safe actionable errors", async () => {
+  const { createGeminiReceiptExtractor } = await geminiModule;
+  const cases = [
+    { status: 401, code: "gemini_invalid_key" },
+    { status: 403, code: "gemini_access_denied" },
+    { status: 404, code: "gemini_model_unavailable" },
+    { status: 429, code: "gemini_quota_exceeded" },
+    { status: 400, code: "gemini_request_rejected" },
+  ] as const;
+
+  for (const { status, code } of cases) {
+    const extractor = createGeminiReceiptExtractor(
+      () => "test-api-key",
+      async () => {
+        throw Object.assign(new Error("sensitive provider details"), { status });
+      },
+    );
+
+    await assert.rejects(
+      extractor.extract(image),
+      (error: unknown) =>
+        error instanceof ScanReceiptError &&
+        error.code === code &&
+        !error.message.includes("sensitive provider details"),
+    );
+  }
+});

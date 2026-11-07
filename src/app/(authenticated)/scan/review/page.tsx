@@ -7,6 +7,7 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImageUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +47,7 @@ function createEmptyItem(): ScanReceiptItem {
 }
 
 export default function ReceiptReviewPage() {
+  const router = useRouter();
   const scanMutation = useScanReceipt();
   const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);
@@ -172,26 +174,11 @@ export default function ReceiptReviewPage() {
     });
   }
 
-  function changeMatchedItem(index: number) {
-    const item = items[index];
-    if (!item) return;
-
-    const nextItemName = window.prompt(
-      "Masukkan nama barang yang cocok.",
-      item.matched_item ?? item.raw_name,
-    );
-    if (nextItemName === null) return;
-
-    updateItem(index, {
-      ...item,
-      matched_item: nextItemName.trim() || null,
-    });
-  }
-
   function saveReceipt() {
     reset(getValues());
     setIsSaved(true);
     toast.success("Struk berhasil disimpan.");
+    router.push("/scan");
   }
 
   if (receiptLoadError) {
@@ -413,7 +400,6 @@ export default function ReceiptReviewPage() {
                       onChange={(updatedItem) =>
                         updateItem(index, updatedItem)
                       }
-                      onChangeMatchedItem={() => changeMatchedItem(index)}
                       errors={{
                         raw_name: itemErrors?.raw_name?.message,
                         qty: itemErrors?.qty?.message,
