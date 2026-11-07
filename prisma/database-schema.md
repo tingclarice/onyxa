@@ -41,7 +41,7 @@ have no lines; saving it must require at least one valid line.
 
 | Table | What it stores |
 | --- | --- |
-| Business | Business profile and price/review/slow-moving alert preferences. |
+| Business | Business profile and price/slow-moving alert preferences. |
 | BusinessMember | A Supabase user’s owner/staff membership in a business. |
 | BusinessInvitation | Pending team access, with a hashed token and expiry. |
 | Supplier | The business’s supplier list. |
@@ -75,6 +75,8 @@ field comment means nullable. The diagram uses `uuid`, `date`, `timestamp`, and
   `Decimal(5,2)`, default 5. Do not use floating point for persisted money.
 - **Status:** `NEEDS_REVIEW` maps to `needs-check`; `SAVED` maps to `saved`.
   Only saved receipts contribute to spending and purchase insights.
+- **Autofill review:** users check extracted data while adding a receipt, so
+  there is no separate review-alert preference or settings toggle.
 - **Receipt snapshots:** supplier name, raw item name, receipt unit, quantity,
   unit price, and line total remain available after catalog/supplier edits.
   The receipt total is stored separately so mismatches remain reviewable.
@@ -154,3 +156,20 @@ No live database or diagram renderer was used.
   invented threshold in this schema.
 - Review the existing Cloudinary access model before persisting real merchant
   images. This restoration does not change uploads or access controls.
+
+### Review amendment — 2026-11-07
+
+1. **Problem:** a review-alert setting duplicates the user's review of autofilled receipts.
+2. **Success criteria:** remove `needsReviewAlertsEnabled` and its `needs_review`
+   settings equivalent; keep the Prisma schema and Mermaid diagram consistent.
+3. **Scope:** remove the field, diagram entry, settings contract/mock value, and
+   settings switch. Receipt status, inline review, and other insights stay as designed.
+4. **Constraints:** no migration or database changes; preserve the existing architecture.
+5. **Plan:** apply Felix's requested removal, regenerate and validate Prisma,
+   check TypeScript and lint the touched application files. Revert this scoped
+   change if needed; no stored data is affected.
+6. **Open questions:** none; Felix explicitly requested this schema correction.
+
+Amendment validation: Prisma formatting, validation, and client generation;
+TypeScript checking; lint on the two touched application files; and diff
+whitespace checks passed. No database changes or live UI checks were performed.

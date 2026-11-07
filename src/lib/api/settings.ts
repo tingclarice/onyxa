@@ -9,7 +9,6 @@ export type PriceAlerts = {
   threshold_percent: number;
   price_increase: boolean;
   slow_moving: boolean;
-  needs_review: boolean;
 };
 
 export type Supplier = {
@@ -44,7 +43,6 @@ const mockSettings: SettingsData = {
     threshold_percent: 5,
     price_increase: true,
     slow_moving: true,
-    needs_review: true,
   },
   team: [
     { id: "member-1", email: "sari@contoh.id", role: "Pemilik" },

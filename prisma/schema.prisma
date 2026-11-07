@@ -44,7 +44,6 @@ model Business {
   priceIncreaseThresholdPercent Decimal      @default(5) @db.Decimal(5, 2)
   priceIncreaseAlertsEnabled    Boolean      @default(true)
   slowMovingAlertsEnabled       Boolean      @default(true)
-  needsReviewAlertsEnabled      Boolean      @default(true)
   createdAt                     DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt                     DateTime     @updatedAt @db.Timestamptz(3)
 

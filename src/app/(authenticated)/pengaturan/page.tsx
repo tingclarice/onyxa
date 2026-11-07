@@ -45,7 +45,6 @@ const alertsSchema = z.object({
     .max(100, { error: "Batas kenaikan maksimal 100%." }),
   price_increase: z.boolean(),
   slow_moving: z.boolean(),
-  needs_review: z.boolean(),
 });
 
 const inviteSchema = z.object({
@@ -574,16 +573,6 @@ export default function PengaturanPage() {
                   checked={alertValues.slow_moving ?? true}
                   onChange={(checked) =>
                     alertsForm.setValue("slow_moving", checked, {
-                      shouldDirty: true,
-                    })
-                  }
-                />
-                <ToggleRow
-                  label="Perlu dicek"
-                  description="Ingatkan jika ada data nota yang kurang yakin."
-                  checked={alertValues.needs_review ?? true}
-                  onChange={(checked) =>
-                    alertsForm.setValue("needs_review", checked, {
                       shouldDirty: true,
                     })
                   }
