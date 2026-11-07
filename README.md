@@ -2,12 +2,12 @@
 
 Scan-first purchasing and expense tracker for Indonesian small businesses (UMKM).
 
-Staff photograph a supplier receipt. Onyxa extracts the supplier, date, items,
-quantities, and prices, lets the user confirm the result in one step, and turns
-the saved data into insights such as price increases and slow-moving items.
+Staff photograph a supplier receipt. The current prototype uploads the image to
+Cloudinary and returns demo receipt data for the editable review flow. OCR and
+Gemini extraction are not yet connected.
 
 ## Features
-- **Receipt scanner**: OCR + Gemini Flash turn a photo into structured data, with a review screen for low-confidence fields
+- **Receipt scanner**: Cloudinary photo upload and editable demo receipt review; OCR + Gemini integration is pending
 - **Price change alerts**: flags when a supplier raises the unit price of an item
 - **Slow-moving detector**: flags items that haven't been repurchased in an unusually long time
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
@@ -30,8 +30,7 @@ feature with hexagonal boundaries as defined in [AGENTS.md](AGENTS.md).
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered
 mutations and server-only queries for reads; do not add internal API endpoints.
-Receipt scanning calls a Server Function in `invoice-processing`; it currently
-returns demo receipts for the editable review flow.
+Receipt upload and scanning call Server Functions in `invoice-processing`.
 
 
 ## Getting started
@@ -42,13 +41,15 @@ returns demo receipts for the editable review flow.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in the Supabase URL and publishable key
+cp .env.example .env        # fill in Supabase and Cloudinary values
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
 
 Keep local environment files at the repository root and never commit secrets.
 The committed `.env.example` contains placeholder values only.
+Cloudinary uploads require an authenticated user and accept JPEG, PNG, WebP,
+HEIC, or HEIF images up to 8 MB.
 
 ## Supabase authentication
 
@@ -61,6 +62,11 @@ require HTTPS. Google sign-in and password recovery are not implemented.
 Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in the root `.env`. Authentication
 does not use `SUPABASE_SECRET_KEY` or a service-role key. These settings are read
 at runtime, so the same Docker image can be deployed without baking in keys.
+Set `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in the same root
+environment file. Uploads use an unsigned preset from a server action; no
+Cloudinary API secret is required or exposed to the browser. Restrict the preset
+to image uploads and a dedicated folder. For sensitive production receipts,
+add a signed-upload flow and explicit retention/access controls.
 
 In the Supabase dashboard:
 
@@ -103,8 +109,9 @@ docker compose up -d
 
 Compose pulls the published image without requiring source code on the VPS.
 The host port defaults to `3000`. To change it, set `APP_PORT` in the VPS shell
-or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY` there too; Compose passes only these explicitly named
+or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`, `CLOUDINARY_CLOUD_NAME`, and
+`CLOUDINARY_UPLOAD_PRESET` there too; Compose passes these explicitly named
 variables to the application container. The workflow does not upload this file.
 
 For a local image build and smoke test:
@@ -115,8 +122,8 @@ docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the Supabase runtime variables on the VPS before
-deployment. Google fonts are downloaded during the build, so the
+by the workflow. Provision the Supabase and Cloudinary runtime variables on the
+VPS before deployment. Google fonts are downloaded during the build, so the
 builder needs outbound network access.
 
 ## Contributing

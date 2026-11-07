@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { useScanReceipt } from "@/features/invoice-processing/ui/use-scan-receipt";
 import {
   ScanReceiptError,
-  type ScanReceipt,
+  ScanReceiptResultSchema,
+  type ScanReceiptResult,
   type ScanReceiptErrorCode,
 } from "@/features/invoice-processing/types/scan";
 
@@ -28,6 +29,7 @@ type ScanQueueItem = {
   previewUrl: string;
   status: QueueStatus;
   errorCode?: ScanReceiptErrorCode;
+  errorMessage?: string;
   reviewUrl?: string;
 };
 
@@ -52,9 +54,9 @@ function getStatusLabel(status: QueueStatus): string {
     case "queued":
       return "Menunggu";
     case "scanning":
-      return "Membaca nota...";
+      return "Mengunggah foto...";
     case "done":
-      return "Selesai";
+      return "Siap dicek";
     case "failed":
       return "Gagal";
   }
@@ -63,11 +65,17 @@ function getStatusLabel(status: QueueStatus): string {
 function getErrorMessage(code: ScanReceiptErrorCode): string {
   switch (code) {
     case "unreadable_image":
-      return "Foto belum terbaca. Pastikan tulisan terlihat jelas dan tidak buram.";
+      return "Format foto belum didukung. Gunakan JPG, PNG, WebP, atau HEIC.";
     case "duplicate_receipt":
       return "Nota ini sepertinya sudah pernah dikirim. Periksa nota sebelum mencoba lagi.";
     case "upload_failed":
       return "Foto belum berhasil dikirim. Periksa koneksi lalu coba lagi.";
+    case "cloudinary_not_configured":
+      return "Penyimpanan Cloudinary belum disiapkan. Minta pengelola aplikasi memeriksa pengaturannya.";
+    case "cloudinary_upload_failed":
+      return "Foto belum berhasil disimpan. Periksa koneksi dan pengaturan Cloudinary, lalu coba lagi.";
+    case "file_too_large":
+      return "Ukuran foto maksimal 8 MB. Pilih foto yang lebih kecil.";
   }
 }
 
@@ -114,6 +122,7 @@ export default function ScanPage() {
     updateQueueItem(item.id, {
       status: "scanning",
       errorCode: undefined,
+      errorMessage: undefined,
     });
 
     if (isDuplicateFile(item.file, item.id)) {
@@ -133,27 +142,33 @@ export default function ScanPage() {
     }
 
     try {
-      const receipt = await scanMutation.mutateAsync(item.file);
-      const reviewUrl = storeReceiptForReview(item.id, receipt);
+      const result = await scanMutation.mutateAsync(item.file);
+      const reviewUrl = storeReceiptForReview(item.id, result);
       updateQueueItem(item.id, {
         status: "done",
         reviewUrl,
         errorCode: undefined,
+        errorMessage: undefined,
       });
     } catch (error) {
       const details = getErrorDetails(error);
       updateQueueItem(item.id, {
         status: "failed",
         errorCode: details.code,
+        errorMessage: details.message,
       });
     }
   }
 
-  function storeReceiptForReview(id: string, receipt: ScanReceipt): string {
+  function storeReceiptForReview(
+    id: string,
+    result: ScanReceiptResult,
+  ): string {
     if (typeof window !== "undefined") {
+      const validatedResult = ScanReceiptResultSchema.parse(result);
       window.sessionStorage.setItem(
         `${reviewStoragePrefix}${id}`,
-        JSON.stringify(receipt),
+        JSON.stringify(validatedResult),
       );
     }
     return `/scan/review?receiptId=${encodeURIComponent(id)}`;
@@ -197,6 +212,10 @@ export default function ScanPage() {
         <p className="text-base text-muted-foreground">
           Foto nota atau pilih gambar dari HP. Kamu bisa menambahkan beberapa
           nota sekaligus.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Foto disimpan di Cloudinary. Data nota yang muncul masih contoh
+          sampai pemrosesan OCR terhubung.
         </p>
       </header>
 
@@ -300,7 +319,7 @@ export default function ScanPage() {
             {queue.map((item) => {
               const statusLabel = getStatusLabel(item.status);
               const errorMessage = item.errorCode
-                ? getErrorMessage(item.errorCode)
+                ? (item.errorMessage ?? getErrorMessage(item.errorCode))
                 : undefined;
 
               return (

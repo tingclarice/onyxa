@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useScanReceipt } from "@/features/invoice-processing/ui/use-scan-receipt";
 import {
   ScanReceiptSchema,
+  ScanReceiptResultSchema,
   type ScanReceipt,
   type ScanReceiptItem,
 } from "@/features/invoice-processing/types/scan";
@@ -94,12 +95,13 @@ export default function ReceiptReviewPage() {
       if (storedReceipt) {
         window.sessionStorage.removeItem(storageKey);
         try {
-          const parsedReceipt = ScanReceiptSchema.safeParse(
+          const parsedResult = ScanReceiptResultSchema.safeParse(
             JSON.parse(storedReceipt),
           );
-          if (parsedReceipt.success) {
+          if (parsedResult.success) {
             window.setTimeout(() => {
-              reset(parsedReceipt.data);
+              reset(parsedResult.data.receipt);
+              setPreviewUrl(parsedResult.data.imageUrl);
               setReceiptReady(true);
             }, 0);
             return;
@@ -110,15 +112,20 @@ export default function ReceiptReviewPage() {
           }, 0);
           return;
         }
+        window.setTimeout(() => {
+          setReceiptLoadError(true);
+        }, 0);
+        return;
       }
     }
     loadReceipt(undefined);
   }, [loadReceipt, reset]);
 
   useEffect(() => {
-    if (scanMutation.data) {
+    if (scanMutation.data?.receipt) {
       const timer = window.setTimeout(() => {
-        reset(scanMutation.data);
+        reset(scanMutation.data.receipt);
+        setPreviewUrl(scanMutation.data.imageUrl);
         setReceiptReady(true);
       }, 0);
       return () => window.clearTimeout(timer);
@@ -127,7 +134,7 @@ export default function ReceiptReviewPage() {
 
   useEffect(
     () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     },
     [previewUrl],
   );
@@ -141,7 +148,7 @@ export default function ReceiptReviewPage() {
 
   function handleImageSelected(file?: File) {
     if (!file) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
     scanMutation.mutate(file);
   }
@@ -189,7 +196,7 @@ export default function ReceiptReviewPage() {
     );
   }
 
-  if (scanMutation.isPending || !receiptReady) {
+  if (scanMutation.isPending || scanMutation.isError || !receiptReady) {
     return (
       <div className="mx-auto flex min-h-[70dvh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
         {scanMutation.isError ? (

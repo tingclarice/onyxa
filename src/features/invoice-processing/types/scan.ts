@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const MAX_RECEIPT_IMAGE_BYTES = 8 * 1024 * 1024;
+export const SUPPORTED_RECEIPT_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+] as const;
+
 export const ScanReceiptItemSchema = z.object({
   raw_name: z.string({ error: "Nama barang harus diisi." }).min(1, {
     error: "Nama barang harus diisi.",
@@ -43,10 +52,28 @@ export const ScanReceiptSchema = z.object({
 export type ScanReceiptItem = z.infer<typeof ScanReceiptItemSchema>;
 export type ScanReceipt = z.infer<typeof ScanReceiptSchema>;
 
+export const ScanReceiptResultSchema = z.object({
+  receipt: ScanReceiptSchema,
+  imageUrl: z.url().optional(),
+});
+
+export type ScanReceiptResult = z.infer<typeof ScanReceiptResultSchema>;
+
 export type ScanReceiptErrorCode =
   | "unreadable_image"
   | "duplicate_receipt"
-  | "upload_failed";
+  | "upload_failed"
+  | "cloudinary_not_configured"
+  | "cloudinary_upload_failed"
+  | "file_too_large";
+
+export type UploadReceiptImageResult =
+  | { ok: true; imageUrl: string }
+  | {
+      ok: false;
+      code: ScanReceiptErrorCode;
+      message: string;
+    };
 
 export class ScanReceiptError extends Error {
   constructor(

@@ -1,31 +1,53 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { startTransition } from "react";
-import { scanReceiptAction } from "@/features/invoice-processing/services/actions";
 import {
+  scanReceiptAction,
+  uploadReceiptImageAction,
+} from "@/features/invoice-processing/services/actions";
+import {
+  MAX_RECEIPT_IMAGE_BYTES,
   ScanReceiptError,
-  ScanReceiptSchema,
-  type ScanReceipt,
+  ScanReceiptResultSchema,
+  SUPPORTED_RECEIPT_IMAGE_TYPES,
+  type ScanReceiptResult,
 } from "@/features/invoice-processing/types/scan";
 
 export function useScanReceipt() {
   return useMutation({
-    mutationFn: (file?: File) =>
-      new Promise<ScanReceipt>((resolve, reject) => {
-        if (file && (!file.type.startsWith("image/") || file.size === 0)) {
-          reject(new ScanReceiptError("Foto belum terbaca.", "unreadable_image"));
-          return;
+    mutationFn: async (file?: File): Promise<ScanReceiptResult> => {
+      let imageUrl: string | undefined;
+
+      if (file) {
+        if (
+          !SUPPORTED_RECEIPT_IMAGE_TYPES.some((type) => type === file.type) ||
+          file.size === 0
+        ) {
+          throw new ScanReceiptError(
+            "Format foto belum didukung. Gunakan JPG, PNG, WebP, atau HEIC.",
+            "unreadable_image",
+          );
+        }
+        if (file.size > MAX_RECEIPT_IMAGE_BYTES) {
+          throw new ScanReceiptError(
+            "Ukuran foto maksimal 8 MB. Pilih foto yang lebih kecil.",
+            "file_too_large",
+          );
         }
 
-        // shortcut: demo fixtures only; add validated uploads and OCR when implemented.
-        startTransition(async () => {
-          try {
-            resolve(ScanReceiptSchema.parse(await scanReceiptAction()));
-          } catch {
-            reject(new ScanReceiptError("Gagal memproses struk.", "upload_failed"));
-          }
-        });
-      }),
+        const formData = new FormData();
+        formData.set("file", file);
+        const uploadResult = await uploadReceiptImageAction(formData);
+        if (!uploadResult.ok) {
+          throw new ScanReceiptError(
+            uploadResult.message,
+            uploadResult.code,
+          );
+        }
+        imageUrl = uploadResult.imageUrl;
+      }
+
+      return ScanReceiptResultSchema.parse(await scanReceiptAction(imageUrl));
+    },
   });
 }
