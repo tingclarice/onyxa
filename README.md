@@ -43,11 +43,7 @@ Receipt upload and scanning call Server Functions in `invoice-processing`.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-<<<<<<< HEAD
-cp .env.example .env        # fill in Supabase and Cloudinary values
-=======
-cp .env.example .env        # fill in Supabase settings; add DATABASE_URL when ready
->>>>>>> main
+cp .env.example .env        # fill in Supabase/Cloudinary settings; add DATABASE_URL when ready
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
@@ -153,19 +149,14 @@ docker compose up -d
 ```
 
 Compose pulls the published image without requiring source code on the VPS.
-The host port defaults to `3000`. To change it, set `APP_PORT` in the VPS shell
-<<<<<<< HEAD
-or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL`,
-`SUPABASE_PUBLISHABLE_KEY`, `CLOUDINARY_CLOUD_NAME`, and
-`CLOUDINARY_UPLOAD_PRESET` there too; Compose passes these explicitly named
-variables to the application container. The workflow does not upload this file.
-=======
-or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY` there too, and `DATABASE_URL` when ready. Compose
-passes these explicitly named variables to the application container. An empty
+It loads runtime variables from `/home/deployer/onyxa/.env` through `env_file`.
+Add new runtime variables to that file without editing Compose. An empty
 `DATABASE_URL` is allowed until a feature uses Prisma. The workflow does not
-upload this file or run database migrations.
->>>>>>> main
+upload the environment file or run database migrations.
+
+The app exposes container port `3000` on the existing external `npm_default`
+network, without publishing a host port. Configure the reverse proxy on that
+network to forward HTTP traffic to `onyxa:3000`. `APP_PORT` is no longer used.
 
 For a local image build and smoke test:
 
