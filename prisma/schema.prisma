@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Add application models when their data contracts are defined.
+// Supabase owns authentication; do not model its managed auth schema here.
