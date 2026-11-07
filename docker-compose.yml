@@ -1,0 +1,24 @@
+services:
+  web:
+    image: ghcr.io/tingclarice/onyxa:latest
+    container_name: onyxa
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      - npm_default
+
+networks:
+  npm_default:
+    external: true
