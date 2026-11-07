@@ -72,7 +72,6 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
           <main>
             <BusinessWorkspace
               businessReady={Boolean(workspace.active)}
-              email={workspace.actor.email}
             >
               <>
                 {workspace.active && <DemoNotice />}

@@ -8,20 +8,18 @@ import { CreateBusinessForm } from "./business-forms";
 
 export function BusinessWorkspace({
   businessReady,
-  email,
   children,
 }: {
   businessReady: boolean;
-  email: string | null;
   children?: ReactNode;
 }) {
   const pathname = usePathname();
   if (businessReady || pathname === "/inbox" || pathname === "/bisnis/baru")
     return children;
-  return <BusinessOnboarding email={email} />;
+  return <BusinessOnboarding />;
 }
 
-export function BusinessOnboarding({ email }: { email: string | null }) {
+export function BusinessOnboarding() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-8">
       <header className="max-w-2xl space-y-3">
@@ -61,7 +59,6 @@ export function BusinessOnboarding({ email }: { email: string | null }) {
               Undangan untuk akun Anda akan muncul di inbox. Buka undangan lalu
               pilih Yes atau No.
             </p>
-            <p className="mt-3 break-all text-sm font-medium">{email}</p>
           </div>
           <Button asChild variant="outline">
             <Link href="/inbox">View Inbox</Link>

@@ -46,7 +46,6 @@ test("business-free onboarding retains creation and links directly to the inbox"
       BusinessWorkspace,
       {
         businessReady: false,
-        email: "staff@warungsari.id",
       },
       createElement("p", null, "business-content"),
     ),
@@ -68,7 +67,6 @@ test("business-free users can open the inbox and create-business page", async ()
         BusinessWorkspace,
         {
           businessReady: false,
-          email: "staff@warungsari.id",
         },
         createElement("p", null, "requested-page"),
       ),
@@ -86,7 +84,6 @@ test("business-only pages keep onboarding until a membership exists", async () =
       BusinessWorkspace,
       {
         businessReady: false,
-        email: "staff@warungsari.id",
       },
       createElement("p", null, "business-content"),
     ),

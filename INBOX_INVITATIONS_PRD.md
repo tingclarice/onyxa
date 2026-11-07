@@ -92,6 +92,18 @@ from the new inbox flow; restoring code-based invitations would require new code
 
 ## Implementation and verification — 2026-11-07
 
+### Approved UI correction — hide account email
+
+1. **Problem:** the signed-in account email adds unnecessary information to
+   onboarding and the inbox header.
+2. **Success:** neither screen displays the account email.
+3. **Scope:** remove the labels and unused email presentation props; update their
+   existing test callers.
+4. **Constraints:** preserve the approved architecture and current branch.
+5. **Plan:** apply Felix's explicit removal request, then run the affected tests,
+   TypeScript and lint. Roll back through a normal revert if needed.
+6. **Decision:** Felix directly requested this correction: "remove it".
+
 - Added `/inbox`, automatic recipient-email-scoped reads and invitation-ID Yes/No
   responses. Kept authorization, expiry/revocation, serializable transactions,
   duplicate prevention and staff-only invitation acceptance.
