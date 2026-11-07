@@ -18,7 +18,7 @@ export async function BusinessHome() {
           Anda masuk sebagai {active.role === "OWNER" ? "pemilik" : "staf"}.
         </p>
       </header>
-      <section className="grid items-start gap-6 md:grid-cols-2">
+      <section className="grid items-start gap-6 lg:grid-cols-2">
         <div className="space-y-5 rounded-2xl border p-6">
           <h2 className="text-lg font-semibold">Tim usaha</h2>
           <p className="text-sm leading-6 text-muted-foreground">

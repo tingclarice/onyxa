@@ -4,7 +4,7 @@ Delivery: receive input, invoke use cases, and present output.
 
 ## Feature responsibilities
 
-Login/signup forms, email-confirmation presentation, sign-out controls, and thin Next.js Server Functions or server queries. Parse input, obtain the trusted session, call services, and present the result.
+Auth.js Credentials/JWT wiring, forms, Server Functions and trusted session queries. Wire adapters here and keep cookies, error mapping and navigation at this boundary. The sole Auth.js protocol Route Handler is an approved exception; do not add internal business endpoints.
 
 ## Boundaries
 
@@ -17,10 +17,4 @@ Login/signup forms, email-confirmation presentation, sign-out controls, and thin
 - Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
 - To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
 - Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-Forms, dedicated `actions.ts`, server-only wiring in `action-runtime.ts`, and
-session queries live here. Other features use `../server.ts` for trusted identity
-checks. Login/signup/logout clear the active-business cookie at the server edge.
 

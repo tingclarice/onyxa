@@ -4,7 +4,7 @@ Data adapters: perform database/provider operations and map results to feature c
 
 ## Feature responsibilities
 
-The Supabase Auth adapter: sign in, sign up, verify an email token, and sign out. Translate SDK results/errors into the feature's contracts, without deciding navigation or business policy.
+Server-only Prisma account persistence and Node scrypt adapters. Map unique email conflicts to the account contract and update login state using optimistic version checks.
 
 ## Boundaries
 
@@ -17,10 +17,4 @@ The Supabase Auth adapter: sign in, sign up, verify an email token, and sign out
 - Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
 - To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
 - Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-`supabase-auth.ts` contains the concrete provider adapter and safe identity
-mapping. Delivery supplies its cookie-aware client from `src/lib/supabase/`.
-Log only error codes/statuses, never credentials, tokens, or raw error messages.
 

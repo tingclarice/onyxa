@@ -1,22 +1,39 @@
 import "server-only";
-import type { AuthGateway, AuthResult } from "../types/auth";
-import { createAuthGateway } from "../repository/supabase-auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { AuthError } from "next-auth";
+import { z } from "zod";
+import { AccountExistsError, type AuthResult } from "../types/auth";
 
 export async function runAuth(
-  operation: (gateway: AuthGateway) => Promise<AuthResult>,
+  operation: () => Promise<void>,
 ): Promise<AuthResult> {
   try {
-    return await operation(
-      createAuthGateway(await createSupabaseServerClient(true)),
-    );
-  } catch {
-    console.error(
-      "[auth] authentication service could not complete the request",
-    );
+    await operation();
+    return { status: "authenticated", message: "Anda berhasil masuk." };
+  } catch (error) {
+    if (error instanceof z.ZodError)
+      return {
+        status: "error",
+        code: "validation_failed",
+        message: error.issues[0]?.message ?? "Periksa data formulir.",
+      };
+    if (error instanceof AccountExistsError)
+      return {
+        status: "error",
+        code: "account_exists",
+        message: "Email ini sudah terdaftar. Silakan masuk.",
+      };
+    if (error instanceof AuthError && error.type === "CredentialsSignin")
+      return {
+        status: "error",
+        code: "invalid_credentials",
+        message:
+          "Email atau kata sandi salah. Setelah 5 percobaan gagal, tunggu 15 menit.",
+      };
+    console.error("[auth] account request could not be completed");
     return {
       status: "error",
-      message: "Layanan autentikasi belum dapat dihubungi. Silakan coba lagi.",
+      code: "auth_unavailable",
+      message: "Layanan autentikasi belum tersedia. Silakan coba lagi.",
     };
   }
 }

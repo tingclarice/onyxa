@@ -4,7 +4,7 @@ Application use cases: coordinate repository ports and core rules.
 
 ## Feature responsibilities
 
-Coordinate login, registration, confirmation, and sign-out through typed provider ports and core rules. Pass profile data to the port and return safe use-case results.
+Register accounts and authorize credentials through injected account and password ports. Signup creates no business or membership. Keep failed-login policy in core.
 
 ## Boundaries
 
@@ -17,11 +17,4 @@ Coordinate login, registration, confirmation, and sign-out through typed provide
 - Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
 - To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
 - Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-`authentication.ts` coordinates login, account-only signup, confirmation and
-sign-out through `AuthGateway`. Error policies live in `core/`; provider calls
-live in `repository/`; Server Functions and session delivery live in `ui/`.
-Signup never creates a business or membership.
 

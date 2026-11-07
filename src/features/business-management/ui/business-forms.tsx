@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ActionResult, Business, Invitation } from "../types/business";
 import {
   createBusinessAction,
@@ -161,6 +161,7 @@ export function AlertPreferencesForm({
 
 export function InviteMemberForm({ businessId }: { businessId: string }) {
   const [result, action, pending] = useActionState(inviteMemberAction, null);
+  const [copied, setCopied] = useState<string | null>(null);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="businessId" value={businessId} />
@@ -178,10 +179,43 @@ export function InviteMemberForm({ businessId }: { businessId: string }) {
         disabled={pending}
       />
       <p className="text-sm text-muted-foreground">
-        Undangan muncul di menu akun dengan email ini. Penerima boleh mendaftar
-        setelah diundang.
+        Bagikan kode rahasia langsung ke staf. Penerima boleh mendaftar setelah
+        diundang; email akunnya harus sama dengan email tujuan ini.
       </p>
       <ActionMessage result={result} />
+      {result?.status === "success" && result.code && (
+        <div className="space-y-3 rounded-xl border p-4">
+          <p className="text-sm font-medium">
+            Simpan kode sebelum meninggalkan halaman ini.
+          </p>
+          <code className="block break-all text-sm select-all">
+            {result.code}
+          </code>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(
+                  `${window.location.origin}/undangan#code=${result.code}`,
+                );
+                setCopied("Tautan disalin.");
+              } catch {
+                setCopied(
+                  "Tidak dapat menyalin tautan. Salin kode di atas secara manual.",
+                );
+              }
+            }}
+          >
+            Salin tautan undangan
+          </Button>
+          {copied && (
+            <p role="status" className="text-sm">
+              {copied}
+            </p>
+          )}
+        </div>
+      )}
       <Button type="submit" disabled={pending}>
         {pending ? "Membuat undangan..." : "Undang staf"}
       </Button>

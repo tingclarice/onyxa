@@ -3,13 +3,20 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/features/auth/server";
-import { ACTIVE_BUSINESS_COOKIE } from "@/lib/session-cookies";
+import {
+  ACTIVE_BUSINESS_COOKIE,
+  INVITATION_COOKIE,
+} from "@/lib/session-cookies";
+import { invitationSecrets } from "../repository/invitation-secrets";
 import { createBusinessStore } from "../repository/prisma-business";
 import { getBusinessSettings, getWorkspace } from "../services/business-access";
-import { identifierSchema } from "../types/business";
+import { identifierSchema, invitationCodeSchema } from "../types/business";
 
 export const getBusinessWorkspace = cache(async () => {
   const actor = await requireUser();
+  const proof = invitationCodeSchema.safeParse(
+    (await cookies()).get(INVITATION_COOKIE)?.value,
+  );
   const selection = (await cookies())
     .get(ACTIVE_BUSINESS_COOKIE)
     ?.value.split(":");
@@ -21,6 +28,7 @@ export const getBusinessWorkspace = cache(async () => {
     parsed.success ? parsed.data : undefined,
     new Date(),
     createBusinessStore(),
+    proof.success ? invitationSecrets.hash(proof.data) : undefined,
   );
   return { actor, ...workspace };
 });

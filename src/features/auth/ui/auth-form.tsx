@@ -56,7 +56,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const {
     register,
     handleSubmit,
-    resetField,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<AuthFormValues>({
     resolver: zodResolver(schema),
@@ -75,14 +75,14 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           ? signupAction(values)
           : loginAction(values));
         if (nextResult.status === "authenticated") {
+          reset();
+          setPasswordVisible(false);
           queryClient.clear();
           router.replace("/beranda");
           router.refresh();
           return;
         }
         setResult(nextResult);
-        if (nextResult.status === "confirmation-required")
-          resetField("password");
       } catch {
         setResult({
           status: "error",

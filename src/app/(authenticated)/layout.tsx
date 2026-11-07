@@ -58,7 +58,6 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
             </p>
             <BusinessMenu
               email={workspace.actor.email}
-              emailVerified={workspace.actor.emailVerified}
               memberships={workspace.memberships}
               activeBusinessId={workspace.active?.businessId}
               invitations={workspace.invitations}
@@ -75,7 +74,6 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
               <BusinessOnboarding
                 invitations={workspace.invitations}
                 email={workspace.actor.email}
-                emailVerified={workspace.actor.emailVerified}
               />
             )}
           </main>

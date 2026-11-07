@@ -1,10 +1,7 @@
-import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
-
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
-}
-
+// Auth.js refreshes cookies; protected use cases still call requireUser().
+export { auth as proxy } from "@/features/auth/ui/authjs";
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

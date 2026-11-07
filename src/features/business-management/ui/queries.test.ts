@@ -14,6 +14,7 @@ const otherBusinessId = "bdf50100-0000-4000-8000-000000000002";
 let actor: Actor | null = null;
 let memberships: Membership[] = [];
 let selection: string | undefined;
+let code: string | undefined;
 let providerCalls = 0;
 let recipientQuery: string | undefined;
 const member: Membership = {
@@ -44,8 +45,9 @@ mock.module("next/headers", {
   namedExports: {
     async cookies() {
       return {
-        get() {
-          return selection ? { value: selection } : undefined;
+        get(name: string) {
+          const value = name === "onyxa-invitation" ? code : selection;
+          return value ? { value } : undefined;
         },
       };
     },
@@ -69,9 +71,10 @@ mock.module(
         async listMemberships(userId: string) {
           return memberships.filter((member) => member.userId === userId);
         },
-        async listInvitationsForEmail(email: string) {
+        async findRecipientInvitation(hash: string, email: string) {
+          assert.equal(hash.length, 64);
           recipientQuery = email;
-          return [];
+          return null;
         },
       }),
     },
@@ -92,9 +95,10 @@ mock.module(
 );
 const queries = import("./queries");
 beforeEach(() => {
-  actor = { id: "user", email: "Staff@Example.com", emailVerified: true };
+  actor = { id: "user", email: "Staff@Example.com" };
   memberships = [];
   selection = undefined;
+  code = undefined;
   providerCalls = 0;
   recipientQuery = undefined;
 });
@@ -142,11 +146,14 @@ test("selection cookies are account-bound and cannot invent membership", async (
   assert.equal((await (await queries).getBusinessWorkspace()).active, null);
 });
 
-test("inbox identity comes from the verified session rather than cookies", async () => {
+test("inbox requires a secret and always scopes it to the trusted account", async () => {
   selection = "forged-user:forged-business";
   await (await queries).getBusinessWorkspace();
+  assert.equal(recipientQuery, undefined);
+  code = "a".repeat(64);
+  await (await queries).getBusinessWorkspace();
   assert.equal(recipientQuery, "staff@example.com");
-  actor = { id: "user", email: "staff@example.com", emailVerified: false };
+  code = "invalid";
   recipientQuery = undefined;
   await (await queries).getBusinessWorkspace();
   assert.equal(recipientQuery, undefined);

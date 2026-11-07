@@ -11,7 +11,7 @@ import {
 const messages: Record<BusinessErrorCode, string> = {
   not_member: "Anda tidak memiliki akses ke usaha ini.",
   owner_required: "Hanya pemilik usaha yang dapat melakukan tindakan ini.",
-  verify_email: "Konfirmasi email akun Anda terlebih dahulu.",
+  missing_email: "Email akun tidak tersedia. Silakan masuk kembali.",
   invite_unavailable:
     "Undangan tidak tersedia, sudah diproses, atau sudah kedaluwarsa.",
   already_member: "Email ini sudah menjadi anggota usaha.",

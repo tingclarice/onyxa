@@ -19,7 +19,6 @@ const now = new Date("2026-11-07T00:00:00Z");
 const actor: Actor = {
   id: "user",
   email: "owner@example.com",
-  emailVerified: true,
 };
 const member: Membership = {
   id: "member",
@@ -155,21 +154,23 @@ test("existing members, duplicate invitations and self invitations are rejected"
   );
 });
 
-test("acceptance requires the verified recipient email even for an authenticated user", () => {
+test("acceptance requires the targeted account email even after secret lookup", () => {
   assert.throws(
-    () => recipientDecision(actor, invitation, null, now, "accept"),
+    () =>
+      recipientDecision(actor, invitation, null, now, "accept", invitation.id),
     BusinessError,
   );
   assert.throws(
     () =>
       recipientDecision(
-        { ...actor, email: invitation.email, emailVerified: false },
+        { ...actor, email: null },
         invitation,
         null,
         now,
         "accept",
+        invitation.id,
       ),
-    (e: unknown) => e instanceof BusinessError && e.code === "verify_email",
+    (e: unknown) => e instanceof BusinessError && e.code === "missing_email",
   );
   assert.equal(
     recipientDecision(
@@ -178,6 +179,7 @@ test("acceptance requires the verified recipient email even for an authenticated
       null,
       now,
       "accept",
+      invitation.id,
     ),
     "accept",
   );

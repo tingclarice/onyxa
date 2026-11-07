@@ -12,9 +12,8 @@ export function emailKey(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function verifiedEmail(actor: Actor): string {
-  if (!actor.email || !actor.emailVerified)
-    throw new BusinessError("verify_email");
+export function accountEmail(actor: Actor): string {
+  if (!actor.email) throw new BusinessError("missing_email");
   return emailKey(actor.email);
 }
 
@@ -69,7 +68,7 @@ export function createBusinessPlan(actor: Actor, input: BusinessProfileInput) {
     profile: businessProfileSchema.parse(input),
     owner: {
       userId: actor.id,
-      email: verifiedEmail(actor),
+      email: accountEmail(actor),
       role: "OWNER" as const,
     },
   };
@@ -99,7 +98,7 @@ export function createInvitationPlan(
 ): NewInvitation {
   const owner = requireOwner(member, actor, businessId);
   const target = emailKey(email);
-  if (target === verifiedEmail(actor))
+  if (target === accountEmail(actor))
     throw new BusinessError("cannot_invite_self");
   if (existingMember && !existingMember.removedAt)
     throw new BusinessError("already_member");
@@ -127,9 +126,14 @@ export function recipientDecision(
   existing: Membership | null,
   now: Date,
   decision: "accept" | "dismiss",
+  expectedInvitationId: string,
 ): "already_joined" | "accept" | "dismiss" {
-  const email = verifiedEmail(actor);
-  if (!invitation || invitation.emailKey !== email)
+  const email = accountEmail(actor);
+  if (
+    !invitation ||
+    invitation.id !== expectedInvitationId ||
+    invitation.emailKey !== email
+  )
     throw new BusinessError("invite_unavailable");
   if (
     decision === "accept" &&

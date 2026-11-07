@@ -126,7 +126,7 @@ test("recipient reads include the trusted email and never select token hashes", 
       "select" in input,
   );
   assert.deepEqual(input.where, {
-    id: "invite",
+    tokenHash: "invite",
     emailKey: "staff@example.com",
   });
   assert.equal(JSON.stringify(input.select).includes("tokenHash"), false);

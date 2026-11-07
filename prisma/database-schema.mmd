@@ -1,4 +1,5 @@
 erDiagram
+    User ||--o{ BusinessMember : joins
     Business ||--o{ BusinessMember : has
     Business ||--o{ BusinessInvitation : invites
     Business ||--o{ Supplier : owns
@@ -13,6 +14,17 @@ erDiagram
     Item |o--o{ ReceiptLine : matches
     Receipt ||--o{ ReceiptLine : contains
 
+    User {
+        uuid id PK
+        string email UK "Normalized account identifier"
+        string name
+        string passwordHash "Salted scrypt"
+        int failedLoginAttempts
+        timestamp lockedUntil "Nullable"
+        int loginVersion "Concurrent login guard"
+        timestamp createdAt
+        timestamp updatedAt
+    }
     Business {
         uuid id PK
         string name
@@ -26,7 +38,7 @@ erDiagram
     BusinessMember {
         uuid id PK
         uuid businessId FK
-        uuid userId "External Supabase identity"
+        uuid userId FK "Local account"
         string email "Display snapshot"
         MemberRole role
         timestamp removedAt "Nullable"

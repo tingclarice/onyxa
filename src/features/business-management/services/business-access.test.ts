@@ -7,6 +7,7 @@ import {
   type BusinessStore,
   type Invitation,
   type Membership,
+  type InvitationSecrets,
 } from "../types/business";
 import {
   createBusiness,
@@ -17,16 +18,19 @@ import {
   updateBusiness,
 } from "./business-access";
 
+const secrets = (hash: string): InvitationSecrets => ({
+  issue: () => ({ code: "raw:" + hash, hash }),
+  hash: (code) => code.slice(4),
+});
+
 const now = new Date("2026-11-07T00:00:00Z");
 const owner: Actor = {
   id: "owner",
   email: "owner@example.com",
-  emailVerified: true,
 };
 const staff: Actor = {
   id: "staff",
   email: "staff@example.com",
-  emailVerified: true,
 };
 const business: Business = {
   id: "business",
@@ -49,7 +53,7 @@ const ownerMember: Membership = {
 function fixture() {
   let businesses: Business[] = [structuredClone(business)];
   let members: Membership[] = [structuredClone(ownerMember)];
-  let invitations: Invitation[] = [];
+  let invitations: (Invitation & { tokenHash: string })[] = [];
   let sequence = 0;
   let tail: Promise<void> = Promise.resolve();
   let failMemberWrite = false;
@@ -77,12 +81,11 @@ function fixture() {
     async listMembers(businessId) {
       return members.filter((m) => m.businessId === businessId && !m.removedAt);
     },
-    async listInvitationsForEmail(email) {
-      return invitations.filter((i) => i.emailKey === email);
-    },
-    async findRecipientInvitation(id, email) {
+    async findRecipientInvitation(tokenHash, email) {
       return (
-        invitations.find((i) => i.id === id && i.emailKey === email) ?? null
+        invitations.find(
+          (i) => i.tokenHash === tokenHash && i.emailKey === email,
+        ) ?? null
       );
     },
     async findBusinessInvitation(id, businessId) {
@@ -229,19 +232,20 @@ test("business creation makes the creator its owner and rolls back on membership
   assert.equal(f.businesses().length, before);
 });
 
-test("invitations can precede registration and are only visible to the verified recipient", async () => {
+test("invitations require both the target account and secret; email alone exposes nothing", async () => {
   const f = fixture();
   await inviteMember(
     owner,
     business.id,
     "STAFF@EXAMPLE.COM",
     now,
-    "hash",
+    secrets("hash"),
     f.store,
   );
   assert.equal(f.members().length, 1);
   assert.equal(
-    (await getWorkspace(staff, undefined, now, f.store)).invitations.length,
+    (await getWorkspace(staff, undefined, now, f.store, "hash")).invitations
+      .length,
     1,
   );
   assert.equal(
@@ -249,18 +253,19 @@ test("invitations can precede registration and are only visible to the verified 
     0,
   );
   assert.equal(
-    (
-      await getWorkspace(
-        { ...staff, emailVerified: false },
-        undefined,
-        now,
-        f.store,
-      )
-    ).invitations.length,
+    (await getWorkspace({ ...staff }, undefined, now, f.store)).invitations
+      .length,
     0,
   );
   await assert.rejects(
-    respondToInvitation(owner, f.invitations()[0].id, "accept", now, f.store),
+    respondToInvitation(
+      owner,
+      "hash",
+      "accept",
+      now,
+      f.store,
+      f.invitations().find((i) => i.tokenHash === "hash")?.id ?? "missing",
+    ),
     BusinessError,
   );
 });
@@ -272,13 +277,27 @@ test("concurrent acceptance is idempotent and does not create duplicate membersh
     business.id,
     staff.email ?? "",
     now,
-    "hash",
+    secrets("hash"),
     f.store,
   );
-  const id = f.invitations()[0].id;
+  const id = f.invitations()[0].tokenHash;
   const result = await Promise.all([
-    respondToInvitation(staff, id, "accept", now, f.store),
-    respondToInvitation(staff, id, "accept", now, f.store),
+    respondToInvitation(
+      staff,
+      id,
+      "accept",
+      now,
+      f.store,
+      f.invitations().find((i) => i.tokenHash === id)?.id ?? "missing",
+    ),
+    respondToInvitation(
+      staff,
+      id,
+      "accept",
+      now,
+      f.store,
+      f.invitations().find((i) => i.tokenHash === id)?.id ?? "missing",
+    ),
   ]);
   assert.deepEqual(result, [business.id, business.id]);
   assert.equal(f.members().filter((m) => m.userId === staff.id).length, 1);
@@ -296,12 +315,19 @@ test("failed member creation rolls back consuming the invitation", async () => {
     business.id,
     staff.email ?? "",
     now,
-    "hash",
+    secrets("hash"),
     f.store,
   );
   f.failMemberWrite();
   await assert.rejects(
-    respondToInvitation(staff, f.invitations()[0].id, "accept", now, f.store),
+    respondToInvitation(
+      staff,
+      "hash",
+      "accept",
+      now,
+      f.store,
+      f.invitations().find((i) => i.tokenHash === "hash")?.id ?? "missing",
+    ),
   );
   assert.equal(f.invitations()[0].acceptedAt, null);
   assert.equal(f.members().length, 1);
@@ -314,18 +340,25 @@ test("staff cannot invite or update profiles and owners cannot revoke another te
     business.id,
     staff.email ?? "",
     now,
-    "hash",
+    secrets("hash"),
     f.store,
   );
   const inviteId = f.invitations()[0].id;
-  await respondToInvitation(staff, inviteId, "accept", now, f.store);
+  await respondToInvitation(
+    staff,
+    "hash",
+    "accept",
+    now,
+    f.store,
+    f.invitations().find((i) => i.tokenHash === "hash")?.id ?? "missing",
+  );
   await assert.rejects(
     inviteMember(
       staff,
       business.id,
       "third@example.com",
       now,
-      "hash2",
+      secrets("hash2"),
       f.store,
     ),
     (e: unknown) => e instanceof BusinessError && e.code === "owner_required",
@@ -352,28 +385,48 @@ test("duplicate invitations, dismissal, revocation and expired acceptance are ha
     business.id,
     staff.email ?? "",
     now,
-    "hash",
+    secrets("hash"),
     f.store,
   );
-  const first = f.invitations()[0].id;
   await assert.rejects(
-    inviteMember(owner, business.id, staff.email ?? "", now, "hash2", f.store),
+    inviteMember(
+      owner,
+      business.id,
+      staff.email ?? "",
+      now,
+      secrets("hash2"),
+      f.store,
+    ),
     (e: unknown) => e instanceof BusinessError && e.code === "already_invited",
   );
-  await respondToInvitation(staff, first, "dismiss", now, f.store);
+  await respondToInvitation(
+    staff,
+    "hash",
+    "dismiss",
+    now,
+    f.store,
+    f.invitations().find((i) => i.tokenHash === "hash")?.id ?? "missing",
+  );
   assert.equal(f.members().length, 1);
   await inviteMember(
     owner,
     business.id,
     staff.email ?? "",
     now,
-    "hash3",
+    secrets("hash3"),
     f.store,
   );
   const second = f.invitations()[1].id;
   await revokeInvitation(owner, business.id, second, now, f.store);
   await assert.rejects(
-    respondToInvitation(staff, second, "accept", now, f.store),
+    respondToInvitation(
+      staff,
+      "hash3",
+      "accept",
+      now,
+      f.store,
+      f.invitations().find((i) => i.tokenHash === "hash3")?.id ?? "missing",
+    ),
     BusinessError,
   );
   await inviteMember(
@@ -381,16 +434,17 @@ test("duplicate invitations, dismissal, revocation and expired acceptance are ha
     business.id,
     staff.email ?? "",
     now,
-    "hash4",
+    secrets("hash4"),
     f.store,
   );
   await assert.rejects(
     respondToInvitation(
       staff,
-      f.invitations()[2].id,
+      "hash4",
       "accept",
       new Date("2026-11-14T00:00:00Z"),
       f.store,
+      f.invitations().find((i) => i.tokenHash === "hash4")?.id ?? "missing",
     ),
     BusinessError,
   );

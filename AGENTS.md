@@ -203,8 +203,11 @@ coherent steps that keep its callers working.
   connecting real merchant data or external OCR services.
 - Authentication lives in `src/features/auth/`. Use `requireUser()` in
   protected Server Functions; a layout guard
-  alone does not protect direct calls. Supabase clients belong in `src/lib/supabase/`.
-  Use the publishable key for user sessions, never a secret/service-role key.
+  alone does not protect direct calls. Auth.js Credentials/JWT delivery lives in
+  `auth/ui/authjs.ts`; Prisma account and crypto adapters live in `auth/repository/`.
+  Felix approved only the Auth.js protocol Route Handler at
+  `src/app/api/auth/[...nextauth]/route.ts` in `AUTHJS_MIGRATION_PRD.md`. App UI
+  still uses Server Functions/server session reads, with no internal business API.
 - PostgreSQL application data uses Prisma, with models in `prisma/schema.prisma`
   and a server-only, lazy client from `getPrisma()` in `src/lib/prisma.ts`.
   Keep Prisma imports and database queries in feature `repository/` adapters. Map
@@ -221,7 +224,7 @@ coherent steps that keep its callers working.
   ports as real adapters. Do not hardcode mock responses in pages or actions.
 - Do not reorganize the entire application solely to implement an unrelated
   task. Record remaining architecture violations without adding new ones.
-- Auth Server Functions/session delivery live in `auth/ui/`, provider calls in
+- Auth Server Functions/session delivery live in `auth/ui/`, account/crypto adapters in
   `auth/repository/`, and pure outcome policies in `auth/core/`. Other features
   use `auth/server.ts` for trusted identity and `business-management/server.ts`
   for authorized business context. Receipt scan modules still mix some

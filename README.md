@@ -13,7 +13,7 @@ Gemini extraction are not yet connected.
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack
-Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, Supabase Auth,
+Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, NextAuth/Auth.js,
 Gemini Flash API, OCR API
 
 ## Project structure
@@ -43,8 +43,9 @@ Receipt upload and scanning call Server Functions in `invoice-processing`.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in Supabase/Cloudinary settings; add DATABASE_URL when ready
+cp .env.example .env        # fill in DATABASE_URL, AUTH_SECRET, AUTH_URL and Cloudinary settings
 pnpm install
+pnpm db:deploy              # apply committed account/business migrations
 pnpm dev                    # http://localhost:3000
 ```
 
@@ -55,11 +56,11 @@ HEIC, or HEIF images up to 8 MB.
 
 ## Prisma and PostgreSQL
 
-Prisma 7.10.1 defines eight PostgreSQL application models in
+Prisma 7.10.1 defines nine PostgreSQL application models in
 `prisma/schema.prisma`. Review the [schema design](prisma/database-schema.md)
 and [detailed Mermaid ER diagram](prisma/database-schema.mmd) before backend
 implementation. The initial migration is committed under `prisma/migrations/`.
-Supabase handles authentication; Prisma persists businesses, memberships,
+Auth.js handles sessions; Prisma persists local accounts, businesses, memberships,
 invitations, and business preferences. Receipt, inventory, and procurement data
 remain demos, explicitly labeled in the application. No seed data is included.
 
@@ -96,57 +97,42 @@ a development database and commit its migration. `pnpm db:deploy` applies
 committed migrations in production. Neither command runs during build or app
 startup.
 
-## Supabase authentication
+## Authentication without SMTP
 
-Email/password signup, login, email confirmation, and sign-out use Next.js Server
-Functions in `src/features/auth/ui/actions.ts`. Supabase sessions live in
-HTTP-only cookies. `src/proxy.ts` refreshes sessions, and the authenticated layout
-and protected Server Functions verify the user server-side. Production cookies
-require HTTPS. Google sign-in and password recovery are not implemented.
+Email/password signup, login and sign-out use Next.js Server Functions in
+`src/features/auth/ui/actions.ts`. NextAuth/Auth.js Credentials manages encrypted
+JWT session cookies; Prisma stores local `User` accounts. Passwords use Node
+scrypt with independent random salts (N=131072, r=8, p=1), and constant-time
+comparison. Signup creates no business and sends no email.
 
-Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in the root `.env`. Authentication
-does not use `SUPABASE_SECRET_KEY` or a service-role key. These settings are read
-at runtime, so the same Docker image can be deployed without baking in keys.
+Set a cryptographically random 32+ byte `AUTH_SECRET` in the ignored root
+`.env`, plus `AUTH_URL=http://localhost:3000` locally. Set `AUTH_URL` to the
+public HTTPS origin in production; keep `AUTH_SECRET` consistent across app
+instances. Restart `pnpm dev` after changing environment settings. Apply
+`pnpm db:deploy` before starting an environment with the new account model.
+Existing ignored Supabase keys were left untouched but are no longer used.
+
+The seven-day session uses HTTP-only cookies with secure cookies over HTTPS.
+`src/proxy.ts` refreshes sessions. Protected pages and Server Functions also
+resolve the trusted account from the session on the server. Invalid and
+deleted-account sessions cannot access protected business operations.
+Five failed logins temporarily lock an account for fifteen minutes. Atomic
+version checks preserve this bound under concurrent attempts. This password
+guessing protection is independent of email delivery; there is no email quota.
+
+Felix approved the narrow Auth.js protocol handler at
+`/api/auth/[...nextauth]` in `AUTHJS_MIGRATION_PRD.md`. App UI uses Server
+Functions and server `auth()`, without client session polling or business APIs.
+Only safe error categories are logged; passwords, tokens and raw driver errors
+remain server-side. Run `pnpm test:auth` for service, crypto, adapter and delivery
+regressions. Google sign-in, email ownership verification and password recovery
+are not implemented. These local accounts are separate from Supabase Auth;
+users must sign up locally after switching providers.
+
 Set `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in the same root
-environment file. Uploads use an unsigned preset from a server action; no
-Cloudinary API secret is required or exposed to the browser. Restrict the preset
-to image uploads and a dedicated folder. For sensitive production receipts,
-add a signed-upload flow and explicit retention/access controls.
-
-In the Supabase dashboard:
-
-1. Enable the Email provider and email/password signup. Keep **Confirm email**
-   enabled if accounts should require verification.
-2. Set **Authentication > URL Configuration > Site URL** to the application's
-   public origin (for example, `http://localhost:3000` in local development and
-   your HTTPS domain in production). Allow the corresponding confirmation URL.
-3. In **Email Templates > Confirm signup**, use this confirmation link:
-
-   ```html
-   <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}">Konfirmasi email</a>
-   ```
-
-The confirmation link opens a page; the user clicks **Konfirmasi email** to
-submit the token to a Server Function. Opening or prefetching the page does not
-consume the token. The default Supabase confirmation template must be updated
-for this flow. If confirmation is disabled, successful signup logs in immediately.
-Only the user's name is stored in signup metadata. Signup requires no business
-name and creates no business or membership. Business permissions come from
-active database memberships, never Supabase user metadata.
-
-Run authentication regression tests with `pnpm test:auth`. They use a fake auth
-provider and do not create Supabase accounts or send emails. Live testing needs
-a test account and the dashboard configuration above.
-
-Authentication failures display an allowlisted **Kode bantuan**; provider codes,
-operation, and HTTP status are logged as `[auth]` in the terminal running Next.js.
-Raw provider messages, passwords, keys, and tokens are not logged or returned.
-`email_address_invalid` means the address was rejected by Supabase's email
-validator; example/test addresses are unsupported. Use an inbox you control.
-`email_address_not_authorized` means the built-in sender cannot send to that
-recipient; configure custom SMTP to support addresses outside the Supabase
-organization. See [Supabase's error reference](https://supabase.com/docs/guides/auth/debugging/error-codes)
-and [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp).
+environment file. Uploads use an unsigned preset from a Server Function; restrict
+the preset to images and a dedicated folder. Sensitive production receipts
+still need signed uploads and deliberate retention/access controls.
 
 ## Business onboarding and invitations
 
@@ -155,10 +141,18 @@ for an invitation. Creating a business also creates the user's owner membership
 in the same transaction. No business is automatically created during signup.
 
 Owners invite staff by email in **Pengaturan > Anggota usaha**. Invitations are
-in-app only and may be created before a recipient signs up. The recipient signs
-in with that verified email and accepts or rejects the invitation in the
-hamburger menu. Pending invitations expire after seven days. Owners can revoke
-them. Membership is granted only on acceptance, in an atomic transaction.
+in-app only and may be created before a recipient signs up. The owner receives
+a secret code and a copyable link once, then shares it directly. Only its SHA-256
+hash is persisted. If the owner loses it, revoke the invitation and create a new
+one. Invites expire after seven days and can be revoked.
+
+The recipient signs in with the targeted email, opens the link or enters its code
+in the hamburger menu, then reviews and accepts/rejects the invitation. Matching
+an unverified email alone never reveals a business or grants access. Links carry
+the secret in a fragment, which is removed from navigation on load; opening a
+link does not consume it. An HTTP-only proof cookie keeps one validated invitation
+available in the menu until acceptance/rejection, expiry or sign-out. Membership
+is granted only in an atomic acceptance transaction.
 
 The hamburger badge refreshes on page navigation, window focus, menu opening,
 or the **Perbarui undangan** button; it does not use realtime push or send email.
@@ -180,10 +174,10 @@ pnpm db:deploy
 pnpm test:business
 ```
 
-Business tests use fakes and adapter/action mocks; they create no live Supabase
+Business tests use fakes and adapter/action mocks; they create no live
 accounts, businesses, invitations, or memberships. To verify the live flow, use
 two test accounts: create a business with the first, invite the second's email,
-then accept from the second account's hamburger menu. The second account should
+share the secret code, then accept from the second account's hamburger menu. The second account should
 remain business-free until it accepts or deliberately creates a business.
 
 ## Docker deployment
@@ -219,7 +213,7 @@ docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the Supabase and Cloudinary runtime variables on the
+by the workflow. Provision the database, Auth.js and Cloudinary runtime variables on the
 VPS before deployment. Google fonts are downloaded during the build, so the
 builder needs outbound network access.
 

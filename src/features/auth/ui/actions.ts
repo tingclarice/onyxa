@@ -1,57 +1,61 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { AuthResult } from "@/features/auth/types/auth";
 import {
-  login,
-  signup,
-  confirmEmail,
-  signout,
-} from "@/features/auth/services/authentication";
-import { cookies } from "next/headers";
+  ACTIVE_BUSINESS_COOKIE,
+  INVITATION_COOKIE,
+} from "@/lib/session-cookies";
+import { createAuthSchema, type AuthResult } from "../types/auth";
+import { signup } from "../services/authentication";
+import { createAccountRepository } from "../repository/prisma-accounts";
+import { passwords } from "../repository/passwords";
+import { signIn, signOut } from "./authjs";
 import { runAuth } from "./action-runtime";
-import { ACTIVE_BUSINESS_COOKIE } from "@/lib/session-cookies";
 
 export async function loginAction(input: unknown): Promise<AuthResult> {
-  const result = await runAuth((gateway) => login(input, gateway));
+  const result = await runAuth(async () => {
+    const credentials = createAuthSchema("login").parse(input);
+    const response: unknown = await signIn("credentials", {
+      ...credentials,
+      redirect: false,
+      redirectTo: "/beranda",
+    });
+    if (typeof response !== "string") throw new Error("missing_session");
+  });
   if (result.status === "authenticated") {
     (await cookies()).delete(ACTIVE_BUSINESS_COOKIE);
     revalidatePath("/", "layout");
   }
   return result;
 }
-
 export async function signupAction(input: unknown): Promise<AuthResult> {
-  const result = await runAuth((gateway) => signup(input, gateway));
+  const result = await runAuth(async () => {
+    const credentials = createAuthSchema("signup").parse(input);
+    await signup(credentials, createAccountRepository(), passwords);
+    const response: unknown = await signIn("credentials", {
+      ...credentials,
+      redirect: false,
+      redirectTo: "/beranda",
+    });
+    if (typeof response !== "string") throw new Error("missing_session");
+  });
   if (result.status === "authenticated") {
     (await cookies()).delete(ACTIVE_BUSINESS_COOKIE);
     revalidatePath("/", "layout");
   }
   return result;
 }
-
-export async function confirmEmailAction(
-  _state: AuthResult | null,
-  formData: FormData,
-): Promise<AuthResult> {
-  const tokenHash =
-    formData instanceof FormData ? formData.get("token_hash") : null;
-  const result = await runAuth((gateway) => confirmEmail(tokenHash, gateway));
-  if (result.status === "authenticated") {
-    (await cookies()).delete(ACTIVE_BUSINESS_COOKIE);
-    revalidatePath("/", "layout");
-    redirect("/beranda");
-  }
-  return result;
-}
-
 export async function signOutAction(): Promise<AuthResult> {
-  const result = await runAuth(signout);
-  if (result.status === "signed-out") {
-    (await cookies()).delete(ACTIVE_BUSINESS_COOKIE);
-    revalidatePath("/", "layout");
-    redirect("/masuk");
-  }
-  return result;
+  const result = await runAuth(async () => {
+    const response: unknown = await signOut({ redirect: false });
+    if (!response) throw new Error("signout_failed");
+  });
+  if (result.status === "error") return result;
+  const jar = await cookies();
+  jar.delete(ACTIVE_BUSINESS_COOKIE);
+  jar.delete(INVITATION_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/masuk");
 }

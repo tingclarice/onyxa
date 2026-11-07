@@ -4,15 +4,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CreateBusinessForm, InvitationCard } from "./business-forms";
 import type { Invitation } from "../types/business";
+import { InvitationCodeForm } from "./invitation-code-form";
 
 export function BusinessOnboarding({
   invitations,
   email,
-  emailVerified,
 }: {
   invitations: Invitation[];
   email: string | null;
-  emailVerified: boolean;
 }) {
   const [waiting, setWaiting] = useState(false);
   const createSection = (
@@ -44,11 +43,6 @@ export function BusinessOnboarding({
           pemilik usaha. Akun Anda tidak harus memiliki usaha.
         </p>
       </header>
-      {!emailVerified && (
-        <p role="status" className="rounded-xl border p-4 text-sm">
-          Konfirmasi email Anda sebelum membuat usaha atau menerima undangan.
-        </p>
-      )}
       <div className="grid items-start gap-6 md:grid-cols-2">
         {!invitations.length && createSection}
         <section
@@ -63,12 +57,13 @@ export function BusinessOnboarding({
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {invitations.length
                 ? "Undangan untuk email akun Anda:"
-                : "Minta pemilik usaha mengundang email akun Anda:"}
+                : "Minta kode undangan dari pemilik usaha untuk email akun Anda:"}
             </p>
             <p className="mt-3 break-all text-sm font-medium">
               {email ?? "Email belum tersedia"}
             </p>
           </div>
+          <InvitationCodeForm />
           {invitations.length ? (
             <section
               aria-labelledby="pending-invites-title"
@@ -94,7 +89,7 @@ export function BusinessOnboarding({
             </Button>
           )}
           <p className="text-sm leading-6 text-muted-foreground">
-            Undangan masuk melalui menu Onyxa, tanpa email undangan.
+            Pemilik membagikan kode atau tautan langsung, tanpa email otomatis.
           </p>
         </section>
         {invitations.length > 0 && createSection}

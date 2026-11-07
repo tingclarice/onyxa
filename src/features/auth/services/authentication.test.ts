@@ -1,217 +1,177 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import type { AuthGateway } from "@/features/auth/types/auth";
-import {
-  login,
-  signup,
-  confirmEmail,
-  signout,
-} from "@/features/auth/services/authentication";
-
-const credentials = { email: "owner@example.com", password: "password-123" };
-const registration = { ...credentials, name: "Owner" };
-
-function gateway(overrides: Partial<AuthGateway> = {}): AuthGateway {
+import { test } from "node:test";
+import { authenticate, signup } from "./authentication";
+import type {
+  AccountRepository,
+  CredentialAccount,
+  PasswordHasher,
+} from "../types/auth";
+const now = new Date("2026-11-07T00:00:00Z");
+function fixture() {
+  let account: CredentialAccount | null = null;
+  let dummyCalls = 0;
+  let writes = 0;
+  let conflicts = 0;
+  const passwords: PasswordHasher = {
+    hash: async (password) => "hash:" + password,
+    verify: async (password, hash) => hash === "hash:" + password,
+    dummyVerify: async () => {
+      dummyCalls++;
+    },
+  };
+  const repository: AccountRepository = {
+    findCredentials: async (email) =>
+      account?.email === email ? structuredClone(account) : null,
+    findUser: async (id) =>
+      account?.id === id
+        ? { id: account.id, name: account.name, email: account.email }
+        : null,
+    async createAccount(input) {
+      writes++;
+      account = {
+        ...input,
+        id: "user",
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        loginVersion: 0,
+      };
+      return { id: account.id, email: account.email, name: account.name };
+    },
+    async recordLogin(id, version, state) {
+      if (conflicts > 0) {
+        conflicts--;
+        return false;
+      }
+      if (!account || account.id !== id || account.loginVersion !== version)
+        return false;
+      account = { ...account, ...state, loginVersion: version + 1 };
+      return true;
+    },
+  };
   return {
-    signIn: async () => ({ errorCode: null, hasSession: true }),
-    signUp: async () => ({ errorCode: null, hasSession: false }),
-    confirmEmail: async () => ({ errorCode: null, hasSession: true }),
-    signOut: async () => ({ errorCode: null }),
-    ...overrides,
+    repository,
+    passwords,
+    account: () => account,
+    writes: () => writes,
+    dummy: () => dummyCalls,
+    conflict: (count: number) => {
+      conflicts = count;
+    },
   };
 }
-
-test("invalid login input never reaches the provider", async () => {
-  let calls = 0;
-  const provider = gateway({
-    signIn: async () => {
-      calls++;
-      throw new Error("must not be called");
-    },
+const credentials = {
+  name: "Felix",
+  email: "Owner@Example.com",
+  password: "safe-password",
+};
+test("signup stores a normalized local account and hash; returns no password or business", async () => {
+  const f = fixture();
+  const user = await signup(credentials, f.repository, f.passwords);
+  assert.deepEqual(user, {
+    id: "user",
+    name: "Felix",
+    email: "owner@example.com",
   });
+  assert.equal(f.account()?.passwordHash, "hash:safe-password");
+  assert.equal(f.writes(), 1);
+});
+test("invalid signup and login do not reach persistence", async () => {
+  const f = fixture();
   for (const input of [
-    null,
     {},
-    { email: "invalid", password: "secret" },
-    { ...credentials, password: "" },
-  ]) {
-    assert.equal((await login(input, provider)).status, "error");
-  }
-  assert.equal(calls, 0);
+    { ...credentials, name: "" },
+    { ...credentials, password: "short" },
+    { ...credentials, email: "bad" },
+  ])
+    await assert.rejects(signup(input, f.repository, f.passwords));
+  assert.equal(f.writes(), 0);
+  assert.equal(await authenticate({}, now, f.repository, f.passwords), null);
 });
-
-test("login normalizes email and preserves password whitespace", async () => {
-  const result = await login(
-    { email: " owner@example.com ", password: " secret " },
-    gateway({
-      signIn: async (input) => {
-        assert.deepEqual(input, {
-          email: "owner@example.com",
-          password: " secret ",
-        });
-        return { errorCode: null, hasSession: true };
-      },
-    }),
+test("valid login returns safe identity; unknown and wrong passwords return the same null result", async () => {
+  const f = fixture();
+  await signup(credentials, f.repository, f.passwords);
+  assert.equal(
+    (await authenticate(credentials, now, f.repository, f.passwords))?.id,
+    "user",
   );
-  assert.equal(result.status, "authenticated");
+  assert.equal(
+    await authenticate(
+      { ...credentials, password: "wrong" },
+      now,
+      f.repository,
+      f.passwords,
+    ),
+    null,
+  );
+  assert.equal(
+    await authenticate(
+      { ...credentials, email: "other@example.com" },
+      now,
+      f.repository,
+      f.passwords,
+    ),
+    null,
+  );
+  assert.equal(f.dummy(), 1);
 });
-
-test("invalid credentials and unconfirmed emails stay unauthenticated", async () => {
-  for (const errorCode of ["invalid_credentials", "email_not_confirmed"]) {
-    const result = await login(
+test("five failures lock the account for fifteen minutes and successful login resets state after expiry", async () => {
+  const f = fixture();
+  await signup(credentials, f.repository, f.passwords);
+  for (let i = 0; i < 5; i++)
+    await authenticate(
+      { ...credentials, password: "wrong" },
+      now,
+      f.repository,
+      f.passwords,
+    );
+  assert.equal(f.account()?.failedLoginAttempts, 5);
+  assert.equal(
+    f.account()?.lockedUntil?.toISOString(),
+    "2026-11-07T00:15:00.000Z",
+  );
+  assert.equal(
+    await authenticate(credentials, now, f.repository, f.passwords),
+    null,
+  );
+  assert.equal(f.account()?.failedLoginAttempts, 5);
+  assert.ok(
+    await authenticate(
       credentials,
-      gateway({ signIn: async () => ({ errorCode, hasSession: false }) }),
+      new Date("2026-11-07T00:15:00Z"),
+      f.repository,
+      f.passwords,
+    ),
+  );
+  assert.equal(f.account()?.failedLoginAttempts, 0);
+  assert.equal(f.account()?.lockedUntil, null);
+});
+test("concurrent login updates are retried and a stale state cannot authenticate", async () => {
+  const f = fixture();
+  await signup(credentials, f.repository, f.passwords);
+  f.conflict(1);
+  assert.ok(await authenticate(credentials, now, f.repository, f.passwords));
+  f.conflict(3);
+  assert.equal(
+    await authenticate(credentials, now, f.repository, f.passwords),
+    null,
+  );
+});
+test("a failed password after lock expiry starts a fresh bounded attempt count", async () => {
+  const f = fixture();
+  await signup(credentials, f.repository, f.passwords);
+  for (let i = 0; i < 5; i++)
+    await authenticate(
+      { ...credentials, password: "bad" },
+      now,
+      f.repository,
+      f.passwords,
     );
-    assert.equal(result.status, "error");
-  }
-});
-
-test("a provider success without a session never authenticates login", async () => {
-  assert.equal(
-    (
-      await login(
-        credentials,
-        gateway({
-          signIn: async () => ({ errorCode: null, hasSession: false }),
-        }),
-      )
-    ).status,
-    "error",
+  await authenticate(
+    { ...credentials, password: "bad" },
+    new Date("2026-11-07T00:16:00Z"),
+    f.repository,
+    f.passwords,
   );
-});
-
-test("signup validates required metadata and password before calling Supabase", async () => {
-  let calls = 0;
-  const provider = gateway({
-    signUp: async () => {
-      calls++;
-      throw new Error("must not be called");
-    },
-  });
-  for (const input of [
-    credentials,
-    { ...registration, name: " " },
-    { ...registration, password: "short" },
-  ]) {
-    assert.equal((await signup(input, provider)).status, "error");
-  }
-  assert.equal(calls, 0);
-});
-
-test("signup passes normalized profile data to the provider", async () => {
-  const result = await signup(
-    { ...registration, name: " Owner " },
-    gateway({
-      signUp: async (input) => {
-        assert.deepEqual(input, registration);
-        return { errorCode: null, hasSession: false };
-      },
-    }),
-  );
-  assert.equal(result.status, "confirmation-required");
-});
-
-test("signup signs in immediately only when the provider supplies a session", async () => {
-  assert.equal(
-    (
-      await signup(
-        registration,
-        gateway({
-          signUp: async () => ({ errorCode: null, hasSession: true }),
-        }),
-      )
-    ).status,
-    "authenticated",
-  );
-});
-
-test("confirmation rejects missing or oversized tokens before provider calls", async () => {
-  let calls = 0;
-  const provider = gateway({
-    confirmEmail: async () => {
-      calls++;
-      throw new Error("must not be called");
-    },
-  });
-  for (const token of [null, "", "a".repeat(2049)]) {
-    assert.equal((await confirmEmail(token, provider)).status, "error");
-  }
-  assert.equal(calls, 0);
-});
-
-test("confirmation requires a valid provider session", async () => {
-  assert.equal(
-    (await confirmEmail("token-hash", gateway())).status,
-    "authenticated",
-  );
-  for (const attempt of [
-    { errorCode: "otp_expired", hasSession: false },
-    { errorCode: null, hasSession: false },
-  ]) {
-    assert.equal(
-      (
-        await confirmEmail(
-          "token-hash",
-          gateway({ confirmEmail: async () => attempt }),
-        )
-      ).status,
-      "error",
-    );
-  }
-});
-
-test("provider internals are never included in error messages", async () => {
-  const result = await login(
-    credentials,
-    gateway({
-      signIn: async () => ({
-        errorCode: "internal-provider-secret",
-        hasSession: false,
-      }),
-    }),
-  );
-  assert.equal(result.status, "error");
-  assert(!result.message.includes("internal-provider-secret"));
-  assert.equal(result.code, "unknown_auth_error");
-  assert(!JSON.stringify(result).includes("internal-provider-secret"));
-});
-
-test("email delivery restrictions report an actionable public error code", async () => {
-  const result = await signup(
-    registration,
-    gateway({
-      signUp: async () => ({
-        errorCode: "email_address_not_authorized",
-        hasSession: false,
-      }),
-    }),
-  );
-  assert.equal(result.code, "email_address_not_authorized");
-  assert.match(result.message, /pengiriman email/);
-});
-
-test("rate limiting produces a retry message", async () => {
-  const result = await signup(
-    registration,
-    gateway({
-      signUp: async () => ({
-        errorCode: "over_email_send_rate_limit",
-        hasSession: false,
-      }),
-    }),
-  );
-  assert.equal(result.status, "error");
-  assert.match(result.message, /Tunggu/);
-});
-
-test("sign-out errors are not reported as success", async () => {
-  assert.equal((await signout(gateway())).status, "signed-out");
-  assert.equal(
-    (
-      await signout(
-        gateway({ signOut: async () => ({ errorCode: "network_error" }) }),
-      )
-    ).status,
-    "error",
-  );
+  assert.equal(f.account()?.failedLoginAttempts, 1);
+  assert.equal(f.account()?.lockedUntil, null);
 });

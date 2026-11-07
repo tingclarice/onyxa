@@ -1,15 +1,18 @@
 "use server";
 
-import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/features/auth/server";
+import { getCurrentUser, requireUser } from "@/features/auth/server";
+import { cookies } from "next/headers";
+import { INVITATION_COOKIE } from "@/lib/session-cookies";
+import { invitationSecrets } from "../repository/invitation-secrets";
 import { createBusinessStore } from "../repository/prisma-business";
 import {
   createBusiness,
   getMembership,
   inviteMember,
+  previewInvitation,
   respondToInvitation,
   revokeInvitation,
   updateAlerts,
@@ -20,7 +23,9 @@ import {
   businessProfileSchema,
   identifierSchema,
   invitationSchema,
+  invitationCodeSchema,
   type ActionResult,
+  type InvitationIssueResult,
 } from "../types/business";
 import { fields, perform, selectBusiness } from "./action-runtime";
 
@@ -59,21 +64,18 @@ export async function switchBusinessAction(
 export async function inviteMemberAction(
   _state: ActionResult | null,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<InvitationIssueResult> {
   const actor = await requireUser();
   const outcome = await perform(async () => {
     const input = invitationSchema
       .extend({ businessId: identifierSchema })
       .parse(fields(formData));
-    const tokenHash = createHash("sha256")
-      .update(randomBytes(32))
-      .digest("hex");
-    await inviteMember(
+    return inviteMember(
       actor,
       input.businessId,
       input.email,
       new Date(),
-      tokenHash,
+      invitationSecrets,
       createBusinessStore(),
     );
   });
@@ -82,8 +84,37 @@ export async function inviteMemberAction(
   return {
     status: "success",
     message:
-      "Undangan dibuat. Penerima akan melihatnya di menu Onyxa setelah masuk.",
+      "Undangan dibuat. Bagikan kode atau tautan ini langsung kepada penerima. Berlaku 7 hari dan hanya ditampilkan sekali.",
+    code: outcome.value,
   };
+}
+
+export async function openInvitationAction(
+  _state: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  const actor = await getCurrentUser();
+  const outcome = await perform(async () => {
+    const code = invitationCodeSchema.parse(fields(formData).code);
+    if (actor)
+      await previewInvitation(
+        actor,
+        invitationSecrets.hash(code),
+        new Date(),
+        createBusinessStore(),
+      );
+    return code;
+  });
+  if (!outcome.ok) return outcome.result;
+  (await cookies()).set(INVITATION_COOKIE, outcome.value, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+  revalidatePath("/", "layout");
+  redirect(actor ? "/beranda" : "/masuk");
 }
 
 export async function respondInvitationAction(
@@ -100,13 +131,19 @@ export async function respondInvitationAction(
       .parse(fields(formData));
     return respondToInvitation(
       actor,
-      input.invitationId,
+      invitationSecrets.hash(
+        invitationCodeSchema.parse(
+          (await cookies()).get(INVITATION_COOKIE)?.value,
+        ),
+      ),
       input.decision,
       new Date(),
       createBusinessStore(),
+      input.invitationId,
     );
   });
   if (!outcome.ok) return outcome.result;
+  (await cookies()).delete(INVITATION_COOKIE);
   if (outcome.value) {
     await selectBusiness(actor.id, outcome.value);
     revalidatePath("/", "layout");

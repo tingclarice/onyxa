@@ -8,6 +8,7 @@ import {
   type BusinessStore,
   type Workspace,
   type BusinessSettings,
+  type InvitationSecrets,
 } from "../types/business";
 import {
   canManageBusiness,
@@ -21,7 +22,7 @@ import {
   requireOwner,
   requirePendingInvitation,
   selectMembership,
-  verifiedEmail,
+  accountEmail,
 } from "../core/access";
 
 export async function getWorkspace(
@@ -29,17 +30,21 @@ export async function getWorkspace(
   selectedId: string | undefined,
   now: Date,
   repository: BusinessRepository,
+  invitationHash?: string,
 ): Promise<Workspace> {
-  const [memberships, invitations] = await Promise.all([
+  const [memberships, invitation] = await Promise.all([
     repository.listMemberships(actor.id),
-    actor.email && actor.emailVerified
-      ? repository.listInvitationsForEmail(emailKey(actor.email))
-      : Promise.resolve([]),
+    actor.email && invitationHash
+      ? repository.findRecipientInvitation(
+          invitationHash,
+          emailKey(actor.email),
+        )
+      : Promise.resolve(null),
   ]);
   return {
     memberships,
     active: selectMembership(memberships, selectedId),
-    invitations: invitations.filter((invitation) => isPending(invitation, now)),
+    invitations: invitation && isPending(invitation, now) ? [invitation] : [],
   };
 }
 
@@ -127,9 +132,10 @@ export async function inviteMember(
   businessId: string,
   email: string,
   now: Date,
-  tokenHash: string,
+  secrets: InvitationSecrets,
   store: BusinessStore,
-): Promise<void> {
+): Promise<string> {
+  const secret = secrets.issue();
   await store.transaction(async (repository) => {
     const member = requireOwner(
       await repository.findMembership(businessId, actor.id),
@@ -149,23 +155,39 @@ export async function inviteMember(
       existing,
       invitations,
       now,
-      tokenHash,
+      secret.hash,
     );
     await repository.createInvitation(plan);
   });
+  return secret.code;
+}
+
+export async function previewInvitation(
+  actor: Actor,
+  tokenHash: string,
+  now: Date,
+  repository: BusinessRepository,
+) {
+  const invitation = await repository.findRecipientInvitation(
+    tokenHash,
+    accountEmail(actor),
+  );
+  requirePendingInvitation(invitation, now);
+  return invitation;
 }
 
 export async function respondToInvitation(
   actor: Actor,
-  invitationId: string,
+  tokenHash: string,
   decision: "accept" | "dismiss",
   now: Date,
   store: BusinessStore,
+  expectedInvitationId: string,
 ): Promise<string | null> {
-  const email = verifiedEmail(actor);
+  const email = accountEmail(actor);
   return store.transaction(async (repository) => {
     const invitation = await repository.findRecipientInvitation(
-      invitationId,
+      tokenHash,
       email,
     );
     const existing = invitation
@@ -177,6 +199,7 @@ export async function respondToInvitation(
       existing,
       now,
       decision,
+      expectedInvitationId,
     );
     if (!invitation) return null;
     if (outcome === "already_joined") return invitation.businessId;

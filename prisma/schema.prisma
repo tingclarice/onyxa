@@ -7,7 +7,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// Supabase owns authentication; do not model its managed auth schema here.
+// Application accounts use Auth.js Credentials. Supabase hosts PostgreSQL only.
+
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  email               String    @unique @db.VarChar(254)
+  name                String    @db.VarChar(100)
+  passwordHash        String
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime? @db.Timestamptz(3)
+  loginVersion        Int       @default(0)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+
+  memberships BusinessMember[]
+}
 
 enum BusinessType {
   CAFE_RESTAURANT
@@ -67,6 +81,7 @@ model BusinessMember {
   updatedAt  DateTime   @updatedAt @db.Timestamptz(3)
 
   business    Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   invitations BusinessInvitation[]
   receipts    Receipt[]
 

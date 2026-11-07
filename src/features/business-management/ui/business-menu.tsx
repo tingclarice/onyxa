@@ -9,17 +9,16 @@ import { Button } from "@/components/ui/button";
 import type { Invitation, Membership } from "../types/business";
 import { switchBusinessAction } from "./actions";
 import { ActionMessage, InvitationCard } from "./business-forms";
+import { InvitationCodeForm } from "./invitation-code-form";
 
 export function BusinessMenu({
   email,
-  emailVerified,
   memberships,
   activeBusinessId,
   invitations,
   accountActions,
 }: {
   email: string | null;
-  emailVerified: boolean;
   memberships: Membership[];
   activeBusinessId?: string;
   invitations: Invitation[];
@@ -125,11 +124,7 @@ export function BusinessMenu({
               <h2 id="menu-invitations" className="text-sm font-semibold">
                 Undangan ({invitations.length})
               </h2>
-              {!emailVerified ? (
-                <p className="text-sm text-muted-foreground">
-                  Konfirmasi email untuk melihat dan menerima undangan.
-                </p>
-              ) : invitations.length ? (
+              {invitations.length ? (
                 <ul className="space-y-3">
                   {invitations.map((invitation) => (
                     <InvitationCard
@@ -140,10 +135,11 @@ export function BusinessMenu({
                 </ul>
               ) : (
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Belum ada undangan. Minta pemilik usaha mengundang email akun
-                  Anda.
+                  Minta kode atau tautan dari pemilik usaha. Undangan tampil
+                  setelah kode diperiksa untuk akun Anda.
                 </p>
               )}
+              <InvitationCodeForm />
               <Button variant="outline" onClick={() => router.refresh()}>
                 Perbarui undangan
               </Button>

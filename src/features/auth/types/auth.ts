@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export type AuthMode = "login" | "signup";
-
 export function createAuthSchema(mode: AuthMode) {
   return z
     .object({
@@ -23,62 +22,56 @@ export function createAuthSchema(mode: AuthMode) {
         .max(128, "Kata sandi maksimal 128 karakter."),
     })
     .superRefine((values, context) => {
-      if (mode === "signup" && !values.name) {
+      if (mode === "signup" && !values.name)
         context.addIssue({
           code: "custom",
           path: ["name"],
           message: "Nama harus diisi.",
         });
-      }
     });
 }
-
 export type AuthFormValues = z.infer<ReturnType<typeof createAuthSchema>>;
 export type LoginCredentials = Pick<AuthFormValues, "email" | "password">;
-export type SignupCredentials = LoginCredentials & { name: string };
-
-export interface AuthAttempt {
-  errorCode: string | null;
-  hasSession: boolean;
-}
-
-export interface AuthGateway {
-  signIn(credentials: LoginCredentials): Promise<AuthAttempt>;
-  signUp(credentials: SignupCredentials): Promise<AuthAttempt>;
-  confirmEmail(tokenHash: string): Promise<AuthAttempt>;
-  signOut(): Promise<{ errorCode: string | null }>;
-}
-
-export type AuthFailureCode =
-  | "invalid_credentials"
-  | "email_not_confirmed"
-  | "weak_password"
-  | "otp_expired"
-  | "over_email_send_rate_limit"
-  | "over_request_rate_limit"
-  | "signup_disabled"
-  | "email_provider_disabled"
-  | "user_banned"
-  | "network_error"
-  | "auth_failed"
-  | "missing_session"
-  | "email_address_not_authorized"
-  | "email_address_invalid"
-  | "email_exists"
-  | "user_already_exists"
-  | "captcha_failed"
-  | "unexpected_failure"
-  | "validation_failed"
-  | "request_timeout";
-
 export interface AuthResult {
-  status: "authenticated" | "confirmation-required" | "signed-out" | "error";
+  status: "authenticated" | "signed-out" | "error";
   message: string;
-  code?: AuthFailureCode | "unknown_auth_error";
+  code?:
+    | "invalid_credentials"
+    | "account_exists"
+    | "validation_failed"
+    | "auth_unavailable";
 }
-
 export interface AuthUser {
   id: string;
-  email: string | null;
-  emailVerified: boolean;
+  email: string;
+  name: string;
+}
+export interface LoginState {
+  failedLoginAttempts: number;
+  lockedUntil: Date | null;
+}
+export interface CredentialAccount extends AuthUser, LoginState {
+  passwordHash: string;
+  loginVersion: number;
+}
+export interface AccountRepository {
+  findCredentials(email: string): Promise<CredentialAccount | null>;
+  findUser(id: string): Promise<AuthUser | null>;
+  createAccount(input: {
+    email: string;
+    name: string;
+    passwordHash: string;
+  }): Promise<AuthUser>;
+  recordLogin(id: string, version: number, state: LoginState): Promise<boolean>;
+}
+export interface PasswordHasher {
+  hash(password: string): Promise<string>;
+  verify(password: string, encoded: string): Promise<boolean>;
+  dummyVerify(password: string): Promise<void>;
+}
+export class AccountExistsError extends Error {
+  constructor() {
+    super("account_exists");
+    this.name = "AccountExistsError";
+  }
 }
