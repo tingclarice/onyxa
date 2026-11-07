@@ -13,7 +13,8 @@ the saved data into insights such as price increases and slow-moving items.
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack
-Next.js, TypeScript, Tailwind CSS, shadcn/ui, Gemini Flash API, OCR API
+Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, Supabase Auth,
+Gemini Flash API, OCR API
 
 ## Project structure
 ```text
@@ -23,6 +24,7 @@ src/
   features/     Business features with types, UI, and services
   lib/          Utilities and existing data-access modules
 public/         Static assets
+prisma/         Application database schema (currently no models)
 ```
 
 New business features belong in `src/features/<feature>/`, using package by
@@ -36,19 +38,58 @@ returns demo receipts for the editable review flow.
 
 ## Getting started
 
-**Requirements:** Node.js 22+ (Docker uses Node.js 24) and pnpm 10.32.1
+**Requirements:** Node.js 22.12+ (Docker uses Node.js 24) and pnpm 10.32.1
 (`npm install -g pnpm@10.32.1`)
 
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in the Supabase URL and publishable key
+cp .env.example .env        # fill in Supabase settings; add DATABASE_URL when ready
 pnpm install
 pnpm dev                    # http://localhost:3000
 ```
 
 Keep local environment files at the repository root and never commit secrets.
 The committed `.env.example` contains placeholder values only.
+
+## Prisma and PostgreSQL
+
+Prisma 7.10.1 is configured with an empty PostgreSQL schema in
+`prisma/schema.prisma`. There are no tables, seed data, or migrations yet.
+Supabase continues to handle authentication; Prisma is for application data.
+
+Add your connection string to the root `.env` when ready:
+
+```dotenv
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
+```
+
+Use your provider's required SSL settings and URL-encode special characters in
+credentials. Keep this variable server-only. For Supabase or another pooled
+service, use a migration-compatible direct/session connection when applying
+migrations; no additional connection variable is needed for this empty setup.
+
+```bash
+pnpm db:generate              # generate the typed client, without connecting
+pnpm db:validate              # validate the schema, without connecting
+pnpm test:db                  # verify lazy initialization and client reuse
+```
+
+`pnpm dev` and `pnpm build` generate the client automatically. For standalone
+TypeScript checks, run `pnpm db:generate` first. Generated files live in
+`src/generated/prisma/` and are excluded from Git, lint, and the Docker context;
+the Docker build generates its own client.
+
+In a server-only feature service adapter, call `getPrisma()` from `@/lib/prisma`.
+It checks `DATABASE_URL` on first use and reuses one client across hot reloads.
+Importing the helper and building the application require no live database.
+Model-specific types and query methods become available as models are added.
+Keep feature/UI contracts independent of Prisma's database types.
+
+After implementing a real model, use `pnpm db:migrate --name <change>` against
+a development database and commit its migration. `pnpm db:deploy` applies
+committed migrations in production. Neither command runs during build or app
+startup. The existing application still uses its mock data.
 
 ## Supabase authentication
 
@@ -104,8 +145,10 @@ docker compose up -d
 Compose pulls the published image without requiring source code on the VPS.
 The host port defaults to `3000`. To change it, set `APP_PORT` in the VPS shell
 or in `/home/deployer/onyxa/.env`. Add `SUPABASE_URL` and
-`SUPABASE_PUBLISHABLE_KEY` there too; Compose passes only these explicitly named
-variables to the application container. The workflow does not upload this file.
+`SUPABASE_PUBLISHABLE_KEY` there too, and `DATABASE_URL` when ready. Compose
+passes these explicitly named variables to the application container. An empty
+`DATABASE_URL` is allowed until a feature uses Prisma. The workflow does not
+upload this file or run database migrations.
 
 For a local image build and smoke test:
 

@@ -11,6 +11,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM dependencies AS builder
 COPY . .
+# The build script generates Prisma Client without database credentials.
 RUN pnpm build
 
 FROM node:24-bookworm-slim AS runner

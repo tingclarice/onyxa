@@ -162,6 +162,13 @@ coherent steps that keep its callers working.
   `services/`. Use `requireUser()` in protected Server Functions; a layout guard
   alone does not protect direct calls. Supabase clients belong in `src/lib/supabase/`.
   Use the publishable key for user sessions, never a secret/service-role key.
+- PostgreSQL application data uses Prisma, with models in `prisma/schema.prisma`
+  and a server-only, lazy client from `getPrisma()` in `src/lib/prisma.ts`.
+  Keep Prisma imports and database queries in feature service adapters. Map
+  records into feature contracts before returning them to UI or core logic.
+  The schema currently has no models; add tables only for implemented features.
+  Regenerate the client after schema changes. Do not edit generated client code
+  or use migrations to manage Supabase's authentication tables.
 - Move remaining feature-specific mock data from `src/lib/api/` and feature UI
   folders into their owning features when that behavior is migrated. These mock
   modules are ordinary functions, not HTTP endpoints. Preserve reusable UI
