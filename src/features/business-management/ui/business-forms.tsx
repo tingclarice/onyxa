@@ -1,9 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import type { ActionResult, Business, Invitation } from "../types/business";
+import { useActionState } from "react";
+import Link from "next/link";
+import type {
+  ActionResult,
+  Business,
+  Invitation,
+  Membership,
+} from "../types/business";
 import {
   createBusinessAction,
+  switchBusinessAction,
   inviteMemberAction,
   respondInvitationAction,
   revokeInvitationAction,
@@ -161,7 +168,6 @@ export function AlertPreferencesForm({
 
 export function InviteMemberForm({ businessId }: { businessId: string }) {
   const [result, action, pending] = useActionState(inviteMemberAction, null);
-  const [copied, setCopied] = useState<string | null>(null);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="businessId" value={businessId} />
@@ -179,47 +185,60 @@ export function InviteMemberForm({ businessId }: { businessId: string }) {
         disabled={pending}
       />
       <p className="text-sm text-muted-foreground">
-        Bagikan kode rahasia langsung ke staf. Penerima boleh mendaftar setelah
-        diundang; email akunnya harus sama dengan email tujuan ini.
+        Penerima akan melihat undangan di inbox akun dengan email ini. Penerima
+        juga boleh mendaftar setelah diundang.
       </p>
       <ActionMessage result={result} />
-      {result?.status === "success" && result.code && (
-        <div className="space-y-3 rounded-xl border p-4">
-          <p className="text-sm font-medium">
-            Simpan kode sebelum meninggalkan halaman ini.
-          </p>
-          <code className="block break-all text-sm select-all">
-            {result.code}
-          </code>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  `${window.location.origin}/undangan#code=${result.code}`,
-                );
-                setCopied("Tautan disalin.");
-              } catch {
-                setCopied(
-                  "Tidak dapat menyalin tautan. Salin kode di atas secara manual.",
-                );
-              }
-            }}
-          >
-            Salin tautan undangan
-          </Button>
-          {copied && (
-            <p role="status" className="text-sm">
-              {copied}
-            </p>
-          )}
-        </div>
-      )}
       <Button type="submit" disabled={pending}>
         {pending ? "Membuat undangan..." : "Undang staf"}
       </Button>
     </form>
+  );
+}
+
+export function BusinessSwitcher({
+  memberships,
+  activeBusinessId,
+}: {
+  memberships: Membership[];
+  activeBusinessId: string;
+}) {
+  const [result, action, pending] = useActionState(switchBusinessAction, null);
+  return (
+    <div className="space-y-3">
+      {memberships.length > 1 && (
+        <form action={action} className="space-y-3">
+          <label
+            htmlFor="active-business"
+            className="block text-sm font-medium"
+          >
+            Usaha aktif
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <select
+              id="active-business"
+              name="businessId"
+              defaultValue={activeBusinessId}
+              disabled={pending}
+              className="h-11 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-base"
+            >
+              {memberships.map((member) => (
+                <option key={member.id} value={member.businessId}>
+                  {member.business.name}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" variant="outline" disabled={pending}>
+              {pending ? "Memproses..." : "Ganti usaha"}
+            </Button>
+          </div>
+          <ActionMessage result={result} />
+        </form>
+      )}
+      <Button asChild variant="outline">
+        <Link href="/bisnis/baru">Buat usaha baru</Link>
+      </Button>
+    </div>
   );
 }
 
@@ -233,7 +252,7 @@ export function InvitationCard({ invitation }: { invitation: Invitation }) {
       <div>
         <h3 className="break-words font-semibold">{invitation.businessName}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Mengundang Anda sebagai staf.
+          Mengundang Anda sebagai staf. Apakah Anda ingin bergabung?
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Berlaku sampai{" "}
@@ -252,7 +271,7 @@ export function InvitationCard({ invitation }: { invitation: Invitation }) {
             type="submit"
             disabled={pending}
           >
-            {pending ? "Memproses..." : "Terima undangan"}
+            {pending ? "Memproses..." : "Yes"}
           </Button>
           <Button
             name="decision"
@@ -261,7 +280,7 @@ export function InvitationCard({ invitation }: { invitation: Invitation }) {
             variant="outline"
             disabled={pending}
           >
-            Tolak
+            No
           </Button>
         </div>
         <ActionMessage result={result} />

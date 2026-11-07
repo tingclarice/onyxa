@@ -141,25 +141,22 @@ for an invitation. Creating a business also creates the user's owner membership
 in the same transaction. No business is automatically created during signup.
 
 Owners invite staff by email in **Pengaturan > Anggota usaha**. Invitations are
-in-app only and may be created before a recipient signs up. The owner receives
-a secret code and a copyable link once, then shares it directly. Only its SHA-256
-hash is persisted. If the owner loses it, revoke the invitation and create a new
-one. Invites expire after seven days and can be revoked.
+in-app only and can be issued before signup. The recipient signs in and opens
+**View Inbox** from onboarding or the header's Inbox icon, then chooses **Yes**
+to join as staff or **No** to decline. No code, secret link or invitation email
+is needed. Invites expire after seven days and owners can revoke them.
+Acceptance creates membership atomically.
 
-The recipient signs in with the targeted email, opens the link or enters its code
-in the hamburger menu, then reviews and accepts/rejects the invitation. Matching
-an unverified email alone never reveals a business or grants access. Links carry
-the secret in a fragment, which is removed from navigation on load; opening a
-link does not consume it. An HTTP-only proof cookie keeps one validated invitation
-available in the menu until acceptance/rejection, expiry or sign-out. Membership
-is granted only in an atomic acceptance transaction.
+The inbox is scoped to the account's normalized email. Email ownership is not
+verified by the current local signup flow; the inbox follows that account email.
+The pending badge refreshes on navigation and window focus, without realtime push.
+Business-free accounts have no sidebar or bottom business navigation; the inbox
+and business-creation page remain available. The right-side menu is removed.
 
-The hamburger badge refreshes on page navigation, window focus, menu opening,
-or the **Perbarui undangan** button; it does not use realtime push or send email.
-The menu also switches among the account's businesses. Selection is stored in
-an HTTP-only cookie and rechecked against current membership. Account/business
-changes reset the relevant client cache. Business profile, alert preferences,
-members, and invitation settings use PostgreSQL, including owner-only mutations.
+Business switching and the create-another-business link live in **Pengaturan**.
+Selection stays in an HTTP-only cookie and is rechecked against current membership.
+Account/business changes reset the relevant client cache. Business profile, alert
+preferences, members and invitations use PostgreSQL, with owner-only mutations.
 
 `src/features/business-management/` owns this capability, with contracts/ports in
 `types/`, pure policies in `core/`, injected use cases in `services/`, Prisma
@@ -177,7 +174,7 @@ pnpm test:business
 Business tests use fakes and adapter/action mocks; they create no live
 accounts, businesses, invitations, or memberships. To verify the live flow, use
 two test accounts: create a business with the first, invite the second's email,
-share the secret code, then accept from the second account's hamburger menu. The second account should
+then choose Yes in the second account's inbox. The second account should
 remain business-free until it accepts or deliberately creates a business.
 
 ## Docker deployment

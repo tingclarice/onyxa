@@ -14,7 +14,6 @@ const otherBusinessId = "bdf50100-0000-4000-8000-000000000002";
 let actor: Actor | null = null;
 let memberships: Membership[] = [];
 let selection: string | undefined;
-let code: string | undefined;
 let providerCalls = 0;
 let recipientQuery: string | undefined;
 const member: Membership = {
@@ -45,8 +44,8 @@ mock.module("next/headers", {
   namedExports: {
     async cookies() {
       return {
-        get(name: string) {
-          const value = name === "onyxa-invitation" ? code : selection;
+        get() {
+          const value = selection;
           return value ? { value } : undefined;
         },
       };
@@ -71,10 +70,9 @@ mock.module(
         async listMemberships(userId: string) {
           return memberships.filter((member) => member.userId === userId);
         },
-        async findRecipientInvitation(hash: string, email: string) {
-          assert.equal(hash.length, 64);
+        async listRecipientInvitations(email: string) {
           recipientQuery = email;
-          return null;
+          return [];
         },
       }),
     },
@@ -98,7 +96,6 @@ beforeEach(() => {
   actor = { id: "user", email: "Staff@Example.com" };
   memberships = [];
   selection = undefined;
-  code = undefined;
   providerCalls = 0;
   recipientQuery = undefined;
 });
@@ -146,15 +143,17 @@ test("selection cookies are account-bound and cannot invent membership", async (
   assert.equal((await (await queries).getBusinessWorkspace()).active, null);
 });
 
-test("inbox requires a secret and always scopes it to the trusted account", async () => {
+test("inbox identity always comes from the trusted session, even without a business or proof cookie", async () => {
   selection = "forged-user:forged-business";
   await (await queries).getBusinessWorkspace();
-  assert.equal(recipientQuery, undefined);
-  code = "a".repeat(64);
-  await (await queries).getBusinessWorkspace();
   assert.equal(recipientQuery, "staff@example.com");
-  code = "invalid";
-  recipientQuery = undefined;
+  actor = { id: "other-user", email: "other@example.com" };
   await (await queries).getBusinessWorkspace();
-  assert.equal(recipientQuery, undefined);
+  assert.equal(recipientQuery, "other@example.com");
+  actor = null;
+  await assert.rejects(
+    (await queries).getBusinessWorkspace(),
+    (error: unknown) =>
+      error instanceof TestRedirect && error.destination === "/masuk",
+  );
 });

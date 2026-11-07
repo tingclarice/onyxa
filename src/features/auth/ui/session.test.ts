@@ -138,7 +138,7 @@ test("invalid signup never writes; credentials failures preserve selection and r
     false,
   );
 });
-test("logout clears business and invitation cookies before redirecting to login", async () => {
+test("logout clears business selection before redirecting to login", async () => {
   await assert.rejects((await actions).signOutAction(), TestRedirect);
-  assert.deepEqual(deleted, ["onyxa-active-business", "onyxa-invitation"]);
+  assert.deepEqual(deleted, ["onyxa-active-business"]);
 });

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { createHash } from "node:crypto";
 import type { Actor, BusinessProfileInput } from "../types/business";
 
 class TestRedirect extends Error {
@@ -15,11 +14,8 @@ let storeCalls = 0;
 let revalidations = 0;
 let writtenSelection: unknown;
 let insertedOwner: unknown;
-let proof: string | undefined;
 let insertedMember: unknown;
 let closedInvites = 0;
-const code = "a".repeat(64);
-const codeHash = createHash("sha256").update(code).digest("hex");
 const invitation = {
   id: "bdf50100-0000-4000-8000-000000000002",
   businessId: "bdf50100-0000-4000-8000-000000000001",
@@ -34,8 +30,10 @@ const invitation = {
   revokedAt: null,
 };
 const persistence = {
-  async findRecipientInvitation(hash: string, email: string) {
-    return hash === codeHash && email === invitation.email ? invitation : null;
+  async findRecipientInvitation(id: string, email: string) {
+    return id === invitation.id && email === invitation.email
+      ? invitation
+      : null;
   },
   async findMembership() {
     return null;
@@ -76,9 +74,6 @@ mock.module("next/headers", {
   namedExports: {
     async cookies() {
       return {
-        get() {
-          return proof ? { value: proof } : undefined;
-        },
         delete() {},
         set(_name: string, value: string, options: unknown) {
           writtenSelection = { value, options };
@@ -125,7 +120,6 @@ beforeEach(() => {
   revalidations = 0;
   writtenSelection = undefined;
   insertedOwner = undefined;
-  proof = undefined;
   insertedMember = undefined;
   closedInvites = 0;
 });
@@ -211,68 +205,31 @@ test("expected and unexpected failures return safe messages", async () => {
   assert(!failed.ok && !failed.result.message.includes("private-password"));
 });
 
-test("public link preparation stores proof securely without querying private invitations", async () => {
-  const entries = await actions;
-  assert.equal(
-    (await entries.openInvitationAction(null, new FormData())).status,
-    "error",
-  );
-  const form = new FormData();
-  form.set("code", code);
-  await assert.rejects(
-    entries.openInvitationAction(null, form),
-    (error: unknown) =>
-      error instanceof TestRedirect && error.destination === "/masuk",
-  );
-  assert.equal(storeCalls, 0);
-  assert.deepEqual(writtenSelection, {
-    value: code,
-    options: {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 604800,
-    },
-  });
-});
-
-test("matching email alone cannot accept; a code targeted at another account reveals no details", async () => {
+test("responding to another account's invitation is denied without leaking business details", async () => {
   actor = { id: "other-user", email: "other@example.com" };
-  const entries = await actions;
-  const claim = new FormData();
-  claim.set("code", code);
-  const denied = await entries.openInvitationAction(null, claim);
-  assert.equal(denied.status, "error");
-  assert.equal(JSON.stringify(denied).includes(invitation.businessName), false);
-  assert.equal(writtenSelection, undefined);
-  actor = { id: "staff-user", email: "staff@example.com" };
-  const accept = new FormData();
-  accept.set("decision", "accept");
-  accept.set("invitationId", invitation.id);
-  assert.equal(
-    (await entries.respondInvitationAction(null, accept)).status,
-    "error",
-  );
+  const form = new FormData();
+  form.set("invitationId", invitation.id);
+  form.set("decision", "accept");
+  form.set("email", invitation.email);
+  const result = await (await actions).respondInvitationAction(null, form);
+  assert.equal(result.status, "error");
+  assert.equal(JSON.stringify(result).includes(invitation.businessName), false);
   assert.equal(closedInvites, 0);
   assert.equal(insertedMember, undefined);
 });
 
-test("acceptance resolves proof from the HTTP-only cookie and grants only the targeted staff role", async () => {
-  actor = { id: "staff-user", email: "staff@example.com" };
-  proof = code;
+test("Yes needs no code or cookie and grants only the trusted recipient a staff role", async () => {
+  actor = { id: "staff-user", email: "STAFF@example.com" };
   const form = new FormData();
   form.set("decision", "accept");
-  form.set("invitationId", invitation.id);
+  form.set("invitationId", "bdf50100-0000-4000-8000-000000000099");
   form.set("userId", "forged-user");
   form.set("role", "OWNER");
-  form.set("invitationId", "bdf50100-0000-4000-8000-000000000099");
   assert.equal(
     (await (await actions).respondInvitationAction(null, form)).status,
     "error",
   );
   assert.equal(closedInvites, 0);
-  assert.equal(insertedMember, undefined);
   form.set("invitationId", invitation.id);
   await assert.rejects(
     (await actions).respondInvitationAction(null, form),
@@ -282,8 +239,23 @@ test("acceptance resolves proof from the HTTP-only cookie and grants only the ta
   assert.deepEqual(insertedMember, {
     businessId: invitation.businessId,
     userId: "staff-user",
-    email: "staff@example.com",
+    email: invitation.email,
     role: "STAFF",
   });
   assert.equal(closedInvites, 1);
+});
+
+test("No closes the invitation without creating a membership or selecting a business", async () => {
+  actor = { id: "staff-user", email: invitation.email };
+  const form = new FormData();
+  form.set("invitationId", invitation.id);
+  form.set("decision", "dismiss");
+  assert.equal(
+    (await (await actions).respondInvitationAction(null, form)).status,
+    "success",
+  );
+  assert.equal(closedInvites, 1);
+  assert.equal(insertedMember, undefined);
+  assert.equal(writtenSelection, undefined);
+  assert.equal(revalidations, 1);
 });

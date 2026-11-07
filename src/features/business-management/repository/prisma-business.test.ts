@@ -114,7 +114,7 @@ test("membership reads are user/tenant scoped and map decimals to serializable n
   });
 });
 
-test("recipient reads include the trusted email and never select token hashes", async () => {
+test("recipient reads include the invitation ID and trusted email", async () => {
   const result = await (await adapter)
     .createBusinessStore()
     .findRecipientInvitation("invite", "staff@example.com");
@@ -126,13 +126,33 @@ test("recipient reads include the trusted email and never select token hashes", 
       "select" in input,
   );
   assert.deepEqual(input.where, {
-    tokenHash: "invite",
+    id: "invite",
     emailKey: "staff@example.com",
   });
   assert.equal(JSON.stringify(input.select).includes("tokenHash"), false);
   assert.equal(result?.expiresAt, "2026-11-14T00:00:00.000Z");
   assert.equal(result?.inviterIsOwner, true);
   assert.equal(result && "tokenHash" in result, false);
+});
+
+test("inbox reads are scoped to the recipient and unused invitations", async () => {
+  const result = await (await adapter)
+    .createBusinessStore()
+    .listRecipientInvitations("staff@example.com");
+  const input = calls[0].input;
+  assert(
+    typeof input === "object" &&
+      input !== null &&
+      "where" in input &&
+      "orderBy" in input,
+  );
+  assert.deepEqual(input.where, {
+    emailKey: "staff@example.com",
+    acceptedAt: null,
+    revokedAt: null,
+  });
+  assert.deepEqual(input.orderBy, { createdAt: "desc" });
+  assert.equal(result[0].businessName, business.name);
 });
 
 test("business and owner creation use a single nested persistence write", async () => {

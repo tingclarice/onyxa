@@ -3,10 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  ACTIVE_BUSINESS_COOKIE,
-  INVITATION_COOKIE,
-} from "@/lib/session-cookies";
+import { ACTIVE_BUSINESS_COOKIE } from "@/lib/session-cookies";
 import { createAuthSchema, type AuthResult } from "../types/auth";
 import { signup } from "../services/authentication";
 import { createAccountRepository } from "../repository/prisma-accounts";
@@ -55,7 +52,6 @@ export async function signOutAction(): Promise<AuthResult> {
   if (result.status === "error") return result;
   const jar = await cookies();
   jar.delete(ACTIVE_BUSINESS_COOKIE);
-  jar.delete(INVITATION_COOKIE);
   revalidatePath("/", "layout");
   redirect("/masuk");
 }

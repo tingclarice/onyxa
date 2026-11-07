@@ -3,12 +3,14 @@ import { getBusinessWorkspace, getSettings } from "./queries";
 import {
   AlertPreferencesForm,
   BusinessProfileForm,
+  BusinessSwitcher,
   InviteMemberForm,
   RevokeInvitationForm,
 } from "./business-forms";
 
 export async function BusinessSettingsPage() {
-  if (!(await getBusinessWorkspace()).active) return null;
+  const workspace = await getBusinessWorkspace();
+  if (!workspace.active) return null;
   const { membership, members, invitations } = await getSettings();
   const owner = membership.role === "OWNER";
   return (
@@ -19,6 +21,10 @@ export async function BusinessSettingsPage() {
           {membership.business.name} · {owner ? "Pemilik" : "Staf"}
         </p>
       </header>
+      <BusinessSwitcher
+        memberships={workspace.memberships}
+        activeBusinessId={membership.businessId}
+      />
       {!owner && (
         <p className="rounded-xl border p-4 text-sm">
           Hanya pemilik yang dapat mengubah profil, peringatan, dan undangan

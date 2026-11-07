@@ -2,6 +2,10 @@
 
 Date: 2026-11-07. Status: approved by Felix; implemented and validated.
 
+Follow-up: Felix approved `INBOX_INVITATIONS_PRD.md` to replace secret codes
+with automatic email-scoped inbox invitations. Code-related notes below describe
+the earlier implementation; the inbox PRD and current README describe today's flow.
+
 ## 1. Problem
 
 Hosted Supabase Auth currently sends signup confirmation emails. Its built-in

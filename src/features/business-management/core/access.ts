@@ -94,7 +94,6 @@ export function createInvitationPlan(
   existingMember: Membership | null,
   invitations: Invitation[],
   now: Date,
-  tokenHash: string,
 ): NewInvitation {
   const owner = requireOwner(member, actor, businessId);
   const target = emailKey(email);
@@ -115,7 +114,6 @@ export function createInvitationPlan(
     email: target,
     emailKey: target,
     role: "STAFF",
-    tokenHash,
     expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
   };
 }

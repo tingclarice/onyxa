@@ -117,9 +117,18 @@ function repositoryFor(client: Prisma.TransactionClient): BusinessRepository {
         })
       ).map(membership);
     },
-    async findRecipientInvitation(tokenHash, emailKey) {
+    async listRecipientInvitations(emailKey) {
+      return (
+        await client.businessInvitation.findMany({
+          where: { emailKey, acceptedAt: null, revokedAt: null },
+          select: invitationSelect,
+          orderBy: { createdAt: "desc" },
+        })
+      ).map(invitation);
+    },
+    async findRecipientInvitation(invitationId, emailKey) {
       const record = await client.businessInvitation.findFirst({
-        where: { tokenHash, emailKey },
+        where: { id: invitationId, emailKey },
         select: invitationSelect,
       });
       return record ? invitation(record) : null;

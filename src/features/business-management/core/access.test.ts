@@ -101,7 +101,6 @@ test("inviting normalizes email, defaults to staff, and grants seven days", () =
     null,
     [],
     now,
-    "hash",
   );
   assert.equal(result.emailKey, "staff@example.com");
   assert.equal(result.role, "STAFF");
@@ -119,7 +118,6 @@ test("existing members, duplicate invitations and self invitations are rejected"
         member,
         [],
         now,
-        "hash",
       ),
     (e: unknown) => e instanceof BusinessError && e.code === "already_member",
   );
@@ -133,7 +131,6 @@ test("existing members, duplicate invitations and self invitations are rejected"
         null,
         [invitation],
         now,
-        "hash",
       ),
     (e: unknown) => e instanceof BusinessError && e.code === "already_invited",
   );
@@ -147,14 +144,13 @@ test("existing members, duplicate invitations and self invitations are rejected"
         null,
         [],
         now,
-        "hash",
       ),
     (e: unknown) =>
       e instanceof BusinessError && e.code === "cannot_invite_self",
   );
 });
 
-test("acceptance requires the targeted account email even after secret lookup", () => {
+test("acceptance requires the targeted account email and displayed invitation ID", () => {
   assert.throws(
     () =>
       recipientDecision(actor, invitation, null, now, "accept", invitation.id),

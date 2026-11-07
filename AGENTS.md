@@ -47,6 +47,9 @@ database table does not automatically require its own feature.
 `auth` owns account identity. `business-management` owns business onboarding,
 membership, active-business selection, and in-app invitations. Signup is
 account-only; business creation and invitation acceptance are separate use cases.
+Invitations appear automatically in the recipient account's email-scoped inbox
+and are answered Yes/No, as approved in `INBOX_INVITATIONS_PRD.md`. No invitation
+codes, proof cookies, email-only prohibition or right-side navigation drawer remain.
 
 ## Architecture change approval
 

@@ -5,8 +5,9 @@ notes below are retained; the implemented account/business flow is described her
 
 Implementation update (2026-11-07): Auth.js Credentials/JWT now uses local
 Prisma User accounts. Signup creates no business. Business creation is optional;
-invitations require a secret code plus the targeted account. Only secret hashes
-are stored. See `AUTHJS_MIGRATION_PRD.md` for the approved flow.
+invitations automatically appear in the recipient account's inbox. Yes joins the
+business as staff; No declines. Codes and token hashes were removed in the approved
+`INBOX_INVITATIONS_PRD.md` change.
 
 ## 1. Problem
 
@@ -50,7 +51,7 @@ have no lines; saving it must require at least one valid line.
 | User | Local account, salted password hash and bounded failed-login state. |
 | Business | Business profile and price/slow-moving alert preferences. |
 | BusinessMember | A local account’s owner/staff membership in a business. |
-| BusinessInvitation | Pending team access, with a hashed token and expiry. |
+| BusinessInvitation | Pending team access addressed by email, with expiry. |
 | Supplier | The business’s supplier list. |
 | Item | The business’s master catalog and base units. |
 | ItemAlias | Alternate receipt names that identify a catalog item. |
@@ -71,10 +72,10 @@ field comment means nullable. The diagram uses `uuid`, `date`, `timestamp`, and
 - **Identity:** local `User` records own account IDs and password hashes.
   Auth.js manages JWT sessions. `BusinessMember.userId` references `User.id`.
   The application does not manage Supabase's `auth.users`. Member email is a
-  display snapshot; invitations require a secret and target-account match.
+  display snapshot; invitation reads/responses use the trusted account email.
 - **Membership:** `(businessId, userId)` is unique. Removed memberships are
   retained with `removedAt` for historical attribution. Invitations do not grant
-  membership until accepted. Only token hashes are stored.
+  membership until accepted. Inbox access is scoped to the recipient email.
 - **Names:** supplier/item/alias keys are normalized in application code and
   unique per business within their respective tables. An alias has one catalog
   target. Archived supplier/item names retain their identity for reuse.

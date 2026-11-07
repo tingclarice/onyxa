@@ -1,12 +1,13 @@
 import { Suspense, type ReactNode } from "react";
+import Link from "next/link";
 import { AppNavigation } from "@/components/app-navigation";
 import { requireUser } from "@/features/auth/server";
 import { SignOutButton } from "@/features/auth/ui/sign-out-button";
 import { QueryProvider } from "@/components/query-provider";
 import { DemoNotice } from "@/components/demo-notice";
 import { getBusinessWorkspace } from "@/features/business-management/server";
-import { BusinessMenu } from "@/features/business-management/ui/business-menu";
-import { BusinessOnboarding } from "@/features/business-management/ui/onboarding";
+import { InboxLink } from "@/features/business-management/ui/inbox-link";
+import { BusinessWorkspace } from "@/features/business-management/ui/onboarding";
 import { BusinessUnavailable } from "@/features/business-management/ui/business-unavailable";
 
 export default function AuthenticatedLayout({
@@ -41,41 +42,43 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
       key={`${workspace.actor.id}:${workspace.active?.businessId ?? "none"}`}
     >
       <div className="min-h-dvh md:flex">
-        <Suspense
-          fallback={
-            <aside
-              aria-hidden="true"
-              className="hidden w-64 shrink-0 border-r border-sidebar-border md:block"
-            />
-          }
+        {workspace.active && (
+          <Suspense
+            fallback={
+              <aside
+                aria-hidden="true"
+                className="hidden w-64 shrink-0 border-r border-sidebar-border md:block"
+              />
+            }
+          >
+            <AppNavigation />
+          </Suspense>
+        )}
+        <div
+          className={`min-w-0 flex-1 ${workspace.active ? "pb-20 md:pb-0" : ""}`}
         >
-          <AppNavigation businessReady={Boolean(workspace.active)} />
-        </Suspense>
-        <div className="min-w-0 flex-1 pb-20 md:pb-0">
           <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-4 py-2 sm:px-8">
-            <p className="min-w-0 truncate text-sm font-medium">
-              {workspace.active?.business.name ?? "Akun Onyxa"}
-            </p>
-            <BusinessMenu
-              email={workspace.actor.email}
-              memberships={workspace.memberships}
-              activeBusinessId={workspace.active?.businessId}
-              invitations={workspace.invitations}
-              accountActions={<SignOutButton />}
-            />
+            <Link
+              href="/beranda"
+              className="min-w-0 truncate text-sm font-semibold"
+            >
+              {workspace.active?.business.name ?? "Onyxa"}
+            </Link>
+            <div className="flex shrink-0 items-center gap-2">
+              <InboxLink pendingCount={workspace.invitations.length} />
+              <SignOutButton />
+            </div>
           </header>
           <main>
-            {workspace.active ? (
+            <BusinessWorkspace
+              businessReady={Boolean(workspace.active)}
+              email={workspace.actor.email}
+            >
               <>
-                <DemoNotice />
+                {workspace.active && <DemoNotice />}
                 {children}
               </>
-            ) : (
-              <BusinessOnboarding
-                invitations={workspace.invitations}
-                email={workspace.actor.email}
-              />
-            )}
+            </BusinessWorkspace>
           </main>
         </div>
       </div>

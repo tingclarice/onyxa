@@ -13,10 +13,6 @@ export const invitationSchema = z.object({
     .max(254),
 });
 export const identifierSchema = z.uuid("Pilihan tidak valid.");
-export const invitationCodeSchema = z
-  .string()
-  .trim()
-  .regex(/^[a-f0-9]{64}$/, "Kode undangan tidak valid.");
 export const alertPreferencesSchema = z.object({
   priceIncreaseThresholdPercent: z.number().min(1).max(100),
   priceIncreaseAlertsEnabled: z.boolean(),
@@ -60,7 +56,6 @@ export interface NewInvitation {
   email: string;
   emailKey: string;
   role: MemberRole;
-  tokenHash: string;
   expiresAt: Date;
 }
 export interface Workspace {
@@ -77,13 +72,6 @@ export interface ActionResult {
   status: "success" | "error";
   message: string;
 }
-export interface InvitationIssueResult extends ActionResult {
-  code?: string;
-}
-export interface InvitationSecrets {
-  issue(): { code: string; hash: string };
-  hash(code: string): string;
-}
 
 export interface BusinessRepository {
   listMemberships(userId: string): Promise<Membership[]>;
@@ -96,8 +84,9 @@ export interface BusinessRepository {
     emailKey: string,
   ): Promise<Membership | null>;
   listMembers(businessId: string): Promise<Membership[]>;
+  listRecipientInvitations(emailKey: string): Promise<Invitation[]>;
   findRecipientInvitation(
-    tokenHash: string,
+    invitationId: string,
     emailKey: string,
   ): Promise<Invitation | null>;
   findBusinessInvitation(

@@ -97,7 +97,6 @@ model BusinessInvitation {
   email             String     @db.VarChar(254)
   emailKey          String     @db.VarChar(254)
   role              MemberRole @default(STAFF)
-  tokenHash         String     @unique @db.Char(64)
   expiresAt         DateTime   @db.Timestamptz(3)
   acceptedAt        DateTime?  @db.Timestamptz(3)
   revokedAt         DateTime?  @db.Timestamptz(3)
@@ -108,6 +107,7 @@ model BusinessInvitation {
   invitedBy BusinessMember @relation(fields: [businessId, invitedByMemberId], references: [businessId, id], onDelete: Restrict)
 
   @@index([businessId, emailKey])
+  @@index([emailKey])
   @@index([businessId, invitedByMemberId])
   @@index([expiresAt])
 }
