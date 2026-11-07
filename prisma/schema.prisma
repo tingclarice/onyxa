@@ -7,5 +7,197 @@ datasource db {
   provider = "postgresql"
 }
 
-// Add application models when their data contracts are defined.
 // Supabase owns authentication; do not model its managed auth schema here.
+
+enum BusinessType {
+  CAFE_RESTAURANT
+  STORE
+  OTHER
+}
+
+enum MemberRole {
+  OWNER
+  STAFF
+}
+
+enum BaseUnit {
+  KG
+  LITER
+  PCS
+}
+
+enum ReceiptStatus {
+  NEEDS_REVIEW
+  SAVED
+}
+
+enum ExpenseCategory {
+  COGS
+  OPEX
+  CAPEX
+}
+
+model Business {
+  id                            String       @id @default(uuid()) @db.Uuid
+  name                          String
+  businessType                  BusinessType @default(OTHER)
+  priceIncreaseThresholdPercent Decimal      @default(5) @db.Decimal(5, 2)
+  priceIncreaseAlertsEnabled    Boolean      @default(true)
+  slowMovingAlertsEnabled       Boolean      @default(true)
+  needsReviewAlertsEnabled      Boolean      @default(true)
+  createdAt                     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime     @updatedAt @db.Timestamptz(3)
+
+  members      BusinessMember[]
+  invitations  BusinessInvitation[]
+  suppliers    Supplier[]
+  items        Item[]
+  aliases      ItemAlias[]
+  receipts     Receipt[]
+  receiptLines ReceiptLine[]
+}
+
+model BusinessMember {
+  id         String     @id @default(uuid()) @db.Uuid
+  businessId String     @db.Uuid
+  userId     String     @db.Uuid
+  email      String     @db.VarChar(254)
+  role       MemberRole @default(STAFF)
+  removedAt  DateTime?  @db.Timestamptz(3)
+  createdAt  DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime   @updatedAt @db.Timestamptz(3)
+
+  business    Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  invitations BusinessInvitation[]
+  receipts    Receipt[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, userId])
+  @@index([userId])
+}
+
+model BusinessInvitation {
+  id                String     @id @default(uuid()) @db.Uuid
+  businessId        String     @db.Uuid
+  invitedByMemberId String     @db.Uuid
+  email             String     @db.VarChar(254)
+  emailKey          String     @db.VarChar(254)
+  role              MemberRole @default(STAFF)
+  tokenHash         String     @unique @db.Char(64)
+  expiresAt         DateTime   @db.Timestamptz(3)
+  acceptedAt        DateTime?  @db.Timestamptz(3)
+  revokedAt         DateTime?  @db.Timestamptz(3)
+  createdAt         DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @db.Timestamptz(3)
+
+  business  Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  invitedBy BusinessMember @relation(fields: [businessId, invitedByMemberId], references: [businessId, id], onDelete: Restrict)
+
+  @@index([businessId, emailKey])
+  @@index([businessId, invitedByMemberId])
+  @@index([expiresAt])
+}
+
+model Supplier {
+  id         String    @id @default(uuid()) @db.Uuid
+  businessId String    @db.Uuid
+  name       String
+  nameKey    String
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  receipts Receipt[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, nameKey])
+}
+
+model Item {
+  id         String    @id @default(uuid()) @db.Uuid
+  businessId String    @db.Uuid
+  name       String
+  nameKey    String
+  baseUnit   BaseUnit
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  aliases      ItemAlias[]
+  receiptLines ReceiptLine[]
+
+  @@unique([businessId, id])
+  @@unique([businessId, nameKey])
+}
+
+model ItemAlias {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  itemId     String   @db.Uuid
+  name       String
+  nameKey    String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  item     Item     @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Cascade)
+
+  @@unique([businessId, nameKey])
+  @@index([businessId, itemId])
+}
+
+model Receipt {
+  id                String        @id @default(uuid()) @db.Uuid
+  businessId        String        @db.Uuid
+  createdByMemberId String        @db.Uuid
+  supplierId        String?       @db.Uuid
+  supplierName      String
+  receiptDate       DateTime      @db.Date
+  status            ReceiptStatus @default(NEEDS_REVIEW)
+  total             Decimal       @db.Decimal(18, 2)
+  overallConfidence Decimal?      @db.Decimal(4, 3)
+  imageUrl          String?
+  imageSha256       String?       @db.Char(64)
+  confirmedAt       DateTime?     @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+
+  business  Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  createdBy BusinessMember @relation(fields: [businessId, createdByMemberId], references: [businessId, id], onDelete: Restrict)
+  supplier  Supplier?      @relation(fields: [businessId, supplierId], references: [businessId, id], onDelete: Restrict)
+  lines     ReceiptLine[]
+
+  @@unique([businessId, id])
+  @@index([businessId, receiptDate])
+  @@index([businessId, status, receiptDate])
+  @@index([businessId, supplierId, receiptDate])
+  @@index([businessId, createdByMemberId])
+  @@index([businessId, imageSha256])
+}
+
+model ReceiptLine {
+  id              String           @id @default(uuid()) @db.Uuid
+  businessId      String           @db.Uuid
+  receiptId       String           @db.Uuid
+  itemId          String?          @db.Uuid
+  position        Int
+  rawName         String
+  quantity        Decimal          @db.Decimal(18, 6)
+  unit            String
+  unitPrice       Decimal          @db.Decimal(18, 2)
+  lineTotal       Decimal          @db.Decimal(18, 2)
+  confidence      Decimal?         @db.Decimal(4, 3)
+  expenseCategory ExpenseCategory?
+  baseQuantity    Decimal?         @db.Decimal(18, 6)
+  baseUnit        BaseUnit?
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  receipt  Receipt  @relation(fields: [businessId, receiptId], references: [businessId, id], onDelete: Cascade)
+  item     Item?    @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Restrict)
+
+  @@unique([businessId, receiptId, position])
+  @@index([businessId, itemId, receiptId])
+}

@@ -1,0 +1,111 @@
+erDiagram
+    Business ||--o{ BusinessMember : has
+    Business ||--o{ BusinessInvitation : invites
+    Business ||--o{ Supplier : owns
+    Business ||--o{ Item : catalogs
+    Business ||--o{ ItemAlias : scopes
+    Business ||--o{ Receipt : records
+    Business ||--o{ ReceiptLine : scopes
+    BusinessMember ||--o{ BusinessInvitation : issues
+    BusinessMember ||--o{ Receipt : creates
+    Supplier |o--o{ Receipt : supplies
+    Item ||--o{ ItemAlias : recognizes
+    Item |o--o{ ReceiptLine : matches
+    Receipt ||--o{ ReceiptLine : contains
+
+    Business {
+        uuid id PK
+        string name
+        BusinessType businessType
+        decimal priceIncreaseThresholdPercent
+        boolean priceIncreaseAlertsEnabled
+        boolean slowMovingAlertsEnabled
+        boolean needsReviewAlertsEnabled
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    BusinessMember {
+        uuid id PK
+        uuid businessId FK
+        uuid userId "External Supabase identity"
+        string email "Display snapshot"
+        MemberRole role
+        timestamp removedAt "Nullable"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    BusinessInvitation {
+        uuid id PK
+        uuid businessId FK
+        uuid invitedByMemberId FK
+        string email
+        string emailKey
+        MemberRole role
+        string tokenHash UK "SHA-256 hash only"
+        timestamp expiresAt
+        timestamp acceptedAt "Nullable"
+        timestamp revokedAt "Nullable"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    Supplier {
+        uuid id PK
+        uuid businessId FK
+        string name
+        string nameKey
+        timestamp archivedAt "Nullable"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    Item {
+        uuid id PK
+        uuid businessId FK
+        string name
+        string nameKey
+        BaseUnit baseUnit
+        timestamp archivedAt "Nullable"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    ItemAlias {
+        uuid id PK
+        uuid businessId FK
+        uuid itemId FK
+        string name
+        string nameKey
+        timestamp createdAt
+    }
+    Receipt {
+        uuid id PK
+        uuid businessId FK
+        uuid createdByMemberId FK
+        uuid supplierId FK "Nullable"
+        string supplierName "Historical snapshot"
+        date receiptDate
+        ReceiptStatus status
+        decimal total
+        decimal overallConfidence "Nullable"
+        string imageUrl "Nullable - Cloudinary URL"
+        string imageSha256 "Nullable - not unique"
+        timestamp confirmedAt "Nullable"
+        timestamp createdAt
+        timestamp updatedAt
+    }
+    ReceiptLine {
+        uuid id PK
+        uuid businessId FK
+        uuid receiptId FK
+        uuid itemId FK "Nullable"
+        int position
+        string rawName
+        decimal quantity
+        string unit "Original receipt unit"
+        decimal unitPrice
+        decimal lineTotal
+        decimal confidence "Nullable"
+        ExpenseCategory expenseCategory "Nullable"
+        decimal baseQuantity "Nullable - verified conversion"
+        BaseUnit baseUnit "Nullable - historical unit"
+        timestamp createdAt
+        timestamp updatedAt
+    }

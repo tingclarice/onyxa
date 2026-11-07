@@ -24,7 +24,7 @@ src/
   features/     Business features with types, UI, and services
   lib/          Utilities and existing data-access modules
 public/         Static assets
-prisma/         Application database schema (currently no models)
+prisma/         Application database schema and Mermaid review diagram
 ```
 
 New business features belong in `src/features/<feature>/`, using package by
@@ -55,9 +55,12 @@ HEIC, or HEIF images up to 8 MB.
 
 ## Prisma and PostgreSQL
 
-Prisma 7.10.1 is configured with an empty PostgreSQL schema in
-`prisma/schema.prisma`. There are no tables, seed data, or migrations yet.
-Supabase continues to handle authentication; Prisma is for application data.
+Prisma 7.10.1 defines eight proposed PostgreSQL application models in
+`prisma/schema.prisma`. Review the [schema design](prisma/database-schema.md)
+and [detailed Mermaid ER diagram](prisma/database-schema.mmd) before backend
+implementation. No migrations or seed data have been created, and the models
+have not been applied to a database. Supabase continues to handle authentication;
+Prisma is for application data. Existing screens still use their mock data.
 
 Add your connection string to the root `.env` when ready:
 
@@ -68,7 +71,7 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
 Use your provider's required SSL settings and URL-encode special characters in
 credentials. Keep this variable server-only. For Supabase or another pooled
 service, use a migration-compatible direct/session connection when applying
-migrations; no additional connection variable is needed for this empty setup.
+migrations; no additional connection variable is configured for this setup.
 
 ```bash
 pnpm db:generate              # generate the typed client, without connecting
@@ -87,7 +90,7 @@ Importing the helper and building the application require no live database.
 Model-specific types and query methods become available as models are added.
 Keep feature/UI contracts independent of Prisma's database types.
 
-After implementing a real model, use `pnpm db:migrate --name <change>` against
+After the schema is reviewed, use `pnpm db:migrate --name <change>` against
 a development database and commit its migration. `pnpm db:deploy` applies
 committed migrations in production. Neither command runs during build or app
 startup. The existing application still uses its mock data.
