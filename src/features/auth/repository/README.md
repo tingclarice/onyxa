@@ -20,5 +20,7 @@ The Supabase Auth adapter: sign in, sign up, verify an email token, and sign out
 
 ## Existing code
 
-The concrete provider adapter currently lives in `../services/supabase-auth.ts`. Cookie-aware client setup remains shared technical code under `src/lib/supabase/` and is wired at the delivery boundary.
+`supabase-auth.ts` contains the concrete provider adapter and safe identity
+mapping. Delivery supplies its cookie-aware client from `src/lib/supabase/`.
+Log only error codes/statuses, never credentials, tokens, or raw error messages.
 

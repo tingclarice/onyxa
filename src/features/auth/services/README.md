@@ -20,5 +20,8 @@ Coordinate login, registration, confirmation, and sign-out through typed provide
 
 ## Existing code
 
-This folder currently includes mixed responsibilities. In a later authorized refactor, pure rules belong in `core/`, provider calls in `repository/`, and Next.js delivery/session entry points in `ui/`.
+`authentication.ts` coordinates login, account-only signup, confirmation and
+sign-out through `AuthGateway`. Error policies live in `core/`; provider calls
+live in `repository/`; Server Functions and session delivery live in `ui/`.
+Signup never creates a business or membership.
 

@@ -13,12 +13,14 @@ import {
   validateReceiptImage,
 } from "@/features/invoice-processing/services/cloudinary";
 import { getMockReceipt } from "@/features/invoice-processing/services/mock-receipts";
-import { requireUser } from "@/features/auth/services/session";
+import { requireUser } from "@/features/auth/server";
+import { requireActiveBusiness } from "@/features/business-management/server";
 
 export async function uploadReceiptImageAction(
   formData: FormData,
 ): Promise<UploadReceiptImageResult> {
   await requireUser();
+  await requireActiveBusiness();
 
   const file = formData.get("file");
   if (!(file instanceof File)) {
@@ -54,6 +56,7 @@ export async function scanReceiptAction(
   imageUrl?: string,
 ): Promise<ScanReceiptResult> {
   await requireUser();
+  await requireActiveBusiness();
 
   if (imageUrl && !isCloudinaryReceiptUrl(imageUrl)) {
     throw new Error("Alamat foto Cloudinary tidak valid.");

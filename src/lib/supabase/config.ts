@@ -2,7 +2,7 @@ import "server-only";
 import type { CookieOptions } from "@supabase/ssr";
 import { z } from "zod";
 
-// Auth-only schema; replace with generated database types when adding tables.
+// This client is auth-only. Application tables are accessed through Prisma adapters.
 export type SupabaseDatabase = {
   public: {
     Tables: Record<string, never>;

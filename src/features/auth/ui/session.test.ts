@@ -5,7 +5,9 @@ import { pathToFileURL } from "node:url";
 import type { AuthUser } from "@/features/auth/types/auth";
 
 class TestRedirect extends Error {
-  constructor(readonly destination: string) { super(destination); }
+  constructor(readonly destination: string) {
+    super(destination);
+  }
 }
 
 let user: AuthUser | null = null;
@@ -19,24 +21,44 @@ let logoutOptions: unknown;
 let cookieWritesEnabled = false;
 let revalidations = 0;
 let scanCalls = 0;
+let selectionClears = 0;
 
 const fakeClient = {
   auth: {
     async getUser() {
-      return { data: { user }, error: errorCode ? { code: errorCode } : null };
+      return {
+        data: {
+          user: user && {
+            ...user,
+            email_confirmed_at: user.emailVerified
+              ? "2026-11-07T00:00:00Z"
+              : null,
+          },
+        },
+        error: errorCode ? { code: errorCode } : null,
+      };
     },
     async signInWithPassword(input: unknown) {
       credentialsSent = input;
       if (providerUnavailable) throw new Error("private provider details");
-      return { data: { session: hasSession ? {} : null }, error: errorCode ? { code: errorCode } : null };
+      return {
+        data: { session: hasSession ? {} : null },
+        error: errorCode ? { code: errorCode } : null,
+      };
     },
     async signUp(input: unknown) {
       metadataSent = input;
-      return { data: { session: hasSession ? {} : null }, error: errorCode ? { code: errorCode } : null };
+      return {
+        data: { session: hasSession ? {} : null },
+        error: errorCode ? { code: errorCode } : null,
+      };
     },
     async verifyOtp(input: unknown) {
       confirmationSent = input;
-      return { data: { session: hasSession ? {} : null }, error: errorCode ? { code: errorCode } : null };
+      return {
+        data: { session: hasSession ? {} : null },
+        error: errorCode ? { code: errorCode } : null,
+      };
     },
     async signOut(input: unknown) {
       logoutOptions = input;
@@ -46,22 +68,55 @@ const fakeClient = {
 };
 
 mock.module("server-only", {});
-mock.module("next/navigation", { namedExports: {
-  redirect(destination: string): never { throw new TestRedirect(destination); },
-} });
-mock.module("next/cache", { namedExports: { revalidatePath() { revalidations++; } } });
-mock.module(pathToFileURL(resolve("src/lib/supabase/server.ts")).href, { namedExports: {
-  async createSupabaseServerClient(writable = false) {
-    cookieWritesEnabled = writable;
-    return fakeClient;
+mock.module("next/navigation", {
+  namedExports: {
+    redirect(destination: string): never {
+      throw new TestRedirect(destination);
+    },
   },
-} });
-mock.module(pathToFileURL(resolve("src/features/invoice-processing/services/mock-receipts.ts")).href, { namedExports: {
-  async getMockReceipt() { scanCalls++; return {}; },
-} });
+});
+mock.module("next/cache", {
+  namedExports: {
+    revalidatePath() {
+      revalidations++;
+    },
+  },
+});
+mock.module("next/headers", {
+  namedExports: {
+    async cookies() {
+      return {
+        delete() {
+          selectionClears++;
+        },
+      };
+    },
+  },
+});
+mock.module(pathToFileURL(resolve("src/lib/supabase/server.ts")).href, {
+  namedExports: {
+    async createSupabaseServerClient(writable = false) {
+      cookieWritesEnabled = writable;
+      return fakeClient;
+    },
+  },
+});
+mock.module(
+  pathToFileURL(
+    resolve("src/features/invoice-processing/services/mock-receipts.ts"),
+  ).href,
+  {
+    namedExports: {
+      async getMockReceipt() {
+        scanCalls++;
+        return {};
+      },
+    },
+  },
+);
 
-const sessionModule = import("@/features/auth/services/session");
-const actionsModule = import("@/features/auth/services/actions");
+const sessionModule = import("@/features/auth/ui/session");
+const actionsModule = import("@/features/auth/ui/actions");
 
 beforeEach(() => {
   user = null;
@@ -75,18 +130,27 @@ beforeEach(() => {
   cookieWritesEnabled = false;
   revalidations = 0;
   scanCalls = 0;
+  selectionClears = 0;
 });
 
 test("missing and invalid sessions cannot access protected content", async () => {
   const { requireUser } = await sessionModule;
-  await assert.rejects(requireUser(), (error: unknown) => error instanceof TestRedirect && error.destination === "/masuk");
-  user = { id: "forged-user", email: "owner@example.com" };
+  await assert.rejects(
+    requireUser(),
+    (error: unknown) =>
+      error instanceof TestRedirect && error.destination === "/masuk",
+  );
+  user = { id: "forged-user", email: "owner@example.com", emailVerified: true };
   errorCode = "bad_jwt";
   await assert.rejects(requireUser(), TestRedirect);
 });
 
 test("verified users receive only the safe identity DTO", async () => {
-  user = { id: "verified-user", email: "owner@example.com" };
+  user = {
+    id: "verified-user",
+    email: "owner@example.com",
+    emailVerified: true,
+  };
   const { requireUser } = await sessionModule;
   assert.deepEqual(await requireUser(), user);
   assert.equal(cookieWritesEnabled, false);
@@ -99,6 +163,7 @@ test("login action enables cookie writes and invalidates authenticated UI", asyn
   assert.deepEqual(credentialsSent, input);
   assert.equal(cookieWritesEnabled, true);
   assert.equal(revalidations, 1);
+  assert.equal(selectionClears, 1);
 });
 
 test("invalid action input does not reach the Supabase auth endpoint", async () => {
@@ -111,7 +176,10 @@ test("invalid action input does not reach the Supabase auth endpoint", async () 
 test("provider exceptions become safe action errors without cache invalidation", async () => {
   providerUnavailable = true;
   const { loginAction } = await actionsModule;
-  const result = await loginAction({ email: "owner@example.com", password: "password-123" });
+  const result = await loginAction({
+    email: "owner@example.com",
+    password: "password-123",
+  });
   assert.equal(result.status, "error");
   assert(!result.message.includes("private provider details"));
   assert.equal(revalidations, 0);
@@ -120,11 +188,18 @@ test("provider exceptions become safe action errors without cache invalidation",
 test("signup maps names into user metadata and waits for email confirmation", async () => {
   hasSession = false;
   const { signupAction } = await actionsModule;
-  const result = await signupAction({ email: "owner@example.com", password: "password-123", name: "Owner", businessName: "Warung" });
+  const result = await signupAction({
+    email: "owner@example.com",
+    password: "password-123",
+    name: "Owner",
+    businessName: "Ignore this",
+    role: "OWNER",
+  });
   assert.equal(result.status, "confirmation-required");
   assert.deepEqual(metadataSent, {
-    email: "owner@example.com", password: "password-123",
-    options: { data: { full_name: "Owner", business_name: "Warung" } },
+    email: "owner@example.com",
+    password: "password-123",
+    options: { data: { full_name: "Owner" } },
   });
   assert.equal(revalidations, 0);
 });
@@ -134,8 +209,15 @@ test("confirmation verifies only email tokens and redirects to a fixed local pag
   const form = new FormData();
   form.set("token_hash", "token-hash");
   form.set("next", "https://untrusted.example");
-  await assert.rejects(confirmEmailAction(null, form), (error: unknown) => error instanceof TestRedirect && error.destination === "/beranda");
-  assert.deepEqual(confirmationSent, { token_hash: "token-hash", type: "email" });
+  await assert.rejects(
+    confirmEmailAction(null, form),
+    (error: unknown) =>
+      error instanceof TestRedirect && error.destination === "/beranda",
+  );
+  assert.deepEqual(confirmationSent, {
+    token_hash: "token-hash",
+    type: "email",
+  });
   assert.equal(revalidations, 1);
 });
 
@@ -154,13 +236,20 @@ test("sign-out clears the current session and redirects only on success", async 
   assert.equal((await signOutAction()).status, "error");
   assert.equal(revalidations, 0);
   errorCode = null;
-  await assert.rejects(signOutAction(), (error: unknown) => error instanceof TestRedirect && error.destination === "/masuk");
+  await assert.rejects(
+    signOutAction(),
+    (error: unknown) =>
+      error instanceof TestRedirect && error.destination === "/masuk",
+  );
   assert.deepEqual(logoutOptions, { scope: "local" });
   assert.equal(revalidations, 1);
+  assert.equal(selectionClears, 1);
 });
 
 test("direct scan action calls require authentication even without a layout", async () => {
-  const { scanReceiptAction } = await import("@/features/invoice-processing/services/actions");
+  const { scanReceiptAction } = await import(
+    "@/features/invoice-processing/services/actions"
+  );
   await assert.rejects(scanReceiptAction(), TestRedirect);
   assert.equal(scanCalls, 0);
 });

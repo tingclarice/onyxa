@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { signOutAction } from "@/features/auth/services/actions";
+import { signOutAction } from "./actions";
 import type { AuthResult } from "@/features/auth/types/auth";
 
 export function SignOutButton() {

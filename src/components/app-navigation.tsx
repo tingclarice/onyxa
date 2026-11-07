@@ -19,8 +19,15 @@ const navigationItems = [
   { href: "/pengaturan", label: "Pengaturan", icon: Settings },
 ];
 
-export function AppNavigation() {
+export function AppNavigation({
+  businessReady = true,
+}: {
+  businessReady?: boolean;
+}) {
   const pathname = usePathname();
+  const items = navigationItems.filter(
+    (item) => businessReady || item.href === "/beranda",
+  );
 
   return (
     <>
@@ -35,7 +42,7 @@ export function AppNavigation() {
           Onyxa
         </Link>
         <nav aria-label="Navigasi utama" className="flex flex-col gap-1 p-4">
-          {navigationItems.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
               <Link
@@ -61,8 +68,10 @@ export function AppNavigation() {
         aria-label="Navigasi utama"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        <div className="mx-auto grid h-16 max-w-lg grid-cols-5">
-          {navigationItems.map(({ href, label, icon: Icon }) => {
+        <div
+          className={`mx-auto grid h-16 max-w-lg ${businessReady ? "grid-cols-5" : "grid-cols-1"}`}
+        >
+          {items.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href;
             return (
               <Link

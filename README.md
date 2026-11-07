@@ -21,7 +21,7 @@ Gemini Flash API, OCR API
 src/
   app/          Next.js routes, layouts, and global styles
   components/   Shared UI components and application shell
-  features/     Business features with types, UI, and services
+  features/     Features with ui, types, core, repository, and services layers
   lib/          Utilities and existing data-access modules
 public/         Static assets
 prisma/         Application database schema and Mermaid review diagram
@@ -55,12 +55,13 @@ HEIC, or HEIF images up to 8 MB.
 
 ## Prisma and PostgreSQL
 
-Prisma 7.10.1 defines eight proposed PostgreSQL application models in
+Prisma 7.10.1 defines eight PostgreSQL application models in
 `prisma/schema.prisma`. Review the [schema design](prisma/database-schema.md)
 and [detailed Mermaid ER diagram](prisma/database-schema.mmd) before backend
-implementation. No migrations or seed data have been created, and the models
-have not been applied to a database. Supabase continues to handle authentication;
-Prisma is for application data. Existing screens still use their mock data.
+implementation. The initial migration is committed under `prisma/migrations/`.
+Supabase handles authentication; Prisma persists businesses, memberships,
+invitations, and business preferences. Receipt, inventory, and procurement data
+remain demos, explicitly labeled in the application. No seed data is included.
 
 Add your connection string to the root `.env` when ready:
 
@@ -84,21 +85,21 @@ TypeScript checks, run `pnpm db:generate` first. Generated files live in
 `src/generated/prisma/` and are excluded from Git, lint, and the Docker context;
 the Docker build generates its own client.
 
-In a server-only feature service adapter, call `getPrisma()` from `@/lib/prisma`.
+In a server-only feature repository adapter, call `getPrisma()` from `@/lib/prisma`.
 It checks `DATABASE_URL` on first use and reuses one client across hot reloads.
 Importing the helper and building the application require no live database.
 Model-specific types and query methods become available as models are added.
 Keep feature/UI contracts independent of Prisma's database types.
 
-After the schema is reviewed, use `pnpm db:migrate --name <change>` against
+For subsequent schema changes, use `pnpm db:migrate --name <change>` against
 a development database and commit its migration. `pnpm db:deploy` applies
 committed migrations in production. Neither command runs during build or app
-startup. The existing application still uses its mock data.
+startup.
 
 ## Supabase authentication
 
 Email/password signup, login, email confirmation, and sign-out use Next.js Server
-Functions in `src/features/auth/services/actions.ts`. Supabase sessions live in
+Functions in `src/features/auth/ui/actions.ts`. Supabase sessions live in
 HTTP-only cookies. `src/proxy.ts` refreshes sessions, and the authenticated layout
 and protected Server Functions verify the user server-side. Production cookies
 require HTTPS. Google sign-in and password recovery are not implemented.
@@ -129,12 +130,61 @@ The confirmation link opens a page; the user clicks **Konfirmasi email** to
 submit the token to a Server Function. Opening or prefetching the page does not
 consume the token. The default Supabase confirmation template must be updated
 for this flow. If confirmation is disabled, successful signup logs in immediately.
-Name and business name are stored as user metadata, not as authorization roles
-or a merchant database record. Existing inventory/settings data remains mocked.
+Only the user's name is stored in signup metadata. Signup requires no business
+name and creates no business or membership. Business permissions come from
+active database memberships, never Supabase user metadata.
 
 Run authentication regression tests with `pnpm test:auth`. They use a fake auth
 provider and do not create Supabase accounts or send emails. Live testing needs
 a test account and the dashboard configuration above.
+
+Authentication failures display an allowlisted **Kode bantuan**; provider codes,
+operation, and HTTP status are logged as `[auth]` in the terminal running Next.js.
+Raw provider messages, passwords, keys, and tokens are not logged or returned.
+`email_address_invalid` means the address was rejected by Supabase's email
+validator; example/test addresses are unsupported. Use an inbox you control.
+`email_address_not_authorized` means the built-in sender cannot send to that
+recipient; configure custom SMTP to support addresses outside the Supabase
+organization. See [Supabase's error reference](https://supabase.com/docs/guides/auth/debugging/error-codes)
+and [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp).
+
+## Business onboarding and invitations
+
+After signing in, an account without memberships can create a business or wait
+for an invitation. Creating a business also creates the user's owner membership
+in the same transaction. No business is automatically created during signup.
+
+Owners invite staff by email in **Pengaturan > Anggota usaha**. Invitations are
+in-app only and may be created before a recipient signs up. The recipient signs
+in with that verified email and accepts or rejects the invitation in the
+hamburger menu. Pending invitations expire after seven days. Owners can revoke
+them. Membership is granted only on acceptance, in an atomic transaction.
+
+The hamburger badge refreshes on page navigation, window focus, menu opening,
+or the **Perbarui undangan** button; it does not use realtime push or send email.
+The menu also switches among the account's businesses. Selection is stored in
+an HTTP-only cookie and rechecked against current membership. Account/business
+changes reset the relevant client cache. Business profile, alert preferences,
+members, and invitation settings use PostgreSQL, including owner-only mutations.
+
+`src/features/business-management/` owns this capability, with contracts/ports in
+`types/`, pure policies in `core/`, injected use cases in `services/`, Prisma
+adapters in `repository/`, and delivery/wiring in `ui/`. Its public `server.ts`
+entry exposes authorized business context without exposing private adapters.
+The existing auth feature uses the same layers.
+
+Apply the committed database migration before using business features:
+
+```bash
+pnpm db:deploy
+pnpm test:business
+```
+
+Business tests use fakes and adapter/action mocks; they create no live Supabase
+accounts, businesses, invitations, or memberships. To verify the live flow, use
+two test accounts: create a business with the first, invite the second's email,
+then accept from the second account's hamburger menu. The second account should
+remain business-free until it accepts or deliberately creates a business.
 
 ## Docker deployment
 

@@ -20,5 +20,6 @@ Pure validation policies and decisions about authentication outcomes. Supabase p
 
 ## Existing code
 
-Pure authentication rules currently live in `../services/authentication.ts`. This documentation task does not move that code.
+`auth-result.ts` maps authentication outcomes into safe user messages. Supabase
+verifies credentials; the service coordinates calls through the provider port.
 

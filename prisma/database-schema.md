@@ -3,6 +3,13 @@
 Recreated on 2026-11-07 from the earlier schema proposal. Schema files only;
 backend implementation and database application await Felix's review.
 
+Implementation update (2026-11-07): account-only signup, optional business
+creation, memberships, business preferences, and in-app invitations now use the
+existing models; see `BUSINESS_ACCESS_PRD.md` at the repository root. Invitations
+are authorized by verified recipient email; the existing required token hash is
+generated internally for schema compatibility and is never sent to the client.
+No notification table or schema change is required for this workflow.
+
 ## 1. Problem
 
 The previous schema proposal is missing. Prisma still has no application models,

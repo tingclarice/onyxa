@@ -44,6 +44,10 @@ The three main packages are `invoice-processing`, `inventory-intelligence`, and
 `procurement-pricing`. Establish boundaries from actual behavior; a URL or
 database table does not automatically require its own feature.
 
+`auth` owns account identity. `business-management` owns business onboarding,
+membership, active-business selection, and in-app invitations. Signup is
+account-only; business creation and invitation acceptance are separate use cases.
+
 ## Architecture change approval
 
 - Preserve this architecture when implementing or reviewing work.
@@ -195,7 +199,7 @@ coherent steps that keep its callers working.
 - Receipt scanning uses the Server Function in
   `src/features/invoice-processing/services/actions.ts`; do not recreate an API
   route or HTTP fetch wrapper. It currently returns synthetic demo receipts.
-  It requires an authenticated user. Add server-side image validation before
+  It requires an authenticated user with an active business membership. Keep server-side image validation before
   connecting real merchant data or external OCR services.
 - Authentication lives in `src/features/auth/`. Use `requireUser()` in
   protected Server Functions; a layout guard
@@ -205,7 +209,8 @@ coherent steps that keep its callers working.
   and a server-only, lazy client from `getPrisma()` in `src/lib/prisma.ts`.
   Keep Prisma imports and database queries in feature `repository/` adapters. Map
   records into feature contracts before returning them to UI or core logic.
-  The schema currently has no models; add tables only for implemented features.
+  Business, membership, and invitation models are implemented; purchasing
+  persistence is still pending. Add tables only for implemented features.
   Regenerate the client after schema changes. Do not edit generated client code
   or use migrations to manage Supabase's authentication tables.
 - Move remaining feature-specific mock data from `src/lib/api/` and feature UI
@@ -216,10 +221,12 @@ coherent steps that keep its callers working.
   ports as real adapters. Do not hardcode mock responses in pages or actions.
 - Do not reorganize the entire application solely to implement an unrelated
   task. Record remaining architecture violations without adding new ones.
-- Existing auth and scan modules still mix some core, repository, and delivery
-  responsibilities under `services/`. The folder guides describe the target
-  placement. Move implementation files only in an authorized code-refactoring
-  task; a scaffolding/documentation task must not move or rewrite them.
+- Auth Server Functions/session delivery live in `auth/ui/`, provider calls in
+  `auth/repository/`, and pure outcome policies in `auth/core/`. Other features
+  use `auth/server.ts` for trusted identity and `business-management/server.ts`
+  for authorized business context. Receipt scan modules still mix some
+  responsibilities under `services/`; migrate them only during an authorized
+  implementation/refactoring task.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { confirmEmailAction } from "@/features/auth/services/actions";
+import { confirmEmailAction } from "./actions";
 
 export function ConfirmEmailForm({ tokenHash }: { tokenHash: string }) {
   const [state, action, isPending] = useActionState(confirmEmailAction, null);

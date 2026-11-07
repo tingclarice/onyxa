@@ -20,5 +20,7 @@ Login/signup forms, email-confirmation presentation, sign-out controls, and thin
 
 ## Existing code
 
-Existing forms are already in this folder. Server Functions and session helpers currently remain in `../services/`; migrate them only during an authorized implementation/refactoring task.
+Forms, dedicated `actions.ts`, server-only wiring in `action-runtime.ts`, and
+session queries live here. Other features use `../server.ts` for trusted identity
+checks. Login/signup/logout clear the active-business cookie at the server edge.
 
