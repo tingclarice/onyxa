@@ -1,7 +1,13 @@
 # Database schema for review
 
-Recreated on 2026-11-07 from the earlier schema proposal. Schema files only;
-backend implementation and database application await Felix's review.
+Recreated on 2026-11-07 from the earlier schema proposal. The original review
+notes below are retained; the implemented account/business flow is described here.
+
+Implementation update (2026-11-07): Auth.js Credentials/JWT now uses local
+Prisma User accounts. Signup creates no business. Business creation is optional;
+invitations automatically appear in the recipient account's inbox. Yes joins the
+business as staff; No declines. Codes and token hashes were removed in the approved
+`INBOX_INVITATIONS_PRD.md` change.
 
 ## 1. Problem
 
@@ -11,7 +17,7 @@ Restore the design and provide a matching Prisma schema before backend work.
 
 ## 2. Success criteria
 
-- Eight application models match the detailed [Mermaid ER diagram](database-schema.mmd).
+- Nine application models match the detailed [Mermaid ER diagram](database-schema.mmd).
 - The schema supports shared businesses, receipt review, catalog matching,
   expense categorization, and the existing settings.
 - Relationships reject links between different businesses.
@@ -22,6 +28,7 @@ Restore the design and provide a matching Prisma schema before backend work.
 
 ```mermaid
 erDiagram
+    User ||--o{ BusinessMember : joins
     Business ||--o{ BusinessMember : has
     Business ||--o{ BusinessInvitation : invites
     Business ||--o{ Supplier : owns
@@ -41,9 +48,10 @@ have no lines; saving it must require at least one valid line.
 
 | Table | What it stores |
 | --- | --- |
+| User | Local account, salted password hash and bounded failed-login state. |
 | Business | Business profile and price/slow-moving alert preferences. |
-| BusinessMember | A Supabase user’s owner/staff membership in a business. |
-| BusinessInvitation | Pending team access, with a hashed token and expiry. |
+| BusinessMember | A local account’s owner/staff membership in a business. |
+| BusinessInvitation | Pending team access addressed by email, with expiry. |
 | Supplier | The business’s supplier list. |
 | Item | The business’s master catalog and base units. |
 | ItemAlias | Alternate receipt names that identify a catalog item. |
@@ -61,12 +69,13 @@ field comment means nullable. The diagram uses `uuid`, `date`, `timestamp`, and
   to share it. Every child includes `businessId`. Composite foreign keys include
   that ID so a receipt cannot reference another business’s supplier or member,
   and a line cannot reference another business’s receipt or item.
-- **Identity:** Supabase owns users, passwords, and sessions. `userId` stores the
-  external UUID; Prisma does not manage `auth.users` or reference it with a
-  database foreign key. Member email is a display snapshot, never authorization.
+- **Identity:** local `User` records own account IDs and password hashes.
+  Auth.js manages JWT sessions. `BusinessMember.userId` references `User.id`.
+  The application does not manage Supabase's `auth.users`. Member email is a
+  display snapshot; invitation reads/responses use the trusted account email.
 - **Membership:** `(businessId, userId)` is unique. Removed memberships are
   retained with `removedAt` for historical attribution. Invitations do not grant
-  membership until accepted. Only token hashes are stored.
+  membership until accepted. Inbox access is scoped to the recipient email.
 - **Names:** supplier/item/alias keys are normalized in application code and
   unique per business within their respective tables. An alias has one catalog
   target. Archived supplier/item names retain their identity for reuse.
@@ -121,7 +130,7 @@ accounting, tax/discount allocation, and arbitrary unit-conversion rules.
 ## 4. Constraints
 
 Keep PostgreSQL and installed Prisma 7.10.1, the existing generator and lazy
-client, Supabase authentication, pnpm scripts, and feature architecture. Do not
+client, Auth.js authentication, pnpm scripts, and feature architecture. Do not
 introduce internal APIs, change managed auth tables, or reorganize features.
 The schema documents proposed persistence; existing mocks continue running.
 

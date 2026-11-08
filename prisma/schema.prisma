@@ -7,7 +7,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// Supabase owns authentication; do not model its managed auth schema here.
+// Application accounts use Auth.js Credentials. Supabase hosts PostgreSQL only.
+
+model User {
+  id                  String    @id @default(uuid()) @db.Uuid
+  email               String    @unique @db.VarChar(254)
+  name                String    @db.VarChar(100)
+  passwordHash        String
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime? @db.Timestamptz(3)
+  loginVersion        Int       @default(0)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
+
+  memberships BusinessMember[]
+}
 
 enum BusinessType {
   CAFE_RESTAURANT
@@ -44,6 +58,8 @@ model Business {
   priceIncreaseThresholdPercent Decimal      @default(5) @db.Decimal(5, 2)
   priceIncreaseAlertsEnabled    Boolean      @default(true)
   slowMovingAlertsEnabled       Boolean      @default(true)
+  // Melambat is shown only when a restock is late by more than this % of the expected time.
+  slowMovingGracePercent        Int          @default(20)
   createdAt                     DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt                     DateTime     @updatedAt @db.Timestamptz(3)
 
@@ -67,6 +83,7 @@ model BusinessMember {
   updatedAt  DateTime   @updatedAt @db.Timestamptz(3)
 
   business    Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   invitations BusinessInvitation[]
   receipts    Receipt[]
 
@@ -82,7 +99,6 @@ model BusinessInvitation {
   email             String     @db.VarChar(254)
   emailKey          String     @db.VarChar(254)
   role              MemberRole @default(STAFF)
-  tokenHash         String     @unique @db.Char(64)
   expiresAt         DateTime   @db.Timestamptz(3)
   acceptedAt        DateTime?  @db.Timestamptz(3)
   revokedAt         DateTime?  @db.Timestamptz(3)
@@ -93,6 +109,7 @@ model BusinessInvitation {
   invitedBy BusinessMember @relation(fields: [businessId, invitedByMemberId], references: [businessId, id], onDelete: Restrict)
 
   @@index([businessId, emailKey])
+  @@index([emailKey])
   @@index([businessId, invitedByMemberId])
   @@index([expiresAt])
 }

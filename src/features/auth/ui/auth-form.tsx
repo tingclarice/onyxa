@@ -9,8 +9,13 @@ import { Eye, EyeOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loginAction, signupAction } from "@/features/auth/services/actions";
-import { createAuthSchema, type AuthFormValues, type AuthMode, type AuthResult } from "@/features/auth/types/auth";
+import { loginAction, signupAction } from "./actions";
+import {
+  createAuthSchema,
+  type AuthFormValues,
+  type AuthMode,
+  type AuthResult,
+} from "@/features/auth/types/auth";
 
 function FormField({
   id,
@@ -51,7 +56,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const {
     register,
     handleSubmit,
-    resetField,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<AuthFormValues>({
     resolver: zodResolver(schema),
@@ -59,7 +64,6 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       name: "",
       email: "",
       password: "",
-      businessName: "",
     },
   });
 
@@ -67,17 +71,23 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     setResult(null);
     startTransition(async () => {
       try {
-        const nextResult = await (isSignup ? signupAction(values) : loginAction(values));
+        const nextResult = await (isSignup
+          ? signupAction(values)
+          : loginAction(values));
         if (nextResult.status === "authenticated") {
+          reset();
+          setPasswordVisible(false);
           queryClient.clear();
           router.replace("/beranda");
           router.refresh();
           return;
         }
         setResult(nextResult);
-        if (nextResult.status === "confirmation-required") resetField("password");
       } catch {
-        setResult({ status: "error", message: "Koneksi terputus. Silakan coba lagi." });
+        setResult({
+          status: "error",
+          message: "Koneksi terputus. Silakan coba lagi.",
+        });
       }
     });
   }
@@ -104,13 +114,26 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         </p>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSubmit(submitForm)} noValidate>
+      <form
+        className="space-y-4"
+        onSubmit={handleSubmit(submitForm)}
+        noValidate
+      >
         {result && (
           <p
             role={result.status === "error" ? "alert" : "status"}
-            className={result.status === "error" ? "text-sm text-destructive" : "text-sm text-accent"}
+            className={
+              result.status === "error"
+                ? "text-sm text-destructive"
+                : "text-sm text-accent"
+            }
           >
             {result.message}
+            {result.status === "error" && result.code && (
+              <span className="mt-2 block text-xs text-muted-foreground">
+                Kode bantuan: {result.code}
+              </span>
+            )}
           </p>
         )}
         {isSignup && (
@@ -152,15 +175,15 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               placeholder="Masukkan password"
               className="pr-12"
               aria-invalid={Boolean(errors.password) || undefined}
-              aria-describedby={
-                errors.password ? "password-error" : undefined
-              }
+              aria-describedby={errors.password ? "password-error" : undefined}
               {...register("password")}
             />
             <button
               id="toggle-password"
               type="button"
-              aria-label={passwordVisible ? "Sembunyikan password" : "Lihat password"}
+              aria-label={
+                passwordVisible ? "Sembunyikan password" : "Lihat password"
+              }
               aria-pressed={passwordVisible}
               onClick={() => setPasswordVisible((visible) => !visible)}
               className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-md text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -174,26 +197,11 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           </div>
         </FormField>
 
-        {isSignup && (
-          <FormField
-            id="businessName"
-            label="Nama usaha"
-            error={errors.businessName?.message}
-          >
-            <Input
-              id="businessName"
-              autoComplete="organization"
-              placeholder="Contoh: Warung Makan Bu Sari"
-              aria-invalid={Boolean(errors.businessName) || undefined}
-              aria-describedby={
-                errors.businessName ? "businessName-error" : undefined
-              }
-              {...register("businessName")}
-            />
-          </FormField>
-        )}
-
-        <Button type="submit" className="w-full" disabled={isSubmitting || isPending}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isSubmitting || isPending}
+        >
           {isPending ? "Memproses..." : isSignup ? "Daftar" : "Masuk"}
         </Button>
       </form>

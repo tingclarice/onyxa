@@ -7,28 +7,38 @@ uses Gemini to extract a draft, and opens it in an editable review flow. Opening
 the review screen without an image still loads demo receipt data.
 
 ## Features
-- **Receipt scanner**: Cloudinary photo upload, Gemini receipt extraction, and editable review
+- **Receipt scanner**: Cloudinary photo upload, Gemini receipt extraction, editable review, and saving reviewed receipts (supplier, items, quantities) to PostgreSQL
 - **Price change alerts**: flags when a supplier raises the unit price of an item
-- **Slow-moving detector**: flags items that haven't been repurchased in an unusually long time
+- **Slow-moving detector** (`inventory-intelligence`): learns each item's burn rate (EMA of quantity ÷ days until the next purchase) from saved receipts and marks it **Melambat** when restocking is later than expected plus the owner's grace % (Pengaturan, default 20%). Shows the burn-rate drop % and the restock delay on /barang and on the home-screen warning card ("Semua aman" when nothing is slowing). Run `pnpm test:inventory`.
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack
-Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, Supabase Auth,
+Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, NextAuth/Auth.js,
 Google Gen AI SDK
 
 ## Project structure
 ```text
 src/
-  app/          Next.js routes, layouts, and global styles
-  components/   Shared UI components and application shell
-  features/     Business features with types, UI, and services
-  lib/          Utilities and existing data-access modules
+  app/          Next.js routes; each page.tsx loads data and lays out feature components
+  components/   Shared UI primitives and application shell
+  features/     One folder per feature: ui, services, core, repository, types
+  lib/          Feature-independent helpers (formatting, Prisma client, transactions)
 public/         Static assets
 prisma/         Application database schema and Mermaid review diagram
 ```
 
-New business features belong in `src/features/<feature>/`, using package by
-feature with hexagonal boundaries as defined in [AGENTS.md](AGENTS.md).
+Inside each feature the flow goes one way, so it is easy to follow:
+
+```text
+app/…/page.tsx  →  feature ui/ (components, queries, actions)
+                →  services/  →  core/        (rules and calculations)
+                              →  repository/  (database and outside services)
+types/  shared shapes used by all of them
+```
+
+Open a route's `page.tsx` to see the feature component that renders the page.
+Services orchestrate core rules and typed repository ports; server-side delivery
+code wires concrete adapters. See [AGENTS.md](AGENTS.md) for the full rules.
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered
 mutations and server-only queries for reads; do not add internal API endpoints.
@@ -43,8 +53,9 @@ Receipt upload and scanning call Server Functions in `invoice-processing`.
 ```bash
 git clone https://github.com/tingclarice/onyxa.git
 cd onyxa
-cp .env.example .env        # fill in Supabase/Cloudinary/Gemini settings
+cp .env.example .env        # fill in DATABASE_URL, AUTH_SECRET, AUTH_URL and Cloudinary settings
 pnpm install
+pnpm db:deploy              # apply committed account/business migrations
 pnpm dev                    # http://localhost:3000
 ```
 
@@ -58,24 +69,18 @@ Create a Gemini API key in
 `GEMINI_API_KEY` in the root `.env`. The key is read only by server-side code;
 do not rename it to a `NEXT_PUBLIC_` variable. Image uploads are read back from
 the configured Cloudinary cloud and sent to Gemini for draft extraction. Review
-the extracted values before using them; confidence is a review heuristic, not a
-probability. No receipt persistence is implemented.
-
-To test Gemini locally before Supabase Auth is configured, set
-`DEV_AUTH_BYPASS=true` in the root `.env` and restart `pnpm dev`. The app will
-show a local-testing banner and use a fixed development identity. This setting
-is ignored unless `NODE_ENV=development`; never enable authentication bypasses
-in production. Remove the setting or set it to `false` when local testing is
-finished.
+the extracted values before saving; confidence is a review heuristic, not a
+probability. Receipts are saved only after a user reviews and confirms them.
 
 ## Prisma and PostgreSQL
 
-Prisma 7.10.1 defines eight proposed PostgreSQL application models in
+Prisma 7.10.1 defines nine PostgreSQL application models in
 `prisma/schema.prisma`. Review the [schema design](prisma/database-schema.md)
 and [detailed Mermaid ER diagram](prisma/database-schema.mmd) before backend
-implementation. No migrations or seed data have been created, and the models
-have not been applied to a database. Supabase continues to handle authentication;
-Prisma is for application data. Existing screens still use their mock data.
+implementation. The initial migration is committed under `prisma/migrations/`.
+Auth.js handles sessions; Prisma persists local accounts, businesses, memberships,
+invitations, and business preferences. Receipt, inventory, and procurement data
+remain demos, explicitly labeled in the application. No seed data is included.
 
 Add your connection string to the root `.env` when ready:
 
@@ -99,28 +104,49 @@ TypeScript checks, run `pnpm db:generate` first. Generated files live in
 `src/generated/prisma/` and are excluded from Git, lint, and the Docker context;
 the Docker build generates its own client.
 
-In a server-only feature service adapter, call `getPrisma()` from `@/lib/prisma`.
+In a server-only feature repository adapter, call `getPrisma()` from `@/lib/prisma`.
 It checks `DATABASE_URL` on first use and reuses one client across hot reloads.
 Importing the helper and building the application require no live database.
 Model-specific types and query methods become available as models are added.
 Keep feature/UI contracts independent of Prisma's database types.
 
-After the schema is reviewed, use `pnpm db:migrate --name <change>` against
+For subsequent schema changes, use `pnpm db:migrate --name <change>` against
 a development database and commit its migration. `pnpm db:deploy` applies
 committed migrations in production. Neither command runs during build or app
-startup. The existing application still uses its mock data.
+startup.
 
-## Supabase authentication
+## Authentication without SMTP
 
-Email/password signup, login, email confirmation, and sign-out use Next.js Server
-Functions in `src/features/auth/services/actions.ts`. Supabase sessions live in
-HTTP-only cookies. `src/proxy.ts` refreshes sessions, and the authenticated layout
-and protected Server Functions verify the user server-side. Production cookies
-require HTTPS. Google sign-in and password recovery are not implemented.
+Email/password signup, login and sign-out use Next.js Server Functions in
+`src/features/auth/ui/actions.ts`. NextAuth/Auth.js Credentials manages encrypted
+JWT session cookies; Prisma stores local `User` accounts. Passwords use Node
+scrypt with independent random salts (N=131072, r=8, p=1), and constant-time
+comparison. Signup creates no business and sends no email.
 
-Set `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in the root `.env`. Authentication
-does not use `SUPABASE_SECRET_KEY` or a service-role key. These settings are read
-at runtime, so the same Docker image can be deployed without baking in keys.
+Set a cryptographically random 32+ byte `AUTH_SECRET` in the ignored root
+`.env`, plus `AUTH_URL=http://localhost:3000` locally. Set `AUTH_URL` to the
+public HTTPS origin in production; keep `AUTH_SECRET` consistent across app
+instances. Restart `pnpm dev` after changing environment settings. Apply
+`pnpm db:deploy` before starting an environment with the new account model.
+Existing ignored Supabase keys were left untouched but are no longer used.
+
+The seven-day session uses HTTP-only cookies with secure cookies over HTTPS.
+`src/proxy.ts` refreshes sessions. Protected pages and Server Functions also
+resolve the trusted account from the session on the server. Invalid and
+deleted-account sessions cannot access protected business operations.
+Five failed logins temporarily lock an account for fifteen minutes. Atomic
+version checks preserve this bound under concurrent attempts. This password
+guessing protection is independent of email delivery; there is no email quota.
+
+Felix approved the narrow Auth.js protocol handler at
+`/api/auth/[...nextauth]` in `AUTHJS_MIGRATION_PRD.md`. App UI uses Server
+Functions and server `auth()`, without client session polling or business APIs.
+Only safe error categories are logged; passwords, tokens and raw driver errors
+remain server-side. Run `pnpm test:auth` for service, crypto, adapter and delivery
+regressions. Google sign-in, email ownership verification and password recovery
+are not implemented. These local accounts are separate from Supabase Auth;
+users must sign up locally after switching providers.
+
 Set `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in the same root
 environment file. Uploads use an unsigned preset from a server action; no
 Cloudinary API secret is required or exposed to the browser. Restrict the preset
@@ -132,29 +158,48 @@ deployments, add `GEMINI_API_KEY` to the app's runtime environment (or to the
 secrets. The key is read at runtime and does not need to be included in the
 Docker image or build arguments.
 
-In the Supabase dashboard:
+## Business onboarding and invitations
 
-1. Enable the Email provider and email/password signup. Keep **Confirm email**
-   enabled if accounts should require verification.
-2. Set **Authentication > URL Configuration > Site URL** to the application's
-   public origin (for example, `http://localhost:3000` in local development and
-   your HTTPS domain in production). Allow the corresponding confirmation URL.
-3. In **Email Templates > Confirm signup**, use this confirmation link:
+After signing in, an account without memberships can create a business or wait
+for an invitation. Creating a business also creates the user's owner membership
+in the same transaction. No business is automatically created during signup.
 
-   ```html
-   <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}">Konfirmasi email</a>
-   ```
+Owners invite staff by email in **Pengaturan > Anggota usaha**. Invitations are
+in-app only and can be issued before signup. The recipient signs in and opens
+**View Inbox** from onboarding or the header's Inbox icon, then chooses **Yes**
+to join as staff or **No** to decline. No code, secret link or invitation email
+is needed. Invites expire after seven days and owners can revoke them.
+Acceptance creates membership atomically.
 
-The confirmation link opens a page; the user clicks **Konfirmasi email** to
-submit the token to a Server Function. Opening or prefetching the page does not
-consume the token. The default Supabase confirmation template must be updated
-for this flow. If confirmation is disabled, successful signup logs in immediately.
-Name and business name are stored as user metadata, not as authorization roles
-or a merchant database record. Existing inventory/settings data remains mocked.
+The inbox is scoped to the account's normalized email. Email ownership is not
+verified by the current local signup flow; the inbox follows that account email.
+The pending badge refreshes on navigation and window focus, without realtime push.
+Business-free accounts have no sidebar or bottom business navigation; the inbox
+and business-creation page remain available. The right-side menu is removed.
 
-Run authentication regression tests with `pnpm test:auth`. They use a fake auth
-provider and do not create Supabase accounts or send emails. Live testing needs
-a test account and the dashboard configuration above.
+Business switching and the create-another-business link live in **Pengaturan**.
+Selection stays in an HTTP-only cookie and is rechecked against current membership.
+Account/business changes reset the relevant client cache. Business profile, alert
+preferences, members and invitations use PostgreSQL, with owner-only mutations.
+
+`src/features/business-management/` owns this capability: forms and pages in
+`ui/`, use cases such as `acceptInvitation` in `services/`, permission and
+invitation rules in `core/`, Prisma queries in `repository/`, and shapes in
+`types/`. Its public `server.ts` entry gives other features the active business.
+The auth and invoice-processing features use the same layers.
+
+Apply the committed database migration before using business features:
+
+```bash
+pnpm db:deploy
+pnpm test:business
+```
+
+Business tests use fakes and adapter/action mocks; they create no live
+accounts, businesses, invitations, or memberships. To verify the live flow, use
+two test accounts: create a business with the first, invite the second's email,
+then choose Yes in the second account's inbox. The second account should
+remain business-free until it accepts or deliberately creates a business.
 
 ## Docker deployment
 
@@ -189,9 +234,9 @@ docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the Supabase, Cloudinary, and Gemini runtime variables
-on the VPS before deployment. Google fonts are downloaded during the build, so
-the builder needs outbound network access.
+by the workflow. Provision the database, Auth.js, Cloudinary and Gemini runtime
+variables on the VPS before deployment. Google fonts are downloaded during the
+build, so the builder needs outbound network access.
 
 ## Contributing
 - Use pnpm only (no `package-lock.json`)

@@ -1,20 +1,27 @@
-# Inventory intelligence: ui/
+# Inventory intelligence: ui/ — building blocks for pages
 
-Delivery: receive input, invoke use cases, and present output.
+Components, queries and Server Functions. Whole pages live in `src/app/`; they import these.
 
-## Feature responsibilities
+## In this feature
 
-Inventory lists/details, restock-entry or correction forms, and forecast/status presentation. Display forecasts as inferred estimates and show insufficient-history states returned by services.
+Building blocks for /barang, /barang/[id] and the home-screen warning card.
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `queries.ts` | `getActiveBusinessItemMovements`, `getActiveBusinessItemDetail`, `getActiveBusinessSlowMovingWarnings` (pages import them via `../server.ts`; grace % and the alert switch come from the active business) |
+| `item-movement-list.tsx` | `<ItemMovementList />`: searchable item cards with badge and one-line explanation |
+| `slow-moving-warning-card.tsx` | `<SlowMovingWarningCard />`: slowing items with drop % and delay, or "Semua aman" |
+| `movement-explanation.tsx, purchase-history-list.tsx` | item page pieces |
+| `movement-badge.tsx` | Melambat / Normal / Belum cukup data |
+| `movement-format.ts` | display text only (units, days, per-day amounts) |
 
-- Use feature contracts and service entry points. Server-only wiring may import concrete repositories to inject into services. Client components must never import repositories, credentials, or server-only wiring.
-- No business calculations, raw Prisma queries, or direct external-provider calls. This project uses Next.js Server Functions; do not create internal API routes or Express controllers.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Components get their data as props.
+- `queries.ts` (server-only): reads → call services. Pages reach them through `../server.ts`.
+- `actions.ts` (`"use server"`): mutations. Steps: get user → validate form → call one service in `try/catch` → safe error message → `revalidatePath` / cookie / `redirect`.
+- May import: this feature's `services/` and `types/`; other features' `server.ts`; `@/components`, `@/lib`.
+- Client components may import pure `core/` functions **only** for instant on-screen calculations (approved option B exception).
+- Never: whole pages, `repository/`, Prisma, business rules.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

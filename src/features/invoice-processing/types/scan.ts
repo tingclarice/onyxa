@@ -8,6 +8,8 @@ export const SUPPORTED_RECEIPT_IMAGE_TYPES = [
   "image/heic",
   "image/heif",
 ] as const;
+export type ReceiptImageMimeType =
+  (typeof SUPPORTED_RECEIPT_IMAGE_TYPES)[number];
 
 export const ScanReceiptItemSchema = z.object({
   raw_name: z.string({ error: "Nama barang harus diisi." }).min(1, {
@@ -51,6 +53,21 @@ export const ScanReceiptSchema = z.object({
     .max(1, { error: "Nilai keyakinan tidak valid." }),
 });
 
+const ReviewedReceiptItemSchema = ScanReceiptItemSchema.extend({
+  qty: z
+    .number({ error: "Jumlah harus berupa angka." })
+    .positive({ error: "Jumlah harus lebih dari 0." }),
+});
+
+const ReviewedReceiptSchema = ScanReceiptSchema.extend({
+  date: z.iso.date({ error: "Tanggal nota belum benar." }),
+  items: z
+    .array(ReviewedReceiptItemSchema, {
+      error: "Daftar barang belum benar.",
+    })
+    .min(1, { error: "Tambahkan setidaknya satu barang." }),
+});
+
 export type ScanReceiptItem = z.infer<typeof ScanReceiptItemSchema>;
 export type ScanReceipt = z.infer<typeof ScanReceiptSchema>;
 
@@ -81,7 +98,7 @@ export type ScanReceiptErrorCode =
 
 export interface ReceiptImage {
   readonly bytes: Uint8Array;
-  readonly mimeType: string;
+  readonly mimeType: ReceiptImageMimeType;
 }
 
 export interface ReceiptImageSource {
@@ -116,4 +133,42 @@ export class ScanReceiptError extends Error {
     super(message);
     this.name = "ScanReceiptError";
   }
+}
+
+// ---- Saving a reviewed receipt ----
+
+/** What the review screen sends when the user presses "Simpan". */
+export const SaveReceiptInputSchema = z.object({
+  receipt: ReviewedReceiptSchema,
+  imageUrl: z.url().optional(),
+});
+export type SaveReceiptInput = z.infer<typeof SaveReceiptInputSchema>;
+
+export type SaveReceiptResult =
+  | { ok: true; receiptId: string; itemCount: number }
+  | { ok: false; message: string };
+
+/** The three units quantities are stored in, so purchases can be compared. */
+export type BaseUnit = "KG" | "LITER" | "PCS";
+
+/** One receipt line, ready to be stored. */
+export interface ReceiptLineToSave {
+  position: number;
+  rawName: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  confidence: number;
+  /** null when the unit cannot be converted to the item's base unit. */
+  baseQuantity: number | null;
+  baseUnit: BaseUnit | null;
+}
+
+/** A catalog item as the receipt-saving use case needs it. */
+export interface CatalogItem {
+  id: string;
+  name: string;
+  baseUnit: BaseUnit;
 }

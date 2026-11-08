@@ -1,20 +1,22 @@
-# Inventory intelligence: repository/
+# Inventory intelligence: repository/ — getting and storing data
 
-Data adapters: perform database/provider operations and map results to feature contracts.
+Talks to the outside world: the database (Prisma) and external services. Called by services.
 
-## Feature responsibilities
+## In this feature
 
-Owner-scoped item/restock queries and persistence adapters. Map database dates and quantities into the agreed contracts. Do not calculate EMA, choose movement statuses, or decide alert thresholds here.
+Reads item purchase history from SAVED receipts, scoped to one business. Only lines stored in the item's own base unit count for burn rate.
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `purchase-history-repository.ts` | `listItemPurchaseHistories`, `findItemPurchaseHistory` |
 
-- Implement interfaces from `types/`. Use shared technical clients where appropriate, with request-dependent setup supplied by server-only delivery wiring. Keep code that accesses server data server-only.
-- No business calculations, forecasting thresholds, navigation, or UI logic. Require and apply trusted owner/tenant scope for relevant operations; never trust ownership supplied by the browser.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Plain exported functions, one per query, named after what they do (`findMembership`, `markInvitationAccepted`).
+- Database functions take `db: DatabaseClient = getPrisma()` as the last parameter so they can run inside a transaction.
+- Always filter by the trusted scope (business ID, user ID, recipient email).
+- Map Prisma/provider records into `types/` shapes; never return raw records.
+- No business decisions (permissions, pricing, forecasting) — those are `core/`.
+- Mock data and fake providers live here, with the same signature the real version will have.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

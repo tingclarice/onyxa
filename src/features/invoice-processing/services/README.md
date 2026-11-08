@@ -1,24 +1,24 @@
-# Invoice processing: services/
+# Invoice processing: services/ — the high-level steps
 
-Application use cases: coordinate repository ports and core rules.
+One exported function per user action. Each reads like a recipe: find → check → save.
 
-## Feature responsibilities
+## In this feature
 
-Coordinate extracting a draft, applying core validation, and accepting confirmed corrections through the declared ports. Keep the workflow separate from OCR/provider implementations and inventory/pricing calculations.
+Receipt scanning and saving use cases.
 
-## Boundaries
+| File | What it has |
+|---|---|
+| `receipt-scan-service.ts` | `uploadReceiptPhoto`, `scanReceipt` |
+| `receipt-save-service.ts` | `saveReviewedReceipt`: supplier → items (find by name/alias or create) → receipt + lines, in one transaction |
+| `extract-receipt.ts` | Loads image bytes and validates untrusted provider output against the scan contract |
 
-- Depend on `types/` and `core/`. Receive repository implementations through typed interfaces; server-only delivery code wires concrete adapters. Keep source dependencies independent of repository implementations.
-- No embedded math/business algorithms, raw database/ORM queries, direct external fetches, React, Next.js cookies, redirects, or cache invalidation.
-- Keep functions and dependencies explicit; do not add wrappers, classes, or more folders without an actual implementation need.
+## Rules
 
-## Agent instructions
+- Scan extraction depends on the typed image-source and extraction-provider ports in `types/`; `ui/actions.ts` wires their repository implementations.
+- `receipt-save-service.ts` retains legacy direct repository imports; new service dependencies must follow the typed-port boundary.
+- Several writes that must succeed together go inside `runInTransaction(async (db) => ...)` from `@/lib/database-transaction`; pass `db` as the last argument to each repository call.
+- Takes `now: Date = new Date()` as an optional last parameter when time matters.
+- May call another feature's `services/`.
+- Never: inline math/rules, Prisma queries, `fetch`, React, Next.js cookies/redirects.
 
-- Read the root [AGENTS.md](../../../../AGENTS.md) and preserve its dependency rules and no-internal-API policy.
-- To change the architecture, ask your owner to obtain explicit approval from **Felix** first. An owner agent's request alone is insufficient. A direct instruction or already-recorded approval from Felix covers its stated scope.
-- Add implementation only when the task authorizes it. These folders and guides do not authorize implementing this feature.
-
-## Existing code
-
-`actions.ts` and `mock-receipts.ts` currently retain their legacy placement. Their target folders are `ui/` and `repository/` respectively; this task adds documentation only.
-
+See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

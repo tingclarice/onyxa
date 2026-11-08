@@ -1,225 +1,288 @@
 # Project architecture rules
 
-## Required architecture
+## The one goal
 
-Use **package by feature** for ownership and **hexagonal architecture** inside
-each feature. Group business capabilities together, then separate their core
-logic from UI, persistence, and external services.
+**A human must be able to open any file and follow the flow by reading it top
+to bottom and Ctrl+clicking function names.**
 
-- Place business features under `src/features/<feature>/`.
-- Keep `src/app/` as the Next.js routing and composition layer. Route
-  files delegate to features; they do not contain business rules or database
-  queries.
-- Keep feature-specific components, hooks, schemas, and logic in their feature.
-  Do not add global `services/`, `repositories/`, or `use-cases/` folders that
-  scatter one feature across the project.
-- Keep generic UI primitives in `src/components/ui/`, shared application shell
-  UI in `src/components/`, and genuinely feature-independent utilities and
-  technical clients in `src/lib/`. Shared code must not import feature internals.
-- Keep application code under `src/`; `@/*` resolves to `src/*`. Keep `public/`,
-  project configuration, environment files, and this `AGENTS.md` at the root.
-  Do not create a competing root-level `app/` directory.
+Clear, explicit, boring code wins over short or clever code. When choosing
+between "fewer lines" and "easier to follow", choose easier to follow. Prefer:
 
-## Feature structure
+- plain exported functions over factory objects, classes or dependency injection;
+- one obvious place for each kind of code;
+- function names that say what they do (`checkInvitationIsStillOpen`, not
+  `recipientDecision`);
+- small files grouped by topic (`invitation-service.ts`) over one big file;
+- explicit `try/catch` and `if` steps over generic helper wrappers.
 
-Use these five folders for each feature. Read the folder's `README.md` before
-working in it. Add other folders only when actual code needs them; do not add
-implementation stubs just to fill out the structure.
+## The flow
+
+Code is grouped **by feature** (package by feature), and inside each feature it
+is split into **layers that call each other in one direction**:
 
 ```text
-src/features/<feature>/
-  ui/                         # Delivery: React UI, Next.js server entry points
-    README.md
-  types/                      # Contracts: types, DTOs, validation schemas, ports
-    README.md
-  core/                       # Pure business rules and calculations
-    README.md
-  repository/                 # Data adapters: Prisma queries and external SDKs
-    README.md
-  services/                   # Use cases: coordinate repository ports and core
-    README.md
+   app/…/page.tsx          THE PAGE: loads data through feature queries and
+             │             arranges feature components. Open this file to see
+             │             everything a URL shows.
+             ▼
+            ui/            building blocks: components (get data as props),
+             │             queries.ts (reads), actions.ts (Server Functions).
+             │             Each query/action calls ONE service function.
+             ▼
+         services/         high-level functions, one per user action
+          │      │         ("createBusiness", "acceptInvitation", "scanReceipt").
+          │      │         Each one reads like a recipe: find → check → save.
+          ▼      ▼
+       core/   repository/
+  small helper   functions that get or store data: the database (Prisma) and
+  rules and      outside services (Cloudinary, OCR, password hashing).
+  calculations
+  (no database)
+
+  types/  shared shapes used by every layer: TypeScript types, zod schemas,
+          error classes. No logic.
 ```
 
-The three main packages are `invoice-processing`, `inventory-intelligence`, and
-`procurement-pricing`. Establish boundaries from actual behavior; a URL or
-database table does not automatically require its own feature.
+Example of one page, end to end:
+
+```text
+app/(authenticated)/pengaturan/page.tsx    PengaturanPage
+  → getActiveBusinessSettings()              ← business-management/server.ts (ui/queries.ts)
+      → services/business-service.ts         getBusinessSettings(...)
+  → <MemberList members={members} />         ← business-management/ui/member-list.tsx
+  → <InviteMemberForm businessId={...} />    ← business-management/ui/business-forms.tsx
+```
+
+Example of one form submit, end to end:
+
+```text
+ui/actions.ts             respondInvitationAction(form)
+  → services/invitation-service.ts   acceptInvitation(user, invitationId)
+      → repository/invitation-repository.ts   findInvitationForRecipient(...)
+      → core/invitation-rules.ts               checkInvitationIsStillOpen(...)
+      → repository/invitation-repository.ts   markInvitationAccepted(...)
+      → repository/membership-repository.ts   saveMembership(...)
+```
+
+### Who may import whom
+
+| Layer         | May import                                                      | Must NOT import                         |
+|---------------|-----------------------------------------------------------------|-----------------------------------------|
+| `app/` pages  | features' `server.ts` (data) and `ui/` components; shared `components/` and `lib/` | services, core, repository, Prisma |
+| `ui/`         | its own `services/`, `types/`; other features' `server.ts`; shared `components/` and `lib/` | `repository/`, Prisma |
+| `services/`   | its own `core/`, `repository/`, `types/`; other features' `services/`; `@/lib/database-transaction` | React, Next.js (cookies, redirect, revalidate) |
+| `core/`       | its own `types/`, other `core/` files of the same feature        | repository, services, ui, Prisma, React, Next.js, `fetch`, `process.env` |
+| `repository/` | its own `types/`, `@/lib/prisma`, `@/lib/database-transaction`, Prisma, provider SDKs | core, services, ui |
+| `types/`      | `zod` only                                                       | everything else                         |
+
+**One documented exception (approved by Felix, option B):** client UI may
+import pure functions from its own feature's `core/` for **instant on-screen
+calculations only**, for example recalculating a receipt total while the user
+types. Anything that saves or loads data still goes through a service. The
+same core function is then used by the service on the server, so the rule
+exists in exactly one place.
+
+## Folder layout
+
+```text
+src/
+  app/                  Next.js routes. Each page.tsx is a real page: it loads
+                        data and lays out feature components. No business
+                        rules or database queries here.
+  components/ui/        generic UI primitives (button, input, badge)
+  components/           shared app shell and layout pieces (navigation,
+                        providers, SettingsSection, StatusBadge)
+  lib/                  feature-independent helpers (formatRupiah, prisma client,
+                        runInTransaction). Must not import from features.
+  features/<feature>/
+    ui/                 components, queries.ts (reads), actions.ts (Server Functions).
+                        No whole pages: pages live in app/.
+    services/           <topic>-service.ts      → high-level use-case functions
+    core/               <topic>-rules.ts        → checks and calculations
+    repository/         <topic>-repository.ts   → database functions
+                        <provider>-*.ts          → outside services (Cloudinary, OCR…)
+    types/              <feature>.ts            → types, zod schemas, errors
+    server.ts           public server entry for app/ pages and other features' UI
+    testing/            (optional) test-only fakes, never imported by app code
+```
+
+Each folder has a `README.md`. Read it before working in that folder. Add
+folders only when real code needs them.
+
+The main business features are `invoice-processing`, `inventory-intelligence`
+and `procurement-pricing`. `auth` owns accounts and login. `business-management`
+owns business onboarding, membership, the active business and in-app
+invitations (see `INBOX_INVITATIONS_PRD.md`): signup is account-only; business
+creation and invitation answers (Yes/No from the email-scoped inbox) are
+separate use cases. No invitation codes, proof cookies or right-side drawer.
+
+## Rules per layer
+
+### app/ pages
+
+- `page.tsx` is the page. A reader opening it must see what the URL shows:
+  the title, the data it loads and the components in order.
+- Server pages are `async` Server Components: call queries from a feature's
+  `server.ts`, then pass the data to feature components as props.
+- Interactive screens (e.g. `/scan`) still own their title and layout in
+  `page.tsx` and render one named client component from the feature
+  (`<ReceiptScanner />`). When the whole screen is stateful, one named
+  component is fine (`<ReceiptReviewForm />`).
+- Never re-export a page from a feature (`export { X as default } from ...`).
+- A page may combine components from several features; that is how the home
+  screen grows (business, price alerts, stock, recent scans).
+- Route settings (`export const instant`, metadata) live next to the page.
+- No business rules, services, repositories or Prisma in `app/`. Show/hide
+  decisions use values the query already computed (e.g. `canManage`).
+
+### ui/
+
+- React components, UI hooks, form parsing and showing results. Components
+  receive their data as props; they do not fetch it themselves.
+- `queries.ts` (server-only) for reads used by Server Components;
+  `actions.ts` (file-level `"use server"`) for mutations.
+- A Server Function is a thin, readable sequence:
+  1. get the trusted user (`requireUser()` / `requireActiveBusiness()`);
+  2. validate the form with a zod schema from `types/`;
+  3. call **one** service function inside `try/catch`;
+  4. on error, turn it into a safe message (`toErrorResult(error)`);
+  5. do Next.js work: cookies, `revalidatePath`, `redirect` (outside the `try`).
+- No business rules and no repository imports. Formatting and UI state are fine.
+
+### services/
+
+- One exported async function per user action, with a name a non-programmer
+  understands. Write the steps in order so the function reads like a recipe.
+- Calls `repository/` functions directly (plain imports, no injection) and
+  `core/` functions for every rule or calculation.
+- If several writes must succeed or fail together, wrap them in
+  `runInTransaction(async (db) => { ... })` from `@/lib/database-transaction`
+  and pass `db` as the last argument to each repository function.
+- Takes `now: Date = new Date()` as an optional last parameter when time
+  matters, so tests can pass a fixed date.
+- No math or rule logic inline (put it in core), no Prisma queries, no `fetch`,
+  no React, no Next.js cookies/redirects.
+
+### core/
+
+- Small pure functions: data in → data out (or throw a typed error).
+- Naming: `checkX(...)` throws when the rule fails; `isX` / `hasX` / `canX`
+  return a boolean; `calculateX` / `buildX` / `chooseX` return new data.
+- Put magic numbers in named constants (`INVITATION_VALID_DAYS = 7`).
+- Time and other changing values are parameters. No database, `fetch`,
+  `process.env`, React or Next.js.
+
+### repository/
+
+- Plain exported functions, one per query, named after what they fetch or
+  change (`listOpenInvitationsForRecipient`, `markInvitationAccepted`).
+- Each database function takes `db: DatabaseClient = getPrisma()` as its last
+  parameter so services can run it inside a transaction.
+- Map Prisma/provider records into `types/` shapes before returning. Never
+  return raw Prisma or SDK objects.
+- Apply the trusted owner/tenant scope (business ID, user ID, recipient email)
+  in every query.
+- No business decisions (pricing, permissions, forecasting). Those are core.
+- Mock data and fake providers live here too, behind the same function
+  signature the real implementation will have.
+
+### types/
+
+- Types, zod input schemas, result shapes and error classes.
+- No logic, no React/Next.js/Prisma imports. Never expose secrets such as a
+  password hash in client-safe types.
+
+## Between features
+
+- A feature's **services** may call another feature's **services**.
+- A feature's **ui** may call another feature's public `server.ts`
+  (`auth/server.ts` for the logged-in user, `business-management/server.ts`
+  for the active business).
+- Never import another feature's `core/`, `repository/` or UI internals.
+  `types/` may be imported where a shared shape is needed.
+- Keep feature dependencies acyclic.
+
+## Next.js server communication: no internal API
+
+- **Do not create internal REST, GraphQL, RPC or Route Handler endpoints for
+  this application's own UI.** No `src/app/api/**/route.ts` for app data, no
+  `fetch("/api/...")`, no calls to this app's own origin.
+- Reads: Server Components call `ui/queries.ts`, which calls services.
+- Mutations: client components call Server Functions in `ui/actions.ts`.
+  Export only async functions from `"use server"` modules.
+- Do not use Server Actions as the default read transport; prefer URL search
+  parameters and Server Component rendering for filtering and pagination.
+- Every Server Function is a public network entry point: authenticate and
+  authorize on the server. A hidden button or protected page is not enough.
+- Derive user and business identity from the trusted session, never from form
+  fields. Services enforce permissions so no caller can bypass them.
+- Return small serializable results and safe error messages. Keep credentials,
+  raw database records and internal error details on the server.
+- Mark server-only modules with `import "server-only"`. Client components must
+  never import repositories, queries or credentials.
+- Route Handlers are only for genuine inbound external integrations
+  (webhooks, provider callbacks). Felix approved exactly one: the Auth.js
+  protocol handler at `src/app/api/auth/[...nextauth]/route.ts`.
+- Receipt uploads must validate file size/type on the server.
+- TanStack Query is optional client state, not a layer, and does not justify
+  internal endpoints.
+
+## Type safety
+
+- No TypeScript `any` in project code (`as any`, `any[]`, generic arguments,
+  aliases). Use concrete types, unions or `unknown` + validation.
+- Strict mode stays on. No type-check suppressions or lint-disable comments.
+
+## Tests
+
+- Test core rules directly with plain data.
+- Test services by mocking their repository modules with
+  `mock.module(...)` (`node --experimental-test-module-mocks`), so no real
+  database is needed.
+- Test UI actions for authentication, validation and safe errors.
+- Run the relevant pnpm scripts (`test:auth`, `test:business`, `lint`, `tsc`)
+  after code changes.
 
 ## Architecture change approval
 
 - Preserve this architecture when implementing or reviewing work.
-- If an agent or its owner wants to change the architecture, the agent must
-  ask its owner to obtain explicit approval from **Felix** before proceeding.
-  An owner agent's request alone is not approval from Felix.
-- This includes changing the feature-based organization, renaming or replacing
-  layers, changing layer responsibilities or dependency direction, and making
-  exceptions to the no-internal-API rule.
-- Keep the proposed change pending until Felix approves it. Continue independent
-  work that fits the existing architecture. Silence is not approval.
-- A direct instruction from Felix to change the architecture counts as approval
-  for that stated scope. If his approval is already recorded in the task context,
-  follow it without requesting the same approval again.
-- Routine implementation inside the agreed layers, and authorized refactoring
-  of legacy code into those layers, do not require a new architecture approval.
-
-## Dependencies and boundaries
-
-- `ui/` is the delivery layer: components, UI hooks, request parsing, and response
-  presentation. Keep UI state and formatting here, but no business decisions or
-  database queries. Next.js Server Functions replace API routes/controllers in
-  this project; do not introduce Express or internal Route Handlers.
-- `types/` defines contracts: TypeScript types, interfaces, DTOs, input schemas,
-  and repository ports. Keep it independent of the other feature layers, React,
-  Next.js, Prisma, and provider SDKs. Do not leak ORM/provider types into contracts.
-- Use `core/` consistently; do not create a second `domain/` folder. Core accepts
-  data, applies business rules, and returns data. It may depend on `types/`, but
-  never UI, services, repositories, frameworks, database drivers, or HTTP clients.
-  Pass the current date and other varying dependencies as inputs to keep it pure.
-- `repository/` implements the ports in `types/`. Keep Prisma queries, external
-  API/SDK calls, and persistence/provider-to-contract mapping here. Repositories
-  perform data access, not pricing, forecasting, or authorization policy decisions.
-  Apply the trusted owner/tenant scope in every relevant query; business-rule
-  separation is not permission to omit ownership filters.
-- `services/` orchestrates use cases: load through repository ports, call core
-  functions, and persist through ports when needed. It must not contain the math,
-  raw Prisma queries, HTTP calls, Next.js cookie handling, or React code.
-- Preserve hexagonal dependency direction: services receive typed repository
-  dependencies from `types/`, rather than importing concrete repository modules.
-  Runtime calls reach repositories; source dependencies of core/services stay
-  independent of adapters. No dependency-injection container is required.
-- Wire concrete repositories into services at the server-only delivery boundary,
-  for example in `ui/queries.ts` or a helper used by `ui/actions.ts`. Client UI
-  must never import repositories, server queries, server wiring, or credentials.
-  It may import Server Functions from a dedicated `"use server"` module.
-- Mark server entry points and modules containing server-only data access or
-  credentials with `import "server-only"`. Dedicated action modules use
-  `"use server"`; keep their helpers in separate server-only modules.
-- Keep Next.js redirects, cache invalidation, cookies, and transport error
-  mapping in delivery entry points, separate from core and services.
-- Import another feature only through an explicit public contract or
-  service entry point. Never import its private adapters or UI
-  internals. Keep feature dependencies acyclic; compose cross-feature workflows
-  through explicit use cases and ports when needed.
-- Keep client-safe exports separate from server-only exports. Do not create a
-  barrel that mixes UI/contracts with database clients or server composition.
-
-## Next.js server communication: no internal API
-
-- **Do not create internal REST, GraphQL, RPC, or Route Handler endpoints for
-  this application's own UI.** Do not add `src/app/api/**/route.ts`, Pages API
-  routes, or equivalent endpoints elsewhere to bypass this rule.
-- Do not call the application over HTTP from itself: no `fetch("/api/...")`,
-  Axios wrappers for internal endpoints, or server-to-server calls to this
-  application's own origin.
-- For reads, prefer Server Components calling feature server queries directly,
-  for example `ui/queries.ts`. Queries call services with their repository
-  dependencies wired at the server edge. Ordinary server-only functions do not
-  need the `"use server"` directive.
-- For client-triggered mutations, use Next.js Server Functions in feature
-  `ui/actions.ts` modules with a file-level `"use server"` directive. Export
-  only async Server Functions from those modules. Use React action mechanisms
-  and pending/error handling appropriate to the interaction.
-- Do not make Server Actions the default query transport. Prefer URL search
-  parameters and Server Component rendering for filtering and pagination.
-  If a read genuinely needs imperative client invocation, keep its Server
-  Function narrow and document the reason; do not introduce an internal API.
-- Server Functions remain thin adapters: validate untrusted input, resolve the
-  trusted session, invoke an authorized use case, map its result, and perform
-  any required Next.js cache invalidation or navigation.
-- Treat each Server Function as a reachable network entry point. Authenticate
-  and authorize protected operations on the server; a protected page or hidden
-  button is insufficient. Public operations need explicit public-access rules.
-- Derive actor/tenant identity from the trusted session. Enforce ownership and
-  permissions in application use cases so alternate callers cannot bypass them.
-  Validate input at the boundary and enforce business invariants in the core.
-- Return minimal React-serializable results and explicit expected-error data.
-  Keep credentials, raw database records, SDK objects, and internal error details
-  on the server.
-- External services may be called from repository adapters. Reserve Route
-  Handlers for genuine inbound external integrations, such as webhooks or
-  provider callbacks, when required by the task. Explain why that integration
-  requires HTTP; it must not become an internal UI API.
-- Use installed Next.js documentation for action invocation, caching, upload
-  limits, and other version-dependent behavior. Receipt uploads must validate
-  file size/type server-side and deliberately handle framework payload limits.
-- TanStack Query is optional client state machinery, not an architecture layer.
-  Its presence does not justify internal endpoints or duplicating server data
-  fetching and cache ownership.
-
-```text
-Read:     ui/ Server Component -> ui/ query -> services/ -> repository port
-Mutation: ui/ client/form -> ui/ Server Function -> services/ -> repository port
-Rules:    services/ -> core/ -> types/
-Data:     repository implementation -> database or external provider
-```
-
-The arrows above show runtime calls. Repository implementations satisfy ports
-declared in `types/`; core and services never import concrete adapters.
-
-## Type safety
-
-- Do not use TypeScript `any` in project-owned code, explicitly or implicitly.
-  This includes `as any`, `any[]`, generic arguments, and aliases hiding `any`.
-- Interfaces are allowed for every function, including callable interfaces and
-  input/output contracts. They are optional; preserve dependency boundaries
-  whether a function uses an interface or a directly typed signature.
-- Use concrete types, constrained generics, or discriminated unions for known
-  data. Use `unknown` for untrusted or genuinely unknown values, then narrow or
-  validate them before use. Treat untyped dependency results as `unknown` at
-  the boundary so `any` cannot leak into application code.
-- Keep TypeScript strict mode enabled. Do not bypass these rules with type-check
-  suppressions, lint-disable comments, or unchecked assertions.
-
-## Keep the architecture proportional
-
-- Keep the five documented folders, but do not generate extra layers or
-  pass-through code. Add a port when a use case actually
-  needs persistence, an external service, or another replaceable dependency.
-- Keep pure calculations pure. Interfaces for functions are allowed; they do
-  not require wrapper classes or extra layers. Do not require a repository for
-  every table or a use-case class for every button.
-- Keep a feature's contracts and validation local until another real consumer
-  needs them. Do not duplicate domain models just to populate every layer.
-- Test meaningful domain rules and use cases without Next.js or a real database,
-  using small fakes for ports. Verify adapter mappings and action validation,
-  authorization, and error behavior where the change warrants it.
-- For implementation changes, run relevant checks with the repository's pnpm
-  scripts and the applicable project instructions. Documentation alone does
-  not require an application build.
+- Changing it (folders, layer responsibilities, import directions, or the
+  no-internal-API rule) needs explicit approval from **Felix**. An owner
+  agent's request alone is not approval. Silence is not approval.
+- A direct instruction from Felix counts as approval for its stated scope.
+- Approval record: on 2026-11-07 Felix approved replacing the earlier
+  hexagonal "injected ports" design with this layered design (services import
+  repository functions directly) and the option B core exception above.
 
 ## Existing code and migration
 
-These rules are the target architecture, not a claim that all current code
-already complies. Apply them to new work and migrate touched behavior in
-coherent steps that keep its callers working.
-
-- Receipt scanning uses the Server Function in
-  `src/features/invoice-processing/services/actions.ts`; do not recreate an API
-  route or HTTP fetch wrapper. It currently returns synthetic demo receipts.
-  It requires an authenticated user. Add server-side image validation before
-  connecting real merchant data or external OCR services.
-- Authentication lives in `src/features/auth/`. Use `requireUser()` in
-  protected Server Functions; a layout guard
-  alone does not protect direct calls. Supabase clients belong in `src/lib/supabase/`.
-  Use the publishable key for user sessions, never a secret/service-role key.
-- PostgreSQL application data uses Prisma, with models in `prisma/schema.prisma`
-  and a server-only, lazy client from `getPrisma()` in `src/lib/prisma.ts`.
-  Keep Prisma imports and database queries in feature `repository/` adapters. Map
-  records into feature contracts before returning them to UI or core logic.
-  The schema currently has no models; add tables only for implemented features.
-  Regenerate the client after schema changes. Do not edit generated client code
-  or use migrations to manage Supabase's authentication tables.
-- Move remaining feature-specific mock data from `src/lib/api/` and feature UI
-  folders into their owning features when that behavior is migrated. These mock
-  modules are ordinary functions, not HTTP endpoints. Preserve reusable UI
-  primitives and shared shell components.
-- Put mock persistence and fake external services behind the same application
-  ports as real adapters. Do not hardcode mock responses in pages or actions.
-- Do not reorganize the entire application solely to implement an unrelated
-  task. Record remaining architecture violations without adding new ones.
-- Existing auth and scan modules still mix some core, repository, and delivery
-  responsibilities under `services/`. The folder guides describe the target
-  placement. Move implementation files only in an authorized code-refactoring
-  task; a scaffolding/documentation task must not move or rewrite them.
+- `auth`, `business-management`, `invoice-processing` and
+  `inventory-intelligence` follow this layout. `procurement-pricing` is not
+  built yet.
+- Receipt scanning still returns synthetic demo receipts from
+  `invoice-processing/repository/demo-receipt-reader.ts`. It requires a logged-in
+  user with an active business. Replace that file with a real OCR adapter that
+  keeps the same function signature.
+- Saving a reviewed receipt (`saveReviewedReceipt`) stores the supplier, the
+  receipt and its lines, and creates catalog items and aliases on the way.
+  Quantities are converted to the item's base unit (KG / LITER / PCS); a line
+  in a unit that does not fit the item is saved without a base quantity.
+- `inventory-intelligence` detects slowing items from SAVED receipts with an
+  EMA burn rate (see `core/burn-rate-rules.ts`). There is one label,
+  "Melambat", with the burn-rate drop % and the restock delay in days. The
+  grace % is the owner's `Business.slowMovingGracePercent` setting.
+- `src/lib/api/transactions.ts` (the `transaksi` page) is still mock data.
+  `src/lib/api/insights.ts` and `settings.ts` are unused mocks. The item page
+  has no price-history chart until `procurement-pricing` is built.
+- PostgreSQL data uses Prisma: models in `prisma/schema.prisma`, the lazy
+  server-only client from `getPrisma()` in `src/lib/prisma.ts`. Prisma imports
+  stay in `repository/`. Regenerate the client after schema changes and never
+  edit generated code. Add tables only for implemented features.
+- The PRD files (`AUTHJS_MIGRATION_PRD.md`, `BUSINESS_ACCESS_PRD.md`,
+  `INBOX_INVITATIONS_PRD.md`) describe product behavior that still applies.
+  Where they mention "ports", "adapters" or injected services, this file wins.
+- Do not reorganize unrelated code during a task. Note remaining violations
+  instead of adding new ones.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
