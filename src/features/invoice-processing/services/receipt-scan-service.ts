@@ -7,11 +7,8 @@ import {
   type ScanReceiptResult,
   type UploadReceiptImageResult,
 } from "../types/scan";
+import type { ReceiptImageUploader } from "../types/ports";
 import { getReceiptImageProblem } from "../core/receipt-image-rules";
-import {
-  CloudinaryUploadError,
-  uploadImageToCloudinary,
-} from "../repository/receipt-image-storage";
 import { extractReceiptFromImageUrl } from "./extract-receipt";
 
 /**
@@ -20,18 +17,11 @@ import { extractReceiptFromImageUrl } from "./extract-receipt";
  */
 export async function uploadReceiptPhoto(
   file: File,
+  imageUploader: ReceiptImageUploader,
 ): Promise<UploadReceiptImageResult> {
   const problem = getReceiptImageProblem(file);
   if (problem) return { ok: false, ...problem };
-
-  try {
-    const imageUrl = await uploadImageToCloudinary(file);
-    return { ok: true, imageUrl };
-  } catch (error) {
-    if (error instanceof CloudinaryUploadError)
-      return { ok: false, code: error.code, message: error.message };
-    throw error;
-  }
+  return imageUploader.upload(file);
 }
 
 /**

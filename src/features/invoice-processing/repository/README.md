@@ -13,6 +13,7 @@ Photo storage, receipt reading and receipt saving.
 | `gemini.ts` | Gemini extraction provider; returns untrusted structured output |
 | `demo-receipt-reader.ts` | DEMO: `readReceiptFromImage` returns sample receipts when no image is supplied |
 | `receipt-repository.ts` | `findOrCreateSupplier`, `findItemByNameKey` (name or alias), `createItem`, `saveItemAliasIfFree`, `createSavedReceipt` |
+| `receipt-save-adapter.ts` | Implements the receipt-save transaction port using `runInTransaction` and the persistence functions |
 
 ## Rules
 
@@ -22,5 +23,6 @@ Photo storage, receipt reading and receipt saving.
 - Map Prisma/provider records into `types/` shapes; never return raw records.
 - No business decisions (permissions, pricing, forecasting) — those are `core/`.
 - Mock data and fake providers live here, with the same signature the real version will have.
+- Services depend on ports in `types/`; only the delivery boundary wires concrete adapters into them.
 
 See the root [AGENTS.md](../../../../AGENTS.md) for the full flow. Changing the architecture needs Felix's approval.

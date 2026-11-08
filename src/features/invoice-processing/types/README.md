@@ -9,6 +9,7 @@ Scan and save shapes.
 | File | What it has |
 |---|---|
 | `scan.ts` | Scan draft schema/results, image source and extraction ports, upload result, stricter confirmed-save schema, `ReceiptLineToSave`, `CatalogItem`, safe error codes, size/type limits |
+| `ports.ts` | Image uploader/URL validator and receipt-save transaction/repository contracts |
 
 ## Rules
 
