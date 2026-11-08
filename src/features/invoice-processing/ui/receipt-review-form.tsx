@@ -49,7 +49,11 @@ function createEmptyItem(): ScanReceiptItem {
   };
 }
 
-export default function ReceiptReviewPage() {
+/**
+ * The /scan/review screen: loads the scanned receipt, lets the user correct
+ * it, and shows live checks (totals, low-confidence fields) from core rules.
+ */
+export function ReceiptReviewForm() {
   const scanMutation = useScanReceipt();
   const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);

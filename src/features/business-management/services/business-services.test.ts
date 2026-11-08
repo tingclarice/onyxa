@@ -195,3 +195,18 @@ test("racing Yes and No answers cannot both use the same invitation", async () =
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
   assert.equal(staffMemberships().length, 0);
 });
+
+test("settings tell owners they can manage, and hide open invitations from staff", async () => {
+  const { inviteMember, acceptInvitation, getBusinessSettings } = await services;
+  await inviteMember(owner, business.id, staffEmail, now);
+  await inviteMember(owner, business.id, "third@example.com", now);
+  await acceptInvitation(staff, firstInvitationId(), now);
+
+  const ownerView = await getBusinessSettings(owner, business.id, now);
+  assert.equal(ownerView.canManage, true);
+  assert.equal(ownerView.invitations.length, 1);
+
+  const staffView = await getBusinessSettings(staff, business.id, now);
+  assert.equal(staffView.canManage, false);
+  assert.deepEqual(staffView.invitations, []);
+});

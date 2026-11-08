@@ -21,8 +21,13 @@ Code is grouped **by feature** (package by feature), and inside each feature it
 is split into **layers that call each other in one direction**:
 
 ```text
-            ui/            shows the page, reads the form, calls ONE service function
-             │
+   app/…/page.tsx          THE PAGE: loads data through feature queries and
+             │             arranges feature components. Open this file to see
+             │             everything a URL shows.
+             ▼
+            ui/            building blocks: components (get data as props),
+             │             queries.ts (reads), actions.ts (Server Functions).
+             │             Each query/action calls ONE service function.
              ▼
          services/         high-level functions, one per user action
           │      │         ("createBusiness", "acceptInvitation", "scanReceipt").
@@ -38,7 +43,17 @@ is split into **layers that call each other in one direction**:
           error classes. No logic.
 ```
 
-Example of one request, end to end:
+Example of one page, end to end:
+
+```text
+app/(authenticated)/pengaturan/page.tsx    PengaturanPage
+  → getActiveBusinessSettings()              ← business-management/server.ts (ui/queries.ts)
+      → services/business-service.ts         getBusinessSettings(...)
+  → <MemberList members={members} />         ← business-management/ui/member-list.tsx
+  → <InviteMemberForm businessId={...} />    ← business-management/ui/business-forms.tsx
+```
+
+Example of one form submit, end to end:
 
 ```text
 ui/actions.ts             respondInvitationAction(form)
@@ -53,6 +68,7 @@ ui/actions.ts             respondInvitationAction(form)
 
 | Layer         | May import                                                      | Must NOT import                         |
 |---------------|-----------------------------------------------------------------|-----------------------------------------|
+| `app/` pages  | features' `server.ts` (data) and `ui/` components; shared `components/` and `lib/` | services, core, repository, Prisma |
 | `ui/`         | its own `services/`, `types/`; other features' `server.ts`; shared `components/` and `lib/` | `repository/`, Prisma |
 | `services/`   | its own `core/`, `repository/`, `types/`; other features' `services/`; `@/lib/database-transaction` | React, Next.js (cookies, redirect, revalidate) |
 | `core/`       | its own `types/`, other `core/` files of the same feature        | repository, services, ui, Prisma, React, Next.js, `fetch`, `process.env` |
@@ -70,20 +86,23 @@ exists in exactly one place.
 
 ```text
 src/
-  app/                  Next.js routes only. Each page renders a feature's ui/
-                        component; no business rules or database queries here.
+  app/                  Next.js routes. Each page.tsx is a real page: it loads
+                        data and lays out feature components. No business
+                        rules or database queries here.
   components/ui/        generic UI primitives (button, input, badge)
-  components/           shared app shell (navigation, providers)
+  components/           shared app shell and layout pieces (navigation,
+                        providers, SettingsSection, StatusBadge)
   lib/                  feature-independent helpers (formatRupiah, prisma client,
                         runInTransaction). Must not import from features.
   features/<feature>/
-    ui/                 pages/components, queries.ts (reads), actions.ts (Server Functions)
+    ui/                 components, queries.ts (reads), actions.ts (Server Functions).
+                        No whole pages: pages live in app/.
     services/           <topic>-service.ts      → high-level use-case functions
     core/               <topic>-rules.ts        → checks and calculations
     repository/         <topic>-repository.ts   → database functions
                         <provider>-*.ts          → outside services (Cloudinary, OCR…)
     types/              <feature>.ts            → types, zod schemas, errors
-    server.ts           public server entry other features' UI may use
+    server.ts           public server entry for app/ pages and other features' UI
     testing/            (optional) test-only fakes, never imported by app code
 ```
 
@@ -99,9 +118,27 @@ separate use cases. No invitation codes, proof cookies or right-side drawer.
 
 ## Rules per layer
 
+### app/ pages
+
+- `page.tsx` is the page. A reader opening it must see what the URL shows:
+  the title, the data it loads and the components in order.
+- Server pages are `async` Server Components: call queries from a feature's
+  `server.ts`, then pass the data to feature components as props.
+- Interactive screens (e.g. `/scan`) still own their title and layout in
+  `page.tsx` and render one named client component from the feature
+  (`<ReceiptScanner />`). When the whole screen is stateful, one named
+  component is fine (`<ReceiptReviewForm />`).
+- Never re-export a page from a feature (`export { X as default } from ...`).
+- A page may combine components from several features; that is how the home
+  screen grows (business, price alerts, stock, recent scans).
+- Route settings (`export const instant`, metadata) live next to the page.
+- No business rules, services, repositories or Prisma in `app/`. Show/hide
+  decisions use values the query already computed (e.g. `canManage`).
+
 ### ui/
 
-- React components, pages, UI hooks, form parsing and showing results.
+- React components, UI hooks, form parsing and showing results. Components
+  receive their data as props; they do not fetch it themselves.
 - `queries.ts` (server-only) for reads used by Server Components;
   `actions.ts` (file-level `"use server"`) for mutations.
 - A Server Function is a thin, readable sequence:

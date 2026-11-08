@@ -66,7 +66,10 @@ export interface Workspace {
 export interface BusinessSettings {
   membership: Membership;
   members: Membership[];
+  /** Open invitations. Always empty for staff. */
   invitations: Invitation[];
+  /** True for owners: may edit the profile, alerts and invitations. */
+  canManage: boolean;
 }
 export interface ActionResult {
   status: "success" | "error";

@@ -50,12 +50,14 @@ export async function getBusinessSettings(
   const membership = await getMembershipInBusiness(actor, businessId);
   const members = await listActiveMembersOfBusiness(businessId);
 
-  let invitations = canManageBusiness(membership)
+  const canManage = canManageBusiness(membership);
+
+  let invitations = canManage
     ? await listUnansweredInvitationsOfBusiness(businessId)
     : [];
   invitations = keepOpenInvitations(invitations, now);
 
-  return { membership, members, invitations };
+  return { membership, members, invitations, canManage };
 }
 
 /** Owner only: change the business name and type. */

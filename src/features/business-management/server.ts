@@ -1,3 +1,7 @@
-// Public server entry for authorized business context; adapters remain private.
+// Public server entry: what other features and app/ pages may use.
 import "server-only";
-export { getBusinessWorkspace, requireActiveBusiness } from "./ui/queries";
+export {
+  getActiveBusinessSettings,
+  getBusinessWorkspace,
+  requireActiveBusiness,
+} from "./ui/queries";

@@ -19,7 +19,7 @@ Gemini Flash API, OCR API
 ## Project structure
 ```text
 src/
-  app/          Next.js routes only; each page renders a feature's UI
+  app/          Next.js routes; each page.tsx loads data and lays out feature components
   components/   Shared UI primitives and application shell
   features/     One folder per feature: ui, services, core, repository, types
   lib/          Feature-independent helpers (formatting, Prisma client, transactions)
@@ -30,12 +30,14 @@ prisma/         Application database schema and Mermaid review diagram
 Inside each feature the flow goes one way, so it is easy to follow:
 
 ```text
-ui/  →  services/  →  core/        (rules and calculations)
-                   →  repository/  (database and outside services)
+app/…/page.tsx  →  feature ui/ (components, queries, actions)
+                →  services/  →  core/        (rules and calculations)
+                              →  repository/  (database and outside services)
 types/  shared shapes used by all of them
 ```
 
-The UI calls one service function per action; the service calls core rules and
+Open a route's `page.tsx` to see everything that page shows. The UI calls one
+service function per action; the service calls core rules and
 repository functions directly. See [AGENTS.md](AGENTS.md) for the full rules.
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered

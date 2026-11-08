@@ -29,7 +29,8 @@ export async function requireActiveBusiness() {
   return { actor: workspace.actor, membership: workspace.active };
 }
 
-export async function getSettings() {
+/** Settings of the active business: team, open invitations, and whether the user may manage it. */
+export async function getActiveBusinessSettings() {
   const { actor, membership } = await requireActiveBusiness();
   return getBusinessSettings(actor, membership.businessId);
 }

@@ -79,7 +79,11 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
   }
 }
 
-export default function ScanPage() {
+/**
+ * The interactive part of /scan: pick photos, upload and scan them one by
+ * one, then open each result for review. The page title lives in app/scan/page.tsx.
+ */
+export function ReceiptScanner() {
   const scanMutation = useScanReceipt();
   const [queue, setQueue] = useState<ScanQueueItem[]>([]);
   const queueRef = useRef(queue);
@@ -204,21 +208,7 @@ export default function ScanPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 md:py-10">
-      <header className="mb-6 space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-          Scan nota belanja
-        </h1>
-        <p className="text-base text-muted-foreground">
-          Foto nota atau pilih gambar dari HP. Kamu bisa menambahkan beberapa
-          nota sekaligus.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Foto disimpan di Cloudinary. Data nota yang muncul masih contoh
-          sampai pemrosesan OCR terhubung.
-        </p>
-      </header>
-
+    <>
       <section
         aria-labelledby="scan-upload-title"
         className="space-y-5 rounded-2xl border bg-card p-4 sm:p-6"
@@ -399,6 +389,6 @@ export default function ScanPage() {
           </ul>
         )}
       </section>
-    </div>
+    </>
   );
 }
