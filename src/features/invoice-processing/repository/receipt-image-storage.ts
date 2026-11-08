@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import type { UploadReceiptImageResult } from "../types/scan";
 
 // Stores receipt photos in Cloudinary. Settings come from the server
 // environment: CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.
@@ -98,6 +99,24 @@ export async function uploadImageToCloudinary(file: File): Promise<string> {
   }
 
   return result.data.secure_url;
+}
+
+export async function uploadReceiptImage(
+  file: File,
+): Promise<UploadReceiptImageResult> {
+  try {
+    return { ok: true, imageUrl: await uploadImageToCloudinary(file) };
+  } catch (error) {
+    if (error instanceof CloudinaryUploadError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    throw error;
+  }
 }
 
 /** True only for image addresses in OUR Cloudinary account (never trust a URL from the browser). */

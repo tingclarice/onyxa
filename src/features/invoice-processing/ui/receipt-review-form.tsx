@@ -7,6 +7,7 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ImageUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import {
   sumLineTotals,
 } from "../core/receipt-review-rules";
 import {
+  ScanReceiptError,
   ScanReceiptSchema,
   ScanReceiptResultSchema,
   type ScanReceipt,
@@ -55,6 +57,7 @@ function createEmptyItem(): ScanReceiptItem {
  * it, and shows live checks (totals, low-confidence fields) from core rules.
  */
 export function ReceiptReviewForm() {
+  const router = useRouter();
   const scanMutation = useScanReceipt();
   const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);
@@ -166,22 +169,6 @@ export function ReceiptReviewForm() {
     });
   }
 
-  function changeMatchedItem(index: number) {
-    const item = items[index];
-    if (!item) return;
-
-    const nextItemName = window.prompt(
-      "Masukkan nama barang yang cocok.",
-      item.matched_item ?? item.raw_name,
-    );
-    if (nextItemName === null) return;
-
-    updateItem(index, {
-      ...item,
-      matched_item: nextItemName.trim() || null,
-    });
-  }
-
   async function saveReceipt(reviewed: ScanReceipt) {
     // A photo picked on this screen is only a local preview (blob:), not a stored image.
     const storedImageUrl = previewUrl?.startsWith("https://") ? previewUrl : undefined;
@@ -196,6 +183,7 @@ export function ReceiptReviewForm() {
     reset(getValues());
     setIsSaved(true);
     toast.success(`Struk tersimpan. ${result.itemCount} barang diperbarui.`);
+    router.push("/scan");
   }
 
   if (receiptLoadError) {
@@ -217,7 +205,9 @@ export function ReceiptReviewForm() {
         {scanMutation.isError ? (
           <>
             <p role="alert" className="text-base text-destructive">
-              Struk belum bisa dibuka. Coba lagi, ya.
+              {scanMutation.error instanceof ScanReceiptError
+                ? scanMutation.error.message
+                : "Struk belum bisa dibuka. Coba lagi, ya."}
             </p>
             <Button type="button" onClick={retryScan}>
               Coba lagi
@@ -416,7 +406,6 @@ export function ReceiptReviewForm() {
                       onChange={(updatedItem) =>
                         updateItem(index, updatedItem)
                       }
-                      onChangeMatchedItem={() => changeMatchedItem(index)}
                       errors={{
                         raw_name: itemErrors?.raw_name?.message,
                         qty: itemErrors?.qty?.message,

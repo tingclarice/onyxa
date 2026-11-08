@@ -70,9 +70,7 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
             </div>
           </header>
           <main>
-            <BusinessWorkspace
-              businessReady={Boolean(workspace.active)}
-            >
+            <BusinessWorkspace businessReady={Boolean(workspace.active)}>
               <>
                 {workspace.active && <DemoNotice />}
                 {children}

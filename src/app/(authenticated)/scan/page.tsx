@@ -13,8 +13,8 @@ export default function ScanPage() {
           nota sekaligus.
         </p>
         <p className="text-sm text-muted-foreground">
-          Foto disimpan di Cloudinary. Data nota yang muncul masih contoh
-          sampai pemrosesan OCR terhubung.
+          Foto disimpan di Cloudinary, lalu Gemini menyiapkan data awal untuk
+          dicek dan diperbaiki.
         </p>
       </header>
 

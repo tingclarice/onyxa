@@ -1,13 +1,15 @@
 import {
-  runInTransaction,
-  type DatabaseClient,
-} from "@/lib/database-transaction";
-import {
+  ScanReceiptError,
   SaveReceiptInputSchema,
   type CatalogItem,
   type ReceiptLineToSave,
   type ScanReceiptItem,
 } from "../types/scan";
+import type {
+  ReceiptImageUrlValidator,
+  ReceiptSaveRepository,
+  ReceiptSaveTransaction,
+} from "../types/ports";
 import {
   chooseItemName,
   convertToBaseUnit,
@@ -15,14 +17,6 @@ import {
   quantityInItemUnit,
   shouldSaveAlias,
 } from "../core/receipt-line-rules";
-import {
-  createItem,
-  createSavedReceipt,
-  findItemByNameKey,
-  findOrCreateSupplier,
-  saveItemAliasIfFree,
-} from "../repository/receipt-repository";
-import { isOurCloudinaryImageUrl } from "../repository/receipt-image-storage";
 
 /** Who is saving, and for which business (from the trusted session). */
 export interface ReceiptSaver {
@@ -39,49 +33,59 @@ export interface ReceiptSaver {
 export async function saveReviewedReceipt(
   saver: ReceiptSaver,
   input: unknown,
+  dependencies: {
+    readonly repository: ReceiptSaveRepository;
+    readonly imageUrlValidator: ReceiptImageUrlValidator;
+  },
   now: Date = new Date(),
 ): Promise<{ receiptId: string; itemCount: number }> {
   // 1. Validate what the browser sent.
   const { receipt, imageUrl } = SaveReceiptInputSchema.parse(input);
-  if (imageUrl && !isOurCloudinaryImageUrl(imageUrl))
-    throw new Error("Alamat foto Cloudinary tidak valid.");
-
-  return runInTransaction(async (db) => {
-    // 2. The supplier.
-    const supplierName = receipt.supplier_name.trim();
-    const supplierId = await findOrCreateSupplier(
-      saver.businessId,
-      supplierName,
-      normalizeNameKey(supplierName),
-      db,
+  if (imageUrl && !dependencies.imageUrlValidator.isValid(imageUrl)) {
+    throw new ScanReceiptError(
+      "Alamat foto Cloudinary tidak valid.",
+      "cloudinary_image_invalid",
     );
+  }
 
-    // 3. Each line → a catalog item and a quantity in the item's unit.
-    const lines: (ReceiptLineToSave & { itemId: string })[] = [];
-    const itemIds = new Set<string>();
-    for (const [index, line] of receipt.items.entries()) {
-      const item = await findOrCreateItemForLine(saver.businessId, line, db);
-      const baseQuantity = quantityInItemUnit(line.qty, line.unit, item.baseUnit);
-      itemIds.add(item.id);
-      lines.push({
-        position: index + 1,
-        rawName: line.raw_name,
-        itemName: item.name,
-        itemId: item.id,
-        quantity: line.qty,
-        unit: line.unit,
-        unitPrice: line.unit_price,
-        lineTotal: line.line_total,
-        confidence: line.confidence,
-        baseQuantity,
-        baseUnit: baseQuantity === null ? null : item.baseUnit,
-      });
-    }
+  return dependencies.repository.withBusinessTransaction(
+    saver.businessId,
+    async (transaction) => {
+      // 2. The supplier.
+      const supplierName = receipt.supplier_name.trim();
+      const supplierId = await transaction.findOrCreateSupplier(
+        supplierName,
+        normalizeNameKey(supplierName),
+      );
 
-    // 4. The receipt itself.
-    const receiptId = await createSavedReceipt(
-      {
-        businessId: saver.businessId,
+      // 3. Each line → a catalog item and a quantity in the item's unit.
+      const lines: (ReceiptLineToSave & { itemId: string })[] = [];
+      const itemIds = new Set<string>();
+      for (const [index, line] of receipt.items.entries()) {
+        const item = await findOrCreateItemForLine(line, transaction);
+        const baseQuantity = quantityInItemUnit(
+          line.qty,
+          line.unit,
+          item.baseUnit,
+        );
+        itemIds.add(item.id);
+        lines.push({
+          position: index + 1,
+          rawName: line.raw_name,
+          itemName: item.name,
+          itemId: item.id,
+          quantity: line.qty,
+          unit: line.unit,
+          unitPrice: line.unit_price,
+          lineTotal: line.line_total,
+          confidence: line.confidence,
+          baseQuantity,
+          baseUnit: baseQuantity === null ? null : item.baseUnit,
+        });
+      }
+
+      // 4. The receipt itself.
+      const receiptId = await transaction.createSavedReceipt({
         createdByMemberId: saver.memberId,
         supplierId,
         supplierName,
@@ -91,12 +95,11 @@ export async function saveReviewedReceipt(
         imageUrl: imageUrl ?? null,
         confirmedAt: now,
         lines,
-      },
-      db,
-    );
+      });
 
-    return { receiptId, itemCount: itemIds.size };
-  });
+      return { receiptId, itemCount: itemIds.size };
+    },
+  );
 }
 
 /**
@@ -106,27 +109,24 @@ export async function saveReviewedReceipt(
  * alias, so the next receipt with that name matches automatically.
  */
 async function findOrCreateItemForLine(
-  businessId: string,
   line: ScanReceiptItem,
-  db: DatabaseClient,
+  transaction: ReceiptSaveTransaction,
 ): Promise<CatalogItem> {
   const itemName = chooseItemName(line);
   const itemKey = normalizeNameKey(itemName);
 
-  let item = await findItemByNameKey(businessId, itemKey, db);
+  let item = await transaction.findItemByNameKey(itemKey);
   if (!item) {
     const { baseUnit } = convertToBaseUnit(line.qty, line.unit);
-    item = await createItem(businessId, itemName, itemKey, baseUnit, db);
+    item = await transaction.createItem(itemName, itemKey, baseUnit);
   }
 
   if (shouldSaveAlias(line.raw_name, item.name)) {
     const rawName = line.raw_name.trim();
-    await saveItemAliasIfFree(
-      businessId,
+    await transaction.saveItemAliasIfFree(
       item.id,
       rawName,
       normalizeNameKey(rawName),
-      db,
     );
   }
 

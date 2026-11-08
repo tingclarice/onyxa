@@ -1,92 +1,162 @@
 import assert from "node:assert/strict";
-import { beforeEach, mock, test } from "node:test";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
-
-let uploads = 0;
-let reads = 0;
-
-function repositoryFile(name: string) {
-  return pathToFileURL(
-    resolve(`src/features/invoice-processing/repository/${name}.ts`),
-  ).href;
-}
-class CloudinaryUploadError extends Error {
-  constructor(
-    message: string,
-    readonly code: "cloudinary_not_configured" | "cloudinary_upload_failed",
-  ) {
-    super(message);
-  }
-}
-mock.module(repositoryFile("receipt-image-storage"), {
-  namedExports: {
-    CloudinaryUploadError,
-    async uploadImageToCloudinary() {
-      uploads++;
-      return "https://res.cloudinary.com/demo/image/upload/receipt.jpg";
-    },
-    isOurCloudinaryImageUrl: (url: string) =>
-      url.startsWith("https://res.cloudinary.com/demo/"),
-  },
-});
-mock.module(repositoryFile("demo-receipt-reader"), {
-  namedExports: {
-    async readReceiptFromImage() {
-      reads++;
-      return {
-        supplier_name: "Pasar",
-        date: "2026-11-05",
-        items: [
-          {
-            raw_name: "Telur",
-            qty: 1,
-            unit: "kg",
-            unit_price: 1,
-            line_total: 1,
-            confidence: 1,
-            matched_item: null,
-          },
-        ],
-        total: 1,
-        overall_confidence: 1,
-      };
-    },
-  },
-});
-const service = import("./receipt-scan-service");
-beforeEach(() => {
-  uploads = 0;
-  reads = 0;
-});
+import { test } from "node:test";
+import { uploadReceiptPhoto, scanReceipt } from "./receipt-scan-service";
+import {
+  SaveReceiptInputSchema,
+  ScanReceiptSchema,
+} from "../types/scan";
 
 test("an invalid photo is rejected on the server before uploading", async () => {
-  const { uploadReceiptPhoto } = await service;
+  let uploads = 0;
   const result = await uploadReceiptPhoto(
     new File(["x"], "a.pdf", { type: "application/pdf" }),
+    {
+      async upload() {
+        uploads++;
+        return {
+          ok: true,
+          imageUrl: "https://res.cloudinary.com/demo/image/upload/receipt.jpg",
+        };
+      },
+    },
   );
   assert.equal(result.ok, false);
   assert.equal(uploads, 0);
 });
 
 test("a valid photo is uploaded and its address returned", async () => {
-  const { uploadReceiptPhoto } = await service;
+  let uploads = 0;
   const result = await uploadReceiptPhoto(
     new File(["x"], "a.jpg", { type: "image/jpeg" }),
+    {
+      async upload() {
+        uploads++;
+        return {
+          ok: true,
+          imageUrl: "https://res.cloudinary.com/demo/image/upload/receipt.jpg",
+        };
+      },
+    },
   );
   assert.deepEqual(result, {
     ok: true,
     imageUrl: "https://res.cloudinary.com/demo/image/upload/receipt.jpg",
   });
+  assert.equal(uploads, 1);
 });
 
-test("scanning refuses image addresses outside our Cloudinary account", async () => {
-  const { scanReceipt } = await service;
-  await assert.rejects(scanReceipt("https://evil.example.com/a.jpg"));
-  assert.equal(reads, 0);
-  const result = await scanReceipt(
-    "https://res.cloudinary.com/demo/image/upload/receipt.jpg",
+test("scanning uses the image source and extractor for uploaded receipts", async () => {
+  const imageUrl =
+    "https://res.cloudinary.com/demo/image/upload/receipt.jpg";
+  const receipt = {
+    supplier_name: "Pasar",
+    date: "2026-11-05",
+    items: [
+      {
+        raw_name: "Telur",
+        qty: 1,
+        unit: "kg",
+        unit_price: 1,
+        line_total: 1,
+        confidence: 1,
+        matched_item: null,
+      },
+    ],
+    total: 1,
+    overall_confidence: 1,
+  };
+  let extracted = 0;
+  let demoReads = 0;
+  const result = await scanReceipt(imageUrl, {
+    readDemoReceipt: async () => {
+      demoReads++;
+      return receipt;
+    },
+    imageSource: {
+      async load(requestedUrl) {
+        assert.equal(requestedUrl, imageUrl);
+        return { bytes: new Uint8Array([1]), mimeType: "image/jpeg" };
+      },
+    },
+    extractor: {
+      async extract(image) {
+        assert.deepEqual(image, {
+          bytes: new Uint8Array([1]),
+          mimeType: "image/jpeg",
+        });
+        extracted++;
+        return receipt;
+      },
+    },
+  });
+
+  assert.deepEqual(result, { receipt, imageUrl });
+  assert.equal(extracted, 1);
+  assert.equal(demoReads, 0);
+});
+
+test("scanning without an image uses the demo reader", async () => {
+  const receipt = {
+    supplier_name: "Pasar",
+    date: "2026-11-05",
+    items: [
+      {
+        raw_name: "Telur",
+        qty: 1,
+        unit: "kg",
+        unit_price: 1,
+        line_total: 1,
+        confidence: 1,
+        matched_item: null,
+      },
+    ],
+    total: 1,
+    overall_confidence: 1,
+  };
+  let demoReads = 0;
+  const result = await scanReceipt(undefined, {
+    readDemoReceipt: async () => {
+      demoReads++;
+      return receipt;
+    },
+    imageSource: {
+      async load() {
+        throw new Error("No image should be fetched.");
+      },
+    },
+    extractor: {
+      async extract() {
+        throw new Error("Demo receipt should not be extracted.");
+      },
+    },
+  });
+
+  assert.deepEqual(result, { receipt });
+  assert.equal(demoReads, 1);
+});
+
+test("an incomplete extraction draft is reviewable but cannot be saved", () => {
+  const draft = {
+    supplier_name: "Tidak terbaca",
+    date: "",
+    items: [
+      {
+        raw_name: "Tidak terbaca",
+        qty: 0,
+        unit: "Tidak diketahui",
+        unit_price: 0,
+        line_total: 0,
+        confidence: 0,
+        matched_item: null,
+      },
+    ],
+    total: 0,
+    overall_confidence: 0,
+  };
+
+  assert.equal(ScanReceiptSchema.safeParse(draft).success, true);
+  assert.equal(
+    SaveReceiptInputSchema.safeParse({ receipt: draft }).success,
+    false,
   );
-  assert.equal(result.receipt.supplier_name, "Pasar");
-  assert.equal(reads, 1);
 });

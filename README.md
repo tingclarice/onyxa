@@ -2,19 +2,19 @@
 
 Scan-first purchasing and expense tracker for Indonesian small businesses (UMKM).
 
-Staff photograph a supplier receipt. The current prototype uploads the image to
-Cloudinary and returns demo receipt data for the editable review flow. OCR and
-Gemini extraction are not yet connected.
+Staff photograph a supplier receipt. The app uploads the image to Cloudinary,
+uses Gemini to extract a draft, and opens it in an editable review flow. Opening
+the review screen without an image still loads demo receipt data.
 
 ## Features
-- **Receipt scanner**: Cloudinary photo upload, editable demo receipt review, and saving reviewed receipts (supplier, items, quantities) to PostgreSQL; OCR + Gemini integration is pending
+- **Receipt scanner**: Cloudinary photo upload, Gemini receipt extraction, editable review, and saving reviewed receipts (supplier, items, quantities) to PostgreSQL
 - **Price change alerts**: flags when a supplier raises the unit price of an item
 - **Slow-moving detector** (`inventory-intelligence`): learns each item's burn rate (EMA of quantity ÷ days until the next purchase) from saved receipts and marks it **Melambat** when restocking is later than expected plus the owner's grace % (Pengaturan, default 20%). Shows the burn-rate drop % and the restock delay on /barang and on the home-screen warning card ("Semua aman" when nothing is slowing). Run `pnpm test:inventory`.
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack
 Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, NextAuth/Auth.js,
-Gemini Flash API, OCR API
+Google Gen AI SDK
 
 ## Project structure
 ```text
@@ -36,9 +36,9 @@ app/…/page.tsx  →  feature ui/ (components, queries, actions)
 types/  shared shapes used by all of them
 ```
 
-Open a route's `page.tsx` to see everything that page shows. The UI calls one
-service function per action; the service calls core rules and
-repository functions directly. See [AGENTS.md](AGENTS.md) for the full rules.
+Open a route's `page.tsx` to see the feature component that renders the page.
+Services orchestrate core rules and typed repository ports; server-side delivery
+code wires concrete adapters. See [AGENTS.md](AGENTS.md) for the full rules.
 The `@/*` import alias resolves to `src/*`. Configuration and environment files
 remain at the repository root. Use Next.js Server Functions for client-triggered
 mutations and server-only queries for reads; do not add internal API endpoints.
@@ -63,6 +63,14 @@ Keep local environment files at the repository root and never commit secrets.
 The committed `.env.example` contains placeholder values only.
 Cloudinary uploads require an authenticated user and accept JPEG, PNG, WebP,
 HEIC, or HEIF images up to 8 MB.
+
+Create a Gemini API key in
+[Google AI Studio](https://aistudio.google.com/apikey) and set it as
+`GEMINI_API_KEY` in the root `.env`. The key is read only by server-side code;
+do not rename it to a `NEXT_PUBLIC_` variable. Image uploads are read back from
+the configured Cloudinary cloud and sent to Gemini for draft extraction. Review
+the extracted values before saving; confidence is a review heuristic, not a
+probability. Receipts are saved only after a user reviews and confirms them.
 
 ## Prisma and PostgreSQL
 
@@ -140,9 +148,15 @@ are not implemented. These local accounts are separate from Supabase Auth;
 users must sign up locally after switching providers.
 
 Set `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in the same root
-environment file. Uploads use an unsigned preset from a Server Function; restrict
-the preset to images and a dedicated folder. Sensitive production receipts
-still need signed uploads and deliberate retention/access controls.
+environment file. Uploads use an unsigned preset from a server action; no
+Cloudinary API secret is required or exposed to the browser. Restrict the preset
+to image uploads and a dedicated folder. For sensitive production receipts,
+add a signed-upload flow and explicit retention/access controls.
+Set the server-only `GEMINI_API_KEY` in the same local `.env` file. For CloudPanel
+deployments, add `GEMINI_API_KEY` to the app's runtime environment (or to the
+`.env` file used by Docker Compose); the deployment workflow does not transfer
+secrets. The key is read at runtime and does not need to be included in the
+Docker image or build arguments.
 
 ## Business onboarding and invitations
 
@@ -220,9 +234,9 @@ docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
 ```
 
 The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the database, Auth.js and Cloudinary runtime variables on the
-VPS before deployment. Google fonts are downloaded during the build, so the
-builder needs outbound network access.
+by the workflow. Provision the database, Auth.js, Cloudinary and Gemini runtime
+variables on the VPS before deployment. Google fonts are downloaded during the
+build, so the builder needs outbound network access.
 
 ## Contributing
 - Use pnpm only (no `package-lock.json`)

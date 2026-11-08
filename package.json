@@ -11,6 +11,7 @@
     "test:business": "node --experimental-test-module-mocks --import tsx --test src/features/business-management/core/*.test.ts src/features/business-management/services/*.test.ts src/features/business-management/repository/*.test.ts src/features/business-management/ui/*.test.ts src/lib/database-transaction.test.ts",
     "test:invoice": "node --experimental-test-module-mocks --import tsx --test src/features/invoice-processing/core/*.test.ts src/features/invoice-processing/services/*.test.ts",
     "test:inventory": "node --experimental-test-module-mocks --import tsx --test src/features/inventory-intelligence/core/*.test.ts src/features/inventory-intelligence/services/*.test.ts",
+    "test:invoice-processing": "node --experimental-test-module-mocks --import tsx --test src/features/invoice-processing/services/extract-receipt.test.ts",
     "test:db": "prisma generate && node --conditions=react-server --import tsx --test src/lib/prisma.test.ts",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
@@ -20,6 +21,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@google/genai": "^3.0.0",
+    "@google/genai": "^3.0.0",
     "@hookform/resolvers": "^7.0.3",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
