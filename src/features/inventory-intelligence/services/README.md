@@ -4,9 +4,11 @@ One exported function per user action. Each reads like a recipe: find → check 
 
 ## In this feature
 
-Obtain normalized history by calling repository functions, invoke core forecasting, and coordinate permitted item/restock operations. Derive user scope at the server boundary and preserve it throughout the use case.
+Movement use cases for a business.
 
-Not built yet. Add files here only when the feature is implemented.
+| File | What it has |
+|---|---|
+| `movement-service.ts` | `getItemMovements` (slowing first), `getSlowingItems`, `getItemMovementDetail`; "today" is counted in WIB |
 
 ## Rules
 

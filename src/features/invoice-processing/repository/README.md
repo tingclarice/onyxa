@@ -4,12 +4,13 @@ Talks to the outside world: the database (Prisma) and external services. Called 
 
 ## In this feature
 
-Photo storage and receipt reading.
+Photo storage, receipt reading and receipt saving.
 
 | File | What it has |
 |---|---|
 | `receipt-image-storage.ts` | Cloudinary: `uploadImageToCloudinary`, `isOurCloudinaryImageUrl` |
 | `demo-receipt-reader.ts` | DEMO: `readReceiptFromImage` returns sample receipts. Replace with real OCR, same signature. |
+| `receipt-repository.ts` | `findOrCreateSupplier`, `findItemByNameKey` (name or alias), `createItem`, `saveItemAliasIfFree`, `createSavedReceipt` |
 
 ## Rules
 

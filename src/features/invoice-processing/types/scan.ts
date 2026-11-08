@@ -84,3 +84,41 @@ export class ScanReceiptError extends Error {
     this.name = "ScanReceiptError";
   }
 }
+
+// ---- Saving a reviewed receipt ----
+
+/** What the review screen sends when the user presses "Simpan". */
+export const SaveReceiptInputSchema = z.object({
+  receipt: ScanReceiptSchema,
+  imageUrl: z.url().optional(),
+});
+export type SaveReceiptInput = z.infer<typeof SaveReceiptInputSchema>;
+
+export type SaveReceiptResult =
+  | { ok: true; receiptId: string; itemCount: number }
+  | { ok: false; message: string };
+
+/** The three units quantities are stored in, so purchases can be compared. */
+export type BaseUnit = "KG" | "LITER" | "PCS";
+
+/** One receipt line, ready to be stored. */
+export interface ReceiptLineToSave {
+  position: number;
+  rawName: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  confidence: number;
+  /** null when the unit cannot be converted to the item's base unit. */
+  baseQuantity: number | null;
+  baseUnit: BaseUnit | null;
+}
+
+/** A catalog item as the receipt-saving use case needs it. */
+export interface CatalogItem {
+  id: string;
+  name: string;
+  baseUnit: BaseUnit;
+}

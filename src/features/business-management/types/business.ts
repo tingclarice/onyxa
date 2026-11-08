@@ -17,6 +17,12 @@ export const alertPreferencesSchema = z.object({
   priceIncreaseThresholdPercent: z.number().min(1).max(100),
   priceIncreaseAlertsEnabled: z.boolean(),
   slowMovingAlertsEnabled: z.boolean(),
+  /** Extra time (as % of the expected run-out time) before an item counts as slowing. */
+  slowMovingGracePercent: z
+    .number({ error: "Toleransi harus berupa angka." })
+    .int("Toleransi harus bilangan bulat.")
+    .min(0, "Toleransi minimal 0%.")
+    .max(300, "Toleransi maksimal 300%."),
 });
 export type BusinessProfileInput = z.infer<typeof businessProfileSchema>;
 export type AlertPreferences = z.infer<typeof alertPreferencesSchema>;

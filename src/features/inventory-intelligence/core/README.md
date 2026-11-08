@@ -4,9 +4,11 @@ Pure helper functions called by services: data in → data out, or throw a typed
 
 ## In this feature
 
-Pure restock aggregation, burn-rate calculations, EMA, forecast dates, historical variability, and movement classification. Receive history, parameters, and the evaluation date as inputs; never read a database or the system clock here.
+Burn-rate rules. All numbers are named constants at the top of the file.
 
-Not built yet. Add files here only when the feature is implemented.
+| File | What it has |
+|---|---|
+| `burn-rate-rules.ts` | `calculateBurnRates` (qty ÷ days to next purchase), `calculateEma` (`EMA_SMOOTHING` 0.4), `calculateItemMovement` (needs `MIN_PURCHASES` 3; Melambat when late by more than grace % of the expected days, min. `MIN_GRACE_DAYS` 1), `calculateDropPercent`, `compareByUrgency` |
 
 ## Rules
 

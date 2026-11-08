@@ -112,6 +112,7 @@ export function installInMemoryDatabase() {
           priceIncreaseThresholdPercent: 5,
           priceIncreaseAlertsEnabled: true,
           slowMovingAlertsEnabled: true,
+          slowMovingGracePercent: 20,
         };
         database.businesses.push(business);
         database.members.push({

@@ -12,6 +12,7 @@ export const businessColumns = {
   priceIncreaseThresholdPercent: true,
   priceIncreaseAlertsEnabled: true,
   slowMovingAlertsEnabled: true,
+  slowMovingGracePercent: true,
 } satisfies Prisma.BusinessSelect;
 
 export const membershipColumns = {

@@ -6,6 +6,8 @@ import {
 } from "@/features/business-management/server";
 import { ActiveBusinessHeader } from "@/features/business-management/ui/active-business-header";
 import { TeamSummaryCard } from "@/features/business-management/ui/team-summary-card";
+import { getActiveBusinessSlowMovingWarnings } from "@/features/inventory-intelligence/server";
+import { SlowMovingWarningCard } from "@/features/inventory-intelligence/ui/slow-moving-warning-card";
 
 // The layout shows onboarding instead of this page until a business is selected.
 export const instant = false;
@@ -16,10 +18,13 @@ export default async function BerandaPage() {
   if (!active) return null;
 
   const { members, invitations, canManage } = await getActiveBusinessSettings();
+  const warnings = await getActiveBusinessSlowMovingWarnings();
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-8">
       <ActiveBusinessHeader membership={active} />
+
+      <SlowMovingWarningCard warnings={warnings} />
 
       <section className="grid items-start gap-6 lg:grid-cols-2">
         <TeamSummaryCard
@@ -28,16 +33,14 @@ export default async function BerandaPage() {
           canManage={canManage}
         />
 
-        {/* Placeholder until purchases are saved per business. */}
         <div className="space-y-4 rounded-2xl bg-muted/50 p-6">
-          <h2 className="text-lg font-semibold">Catatan usaha</h2>
+          <h2 className="text-lg font-semibold">Catat belanja</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Pencatatan transaksi belum terhubung ke usaha Anda. Halaman scan,
-            barang, dan transaksi saat ini menyediakan contoh untuk mencoba
-            alurnya.
+            Scan nota belanja lalu simpan. Barang dan peringatan melambat
+            dihitung dari nota yang sudah disimpan.
           </p>
           <Button asChild variant="outline">
-            <Link href="/scan">Coba alur scan</Link>
+            <Link href="/scan">Scan nota</Link>
           </Button>
         </div>
       </section>

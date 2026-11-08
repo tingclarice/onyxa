@@ -10,6 +10,7 @@ Receipt rules, used by services and (for instant feedback) by the browser.
 |---|---|
 | `receipt-image-rules.ts` | `getReceiptImageProblem` — type and 8 MB size check |
 | `receipt-review-rules.ts` | `LOW_CONFIDENCE_THRESHOLD` (0.8), `isLowConfidence`, `sumLineTotals`, `hasTotalMismatch`, `countFieldsNeedingReview` |
+| `receipt-line-rules.ts` | `convertToBaseUnit` (g→kg, ml→liter, other units→pcs), `quantityInItemUnit`, `chooseItemName`, `shouldSaveAlias`, `normalizeNameKey` |
 
 ## Rules
 

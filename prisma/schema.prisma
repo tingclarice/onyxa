@@ -58,6 +58,8 @@ model Business {
   priceIncreaseThresholdPercent Decimal      @default(5) @db.Decimal(5, 2)
   priceIncreaseAlertsEnabled    Boolean      @default(true)
   slowMovingAlertsEnabled       Boolean      @default(true)
+  // Melambat is shown only when a restock is late by more than this % of the expected time.
+  slowMovingGracePercent        Int          @default(20)
   createdAt                     DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt                     DateTime     @updatedAt @db.Timestamptz(3)
 

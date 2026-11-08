@@ -186,6 +186,7 @@ export async function updateAlertsAction(
       priceIncreaseThresholdPercent: Number(fields.priceIncreaseThresholdPercent),
       priceIncreaseAlertsEnabled: fields.priceIncreaseAlertsEnabled === "on",
       slowMovingAlertsEnabled: fields.slowMovingAlertsEnabled === "on",
+      slowMovingGracePercent: Number(fields.slowMovingGracePercent),
     });
     await updateAlertPreferences(actor, businessId, input);
   } catch (error) {

@@ -16,6 +16,7 @@ import { ReceiptItemRow } from "./review/receipt-item-row";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { useScanReceipt } from "./use-scan-receipt";
+import { saveReceiptAction } from "./actions";
 import {
   countFieldsNeedingReview,
   hasTotalMismatch,
@@ -181,10 +182,20 @@ export function ReceiptReviewForm() {
     });
   }
 
-  function saveReceipt() {
+  async function saveReceipt(reviewed: ScanReceipt) {
+    // A photo picked on this screen is only a local preview (blob:), not a stored image.
+    const storedImageUrl = previewUrl?.startsWith("https://") ? previewUrl : undefined;
+    const result = await saveReceiptAction({
+      receipt: reviewed,
+      imageUrl: storedImageUrl,
+    });
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
     reset(getValues());
     setIsSaved(true);
-    toast.success("Struk berhasil disimpan.");
+    toast.success(`Struk tersimpan. ${result.itemCount} barang diperbarui.`);
   }
 
   if (receiptLoadError) {
@@ -446,13 +457,15 @@ export function ReceiptReviewForm() {
             <Button
               type="submit"
               className="w-full sm:ml-auto sm:w-auto sm:min-w-40"
-              disabled={isSubmitting}
+              disabled={isSubmitting || (isSaved && !isDirty)}
             >
               {isSubmitting ? (
                 <>
                   <LoaderCircle aria-hidden="true" className="animate-spin" />
                   Menyimpan...
                 </>
+              ) : isSaved && !isDirty ? (
+                "Tersimpan"
               ) : (
                 "Simpan"
               )}

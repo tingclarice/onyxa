@@ -256,15 +256,24 @@ separate use cases. No invitation codes, proof cookies or right-side drawer.
 
 ## Existing code and migration
 
-- `auth`, `business-management` and `invoice-processing` follow this layout.
+- `auth`, `business-management`, `invoice-processing` and
+  `inventory-intelligence` follow this layout. `procurement-pricing` is not
+  built yet.
 - Receipt scanning still returns synthetic demo receipts from
   `invoice-processing/repository/demo-receipt-reader.ts`. It requires a logged-in
   user with an active business. Replace that file with a real OCR adapter that
   keeps the same function signature.
-- `src/lib/api/` still holds mock data for the items (`barang`) and
-  transactions (`transaksi`) pages, which do not yet go through a feature.
-  Move them into `inventory-intelligence` / `procurement-pricing`
-  (repository → service → ui query) when those features are built.
+- Saving a reviewed receipt (`saveReviewedReceipt`) stores the supplier, the
+  receipt and its lines, and creates catalog items and aliases on the way.
+  Quantities are converted to the item's base unit (KG / LITER / PCS); a line
+  in a unit that does not fit the item is saved without a base quantity.
+- `inventory-intelligence` detects slowing items from SAVED receipts with an
+  EMA burn rate (see `core/burn-rate-rules.ts`). There is one label,
+  "Melambat", with the burn-rate drop % and the restock delay in days. The
+  grace % is the owner's `Business.slowMovingGracePercent` setting.
+- `src/lib/api/transactions.ts` (the `transaksi` page) is still mock data.
+  `src/lib/api/insights.ts` and `settings.ts` are unused mocks. The item page
+  has no price-history chart until `procurement-pricing` is built.
 - PostgreSQL data uses Prisma: models in `prisma/schema.prisma`, the lazy
   server-only client from `getPrisma()` in `src/lib/prisma.ts`. Prisma imports
   stay in `repository/`. Regenerate the client after schema changes and never

@@ -14,6 +14,7 @@ export const business: Business = {
   priceIncreaseThresholdPercent: 5,
   priceIncreaseAlertsEnabled: true,
   slowMovingAlertsEnabled: true,
+  slowMovingGracePercent: 20,
 };
 
 export const ownerMembership: Membership = {

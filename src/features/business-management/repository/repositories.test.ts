@@ -12,6 +12,7 @@ const businessRow = {
   priceIncreaseThresholdPercent: { toNumber: () => 5 },
   priceIncreaseAlertsEnabled: true,
   slowMovingAlertsEnabled: true,
+  slowMovingGracePercent: 20,
 };
 const memberRow = {
   id: "member",

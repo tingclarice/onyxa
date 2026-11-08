@@ -4,11 +4,16 @@ Components, queries and Server Functions. Whole pages live in `src/app/`; they i
 
 ## In this feature
 
-Inventory lists/details, restock-entry or correction forms, and forecast/status presentation. Display forecasts as inferred estimates and show insufficient-history states returned by services.
+Building blocks for /barang, /barang/[id] and the home-screen warning card.
 
-Not built yet. Add files here only when the feature is implemented.
-
-Not built yet. Add files here only when the feature is implemented.
+| File | What it has |
+|---|---|
+| `queries.ts` | `getActiveBusinessItemMovements`, `getActiveBusinessItemDetail`, `getActiveBusinessSlowMovingWarnings` (pages import them via `../server.ts`; grace % and the alert switch come from the active business) |
+| `item-movement-list.tsx` | `<ItemMovementList />`: searchable item cards with badge and one-line explanation |
+| `slow-moving-warning-card.tsx` | `<SlowMovingWarningCard />`: slowing items with drop % and delay, or "Semua aman" |
+| `movement-explanation.tsx, purchase-history-list.tsx` | item page pieces |
+| `movement-badge.tsx` | Melambat / Normal / Belum cukup data |
+| `movement-format.ts` | display text only (units, days, per-day amounts) |
 
 ## Rules
 

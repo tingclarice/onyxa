@@ -7,9 +7,9 @@ Cloudinary and returns demo receipt data for the editable review flow. OCR and
 Gemini extraction are not yet connected.
 
 ## Features
-- **Receipt scanner**: Cloudinary photo upload and editable demo receipt review; OCR + Gemini integration is pending
+- **Receipt scanner**: Cloudinary photo upload, editable demo receipt review, and saving reviewed receipts (supplier, items, quantities) to PostgreSQL; OCR + Gemini integration is pending
 - **Price change alerts**: flags when a supplier raises the unit price of an item
-- **Slow-moving detector**: flags items that haven't been repurchased in an unusually long time
+- **Slow-moving detector** (`inventory-intelligence`): learns each item's burn rate (EMA of quantity ÷ days until the next purchase) from saved receipts and marks it **Melambat** when restocking is later than expected plus the owner's grace % (Pengaturan, default 20%). Shows the burn-rate drop % and the restock delay on /barang and on the home-screen warning card ("Semua aman" when nothing is slowing). Run `pnpm test:inventory`.
 - **Expense categories**: raw materials (COGS), operating costs (OPEX), and assets (CapEx)
 
 ## Tech stack

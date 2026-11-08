@@ -8,10 +8,10 @@ Building blocks for app/(authenticated)/scan and scan/review. User edits are aut
 
 | File | What it has |
 |---|---|
-| `actions.ts` | `uploadReceiptImageAction`, `scanReceiptAction` (need a user with an active business) |
+| `actions.ts` | `uploadReceiptImageAction`, `scanReceiptAction`, `saveReceiptAction` (all need a user with an active business) |
 | `use-scan-receipt.ts` | client hook: check photo → upload → scan |
 | `receipt-scanner.tsx` | `<ReceiptScanner />`: photo picker and scan queue (title lives in the page) |
-| `receipt-review-form.tsx` | `<ReceiptReviewForm />`: edit a scanned receipt with live checks from `core/receipt-review-rules` |
+| `receipt-review-form.tsx` | `<ReceiptReviewForm />`: edit a scanned receipt with live checks from `core/receipt-review-rules`; Simpan calls `saveReceiptAction` |
 | `review/` | receipt review fields and rows |
 
 ## Rules

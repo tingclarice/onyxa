@@ -4,9 +4,11 @@ Types, zod schemas, result shapes and error classes used by every layer.
 
 ## In this feature
 
-Normalized restock facts, item/base-unit contracts, forecast results, movement statuses, and inventory-history shapes. Do not depend on OCR confidence, images, provider JSON, or Prisma types.
+Inventory shapes.
 
-Not built yet. Add files here only when the feature is implemented.
+| File | What it has |
+|---|---|
+| `inventory.ts` | `ItemPurchaseHistory`, `MovementStatus` (`not_enough_data` / `normal` / `slowing`), `ItemMovement`, `ItemMovementDetail`, `SlowMovingWarnings` |
 
 ## Rules
 

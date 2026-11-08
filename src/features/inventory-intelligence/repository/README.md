@@ -4,9 +4,11 @@ Talks to the outside world: the database (Prisma) and external services. Called 
 
 ## In this feature
 
-Owner-scoped item/restock queries and persistence adapters. Map database dates and quantities into the agreed contracts. Do not calculate EMA, choose movement statuses, or decide alert thresholds here.
+Reads item purchase history from SAVED receipts, scoped to one business. Only lines stored in the item's own base unit count for burn rate.
 
-Not built yet. Add files here only when the feature is implemented.
+| File | What it has |
+|---|---|
+| `purchase-history-repository.ts` | `listItemPurchaseHistories`, `findItemPurchaseHistory` |
 
 ## Rules
 

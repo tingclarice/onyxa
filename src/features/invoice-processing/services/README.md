@@ -4,11 +4,12 @@ One exported function per user action. Each reads like a recipe: find → check 
 
 ## In this feature
 
-Receipt scanning use cases.
+Receipt scanning and saving use cases.
 
 | File | What it has |
 |---|---|
 | `receipt-scan-service.ts` | `uploadReceiptPhoto`, `scanReceipt` |
+| `receipt-save-service.ts` | `saveReviewedReceipt`: supplier → items (find by name/alias or create) → receipt + lines, in one transaction |
 
 ## Rules
 

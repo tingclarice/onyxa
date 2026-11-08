@@ -153,7 +153,28 @@ export function AlertPreferencesForm({
             name="slowMovingAlertsEnabled"
             defaultChecked={business.slowMovingAlertsEnabled}
           />
-          Peringatan barang lama tidak dibeli
+          Peringatan barang melambat
+        </label>
+        <label
+          className="block space-y-2 text-sm font-medium"
+          htmlFor="slow-moving-grace"
+        >
+          <span>Toleransi keterlambatan restock (%)</span>
+          <Input
+            id="slow-moving-grace"
+            name="slowMovingGracePercent"
+            type="number"
+            required
+            min={0}
+            max={300}
+            step="1"
+            defaultValue={business.slowMovingGracePercent}
+          />
+          <span className="block text-xs font-normal leading-5 text-muted-foreground">
+            Barang ditandai melambat jika belum dibeli lagi melewati perkiraan
+            habis ditambah persen ini. Contoh: biasanya habis 10 hari dan
+            toleransi 20% → ditandai setelah lebih dari 12 hari.
+          </span>
         </label>
       </fieldset>
       <ActionMessage result={result} />

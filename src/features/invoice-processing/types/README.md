@@ -4,11 +4,11 @@ Types, zod schemas, result shapes and error classes used by every layer.
 
 ## In this feature
 
-Scan shapes.
+Scan and save shapes.
 
 | File | What it has |
 |---|---|
-| `scan.ts` | `ScanReceiptSchema`, `ScanReceiptResult`, upload result, `ScanReceiptError`, size/type limits |
+| `scan.ts` | `ScanReceiptSchema`, `ScanReceiptResult`, upload result, `SaveReceiptInputSchema`, `SaveReceiptResult`, `ReceiptLineToSave`, `CatalogItem`, `ScanReceiptError`, size/type limits |
 
 ## Rules
 
