@@ -7,11 +7,13 @@ import { getActiveBusinessItemDetail } from "@/features/inventory-intelligence/s
 import { MovementExplanation } from "@/features/inventory-intelligence/ui/movement-explanation";
 import { PurchaseHistoryList } from "@/features/inventory-intelligence/ui/purchase-history-list";
 import { unitLabel } from "@/features/inventory-intelligence/ui/movement-format";
+import { getActiveBusinessItemPriceDetail } from "@/features/procurement-pricing/server";
+import { ItemPriceAnalysis } from "@/features/procurement-pricing/ui/item-price-analysis";
 
 // Reads the active business from the session, so it renders on the server per request.
 export const instant = false;
 
-/** /barang/[id] — one item: is it slowing down, and its purchase history. */
+/** /barang/[id] — one item: is it slowing down, its price variance (PPV), and its purchase history. */
 export default async function ItemDetailPage({
   params,
 }: {
@@ -21,7 +23,10 @@ export default async function ItemDetailPage({
   const itemId = z.uuid().safeParse(id);
   if (!itemId.success) notFound();
 
-  const item = await getActiveBusinessItemDetail(itemId.data);
+  const [item, priceDetail] = await Promise.all([
+    getActiveBusinessItemDetail(itemId.data),
+    getActiveBusinessItemPriceDetail(itemId.data),
+  ]);
   if (!item) notFound();
   const last = item.lastPurchase;
 
@@ -47,6 +52,7 @@ export default async function ItemDetailPage({
         </div>
       </header>
 
+      {priceDetail && <ItemPriceAnalysis detail={priceDetail} />}
       <MovementExplanation item={item} />
       <PurchaseHistoryList purchases={item.purchases} baseUnit={item.baseUnit} />
     </div>

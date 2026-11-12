@@ -68,7 +68,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.SUPABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -99,7 +99,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 
 const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || 'file:./dev.db'
+  url: process.env.SUPABASE_URL || 'file:./dev.db'
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -112,7 +112,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
 
 const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.SUPABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -125,7 +125,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -175,7 +175,7 @@ Driver adapters use the underlying driver's pool settings, which differ from v6 
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   // Pool configuration
   max: 10,                    // Maximum connections
   idleTimeoutMillis: 30000,   // Close idle connections after 30s
@@ -187,7 +187,7 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   connectionTimeoutMillis: 5000,  // v6 used 5 second timeout
 })
 ```
@@ -198,7 +198,7 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   ssl: {
     rejectUnauthorized: false  // Accept self-signed certs
   }
@@ -209,7 +209,7 @@ const adapter = new PrismaPg({
 
 ```typescript
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   ssl: {
     ca: fs.readFileSync('/path/to/ca-cert.pem'),
     rejectUnauthorized: true
@@ -226,7 +226,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient({
   datasources: {
-    db: { url: process.env.DATABASE_URL }
+    db: { url: process.env.SUPABASE_URL }
   }
 })
 ```
@@ -238,7 +238,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.SUPABASE_URL
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -256,7 +256,7 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!
+  connectionString: process.env.SUPABASE_URL!
 })
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter })

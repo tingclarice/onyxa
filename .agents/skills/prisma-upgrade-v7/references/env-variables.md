@@ -28,7 +28,7 @@ import { defineConfig, env } from 'prisma/config'
 
 export default defineConfig({
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -43,7 +43,7 @@ import { defineConfig, env } from 'prisma/config'
 
 export default defineConfig({
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -79,7 +79,7 @@ import { defineConfig, env } from 'prisma/config'
 
 export default defineConfig({
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -98,7 +98,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!
+  connectionString: process.env.SUPABASE_URL!
 })
 
 const prisma = new PrismaClient({ adapter })
@@ -110,7 +110,7 @@ const prisma = new PrismaClient({ adapter })
 import { config } from 'dotenv'
 config()
 
-// Now process.env.DATABASE_URL is available
+// Now process.env.SUPABASE_URL is available
 ```
 
 ## Removed Environment Variables
@@ -140,7 +140,7 @@ The `env()` function from `prisma/config` provides type safety:
 import { env } from 'prisma/config'
 
 // Type-safe environment variable access
-const url = env('DATABASE_URL')  // string
+const url = env('SUPABASE_URL')  // string
 ```
 
 Note: This only works within `prisma.config.ts`, not in your application code.
@@ -152,7 +152,7 @@ Ensure environment variables are set in your CI environment:
 ```yaml
 # GitHub Actions
 env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
 
 steps:
   - run: npx prisma migrate deploy

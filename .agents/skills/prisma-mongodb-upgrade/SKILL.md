@@ -61,7 +61,7 @@ Note: this section will be updated when Prisma 8 adds a MongoDB transaction meth
 
 - Pin the Prisma packages to the latest 6.x line and keep taking 6.x patch releases.
 - Track Prisma release notes and security advisories for the 6.x line.
-- Keep the classic v6 MongoDB setup: `url = env("DATABASE_URL")` in the schema, `db push`
+- Keep the classic v6 MongoDB setup: `url = env("SUPABASE_URL")` in the schema, `db push`
   workflow, no SQL driver adapters (see [`prisma-orm-setup`](../prisma-orm-setup/references/v6-mongodb.md) for the v6 MongoDB shape).
 - Re-evaluate when Prisma 8's MongoDB support leaves Early Access, or when the blockers are resolved.
 

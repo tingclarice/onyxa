@@ -33,7 +33,7 @@ import { defineConfig, env } from 'prisma/config'
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -43,7 +43,7 @@ export default defineConfig({
 In `.env`:
 
 ```env
-DATABASE_URL="mysql://user:password@localhost:3306/mydb"
+SUPABASE_URL="mysql://user:password@localhost:3306/mydb"
 ```
 
 ### Connection String Format
@@ -94,7 +94,7 @@ If you need the MariaDB driver's text protocol instead of the default binary `ex
 import { PrismaClient } from '../generated/client'
 import { PrismaMariaDb } from '@prisma/adapter-mariadb'
 
-const adapter = new PrismaMariaDb(process.env.DATABASE_URL!, {
+const adapter = new PrismaMariaDb(process.env.SUPABASE_URL!, {
   useTextProtocol: true,
 })
 

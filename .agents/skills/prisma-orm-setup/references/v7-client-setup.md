@@ -39,7 +39,7 @@ import 'dotenv/config'
 import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const adapter = new PrismaPg({ connectionString: process.env.SUPABASE_URL })
 const prisma = new PrismaClient({ adapter })
 ```
 

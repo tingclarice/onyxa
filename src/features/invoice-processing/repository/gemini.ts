@@ -86,6 +86,9 @@ async function requestGemini(
       responseMimeType: "application/json",
       responseJsonSchema: receiptJsonSchema,
       temperature: 0,
+      thinkingConfig: {
+        thinkingBudget: 512,
+      },
     },
   });
 

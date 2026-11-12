@@ -75,7 +75,7 @@ Staying is a decision, not a default-by-neglect:
 
 - Pin `prisma` and `@prisma/client` to the latest 6.x and keep taking 6.x patches.
 - Watch Prisma release notes and security advisories for the 6.x maintenance line.
-- Keep the classic setup (`url = env("DATABASE_URL")` in the schema; `db push`; no SQL
+- Keep the classic setup (`url = env("SUPABASE_URL")` in the schema; `db push`; no SQL
   driver adapters).
 - Re-evaluate when Prisma 8's MongoDB support leaves Early Access, or when the blockers are resolved.
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireUser } from "@/features/auth/server";
 import { requireActiveBusiness } from "@/features/business-management/server";
 import type {
+  ReceiptImage,
   SaveReceiptResult,
   ScanReceiptActionResult,
   UploadReceiptImageResult,
@@ -73,6 +74,78 @@ export async function scanReceiptAction(
       };
     }
 
+    throw error;
+  }
+}
+
+/**
+ * Single-pass action: uploads the photo to Cloudinary AND extracts the receipt
+ * with Gemini in parallel from the same in-memory bytes (no re-download needed).
+ */
+export async function uploadAndScanReceiptAction(
+  formData: FormData,
+): Promise<ScanReceiptActionResult> {
+  await requireUser();
+  await requireActiveBusiness();
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      code: "unreadable_image",
+      message: "Pilih foto nota terlebih dahulu.",
+    };
+  }
+
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const allowedMimeTypes: ReceiptImage["mimeType"][] = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "image/heif",
+    ];
+    const mimeType: ReceiptImage["mimeType"] = allowedMimeTypes.includes(
+      file.type as ReceiptImage["mimeType"],
+    )
+      ? (file.type as ReceiptImage["mimeType"])
+      : "image/jpeg";
+
+    const [uploadResult, scanResult] = await Promise.all([
+      uploadReceiptPhoto(file, { upload: uploadReceiptImage }),
+      scanReceipt("https://res.cloudinary.com/direct-buffer", {
+        readDemoReceipt: () => readReceiptFromImage(undefined),
+        imageSource: {
+          load: async () => ({ bytes, mimeType }),
+        },
+        extractor: createGeminiReceiptExtractor(),
+      }),
+    ]);
+
+    if (!uploadResult.ok) {
+      return {
+        ok: false,
+        code: uploadResult.code,
+        message: uploadResult.message,
+      };
+    }
+
+    return {
+      ok: true,
+      result: {
+        receipt: scanResult.receipt,
+        imageUrl: uploadResult.imageUrl,
+      },
+    };
+  } catch (error) {
+    if (error instanceof ScanReceiptError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
     throw error;
   }
 }

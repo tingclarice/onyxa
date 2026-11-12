@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   FileImage,
   LoaderCircle,
   Plus,
+  RefreshCw,
   ScanLine,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScanReceipt } from "./use-scan-receipt";
@@ -106,6 +109,7 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
 export function ReceiptScanner() {
   const scanMutation = useScanReceipt();
   const [queue, setQueue] = useState<ScanQueueItem[]>([]);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const queueRef = useRef(queue);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -198,9 +202,8 @@ export function ReceiptScanner() {
     return `/scan/review?receiptId=${encodeURIComponent(id)}`;
   }
 
-  function handleFilesSelected(fileList: FileList | null) {
-    if (!fileList?.length) return;
-    const files = Array.from(fileList);
+  function handleFilesList(files: File[]) {
+    if (!files.length) return;
     const newItems = files.map((file): ScanQueueItem => ({
       id: crypto.randomUUID(),
       file,
@@ -212,6 +215,23 @@ export function ReceiptScanner() {
     queueRef.current = updatedQueue;
     setQueue(updatedQueue);
     newItems.forEach((item) => void processFile(item));
+  }
+
+  function handleFilesSelected(fileList: FileList | null) {
+    if (!fileList?.length) return;
+    handleFilesList(Array.from(fileList));
+  }
+
+  function handleOpenCamera() {
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function"
+    ) {
+      setIsCameraOpen(true);
+    } else {
+      cameraInputRef.current?.click();
+    }
   }
 
   function removeItem(item: ScanQueueItem) {
@@ -250,7 +270,7 @@ export function ReceiptScanner() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={handleOpenCamera}
               className="w-full"
             >
               <ScanLine aria-hidden="true" />
@@ -409,6 +429,190 @@ export function ReceiptScanner() {
           </ul>
         )}
       </section>
+
+      {isCameraOpen && (
+        <LiveCameraModal
+          onClose={() => setIsCameraOpen(false)}
+          onCapture={(file) => {
+            setIsCameraOpen(false);
+            handleFilesList([file]);
+          }}
+          onFallbackToFileInput={() => {
+            setIsCameraOpen(false);
+            cameraInputRef.current?.click();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function LiveCameraModal({
+  onClose,
+  onCapture,
+  onFallbackToFileInput,
+}: {
+  onClose: () => void;
+  onCapture: (file: File) => void;
+  onFallbackToFileInput: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(
+    "environment",
+  );
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function startCamera() {
+      setIsReady(false);
+      setCameraError(null);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+          audio: false,
+        });
+
+        if (!active) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setIsReady(true);
+        }
+      } catch {
+        if (active) {
+          setCameraError(
+            "Kamera tidak dapat diakses. Pastikan izin kamera diizinkan di browser atau pilih file foto.",
+          );
+        }
+      }
+    }
+
+    void startCamera();
+
+    return () => {
+      active = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [facingMode]);
+
+  function handleTakePhoto() {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const timestamp = new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")
+          .slice(0, 19);
+        const file = new File([blob], `nota-${timestamp}.jpg`, {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+        onCapture(file);
+      },
+      "image/jpeg",
+      0.95,
+    );
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ambil foto nota"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+    >
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h3 className="text-base font-semibold">Ambil foto nota</h3>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            aria-label="Tutup kamera"
+            className="size-9 p-0"
+          >
+            <X aria-hidden="true" className="size-5" />
+          </Button>
+        </div>
+
+        <div className="relative flex aspect-[3/4] max-h-[65vh] w-full items-center justify-center bg-black">
+          {cameraError ? (
+            <div className="space-y-4 p-6 text-center text-white">
+              <p className="text-sm">{cameraError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onFallbackToFileInput}
+                className="text-foreground"
+              >
+                Pilih file foto
+              </Button>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="h-full w-full object-contain"
+            />
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t p-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setFacingMode((prev) =>
+                prev === "environment" ? "user" : "environment",
+              )
+            }
+            disabled={Boolean(cameraError)}
+          >
+            <RefreshCw aria-hidden="true" className="size-4" />
+            Ganti kamera
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleTakePhoto}
+            disabled={!isReady || Boolean(cameraError)}
+            className="flex-1"
+          >
+            <Camera aria-hidden="true" className="size-4" />
+            Jepret foto
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

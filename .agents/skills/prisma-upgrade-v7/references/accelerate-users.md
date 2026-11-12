@@ -14,9 +14,9 @@ Driver adapters (like `PrismaPg`) expect direct database connection strings. The
 
 ```env
 # .env
-DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
+SUPABASE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
 # or
-DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/..."
+SUPABASE_URL="prisma+postgres://accelerate.prisma-data.net/..."
 ```
 
 ### 2. Install Accelerate extension
@@ -34,7 +34,7 @@ import { defineConfig, env } from 'prisma/config'
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   datasource: {
-    url: env('DATABASE_URL'),  // Accelerate URL works here
+    url: env('SUPABASE_URL'),  // Accelerate URL works here
   },
 })
 ```
@@ -47,7 +47,7 @@ import { withAccelerate } from '@prisma/extension-accelerate'
 
 // Use accelerateUrl instead of adapter
 export const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  accelerateUrl: process.env.SUPABASE_URL,
 }).$extends(withAccelerate())
 ```
 
@@ -58,7 +58,7 @@ export const prisma = new PrismaClient({
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL  // This will fail with prisma://
+  connectionString: process.env.SUPABASE_URL  // This will fail with prisma://
 })
 ```
 
@@ -79,15 +79,15 @@ prisma db push
 ### Option 2: Use direct URL for migrations
 
 ```env
-DATABASE_URL="prisma+postgres://..."  # For app
-DIRECT_DATABASE_URL="postgresql://..."  # For migrations
+SUPABASE_URL="prisma+postgres://..."  # For app
+DIRECT_SUPABASE_URL="postgresql://..."  # For migrations
 ```
 
 ```typescript
 // prisma.config.ts
 export default defineConfig({
   datasource: {
-    url: env('DIRECT_DATABASE_URL'),  // Direct URL for CLI
+    url: env('DIRECT_SUPABASE_URL'),  // Direct URL for CLI
   },
 })
 ```
@@ -103,7 +103,7 @@ import { PrismaClient } from '../generated/client'
 import { withAccelerate } from '@prisma/extension-accelerate'
 
 export const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,  // prisma+postgres:// URL
+  accelerateUrl: process.env.SUPABASE_URL,  // prisma+postgres:// URL
 }).$extends(withAccelerate())
 ```
 
@@ -117,7 +117,7 @@ import { PrismaClient } from '../generated/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL  // Direct postgres:// URL
+  connectionString: process.env.SUPABASE_URL  // Direct postgres:// URL
 })
 
 export const prisma = new PrismaClient({ adapter })
@@ -146,6 +146,6 @@ import { PrismaClient } from '../generated/client'
 import { withAccelerate } from '@prisma/extension-accelerate'
 
 export const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  accelerateUrl: process.env.SUPABASE_URL,
 }).$extends(withAccelerate())
 ```

@@ -32,7 +32,7 @@ import { defineConfig, env } from 'prisma/config'
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -42,7 +42,7 @@ export default defineConfig({
 In `.env`:
 
 ```env
-DATABASE_URL="postgresql://user:password@host:26257/db?sslmode=verify-full"
+SUPABASE_URL="postgresql://user:password@host:26257/db?sslmode=verify-full"
 ```
 
 Note: CockroachDB uses the PostgreSQL wire protocol, so the URL often looks like postgresql, but the provider **MUST** be `cockroachdb` in the schema to handle specific CRDB features correctly.
@@ -62,7 +62,7 @@ Use a driver adapter for the standard SQL workflow. CockroachDB is PostgreSQL-co
    import { PrismaClient } from '../generated/client'
    import { PrismaPg } from '@prisma/adapter-pg'
 
-   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+   const adapter = new PrismaPg({ connectionString: process.env.SUPABASE_URL })
    const prisma = new PrismaClient({ adapter })
    ```
 
