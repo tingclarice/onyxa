@@ -1,7 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
+import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import { ConfidenceField } from "./confidence-field";
 import { CurrencyInput } from "./currency-input";
@@ -25,22 +24,6 @@ function ReceiptItemRow({
   errors,
 }: ReceiptItemRowProps) {
   const rowId = useId();
-  const [isEditingMatchedItem, setIsEditingMatchedItem] = useState(false);
-  const [matchedItemDraft, setMatchedItemDraft] = useState("");
-
-  function startEditingMatchedItem() {
-    setMatchedItemDraft(item.matched_item ?? item.raw_name);
-    setIsEditingMatchedItem(true);
-  }
-
-  function saveMatchedItem(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onChange({
-      ...item,
-      matched_item: matchedItemDraft.trim() || null,
-    });
-    setIsEditingMatchedItem(false);
-  }
 
   return (
     <section
@@ -54,7 +37,11 @@ function ReceiptItemRow({
         confidence={item.confidence}
         error={errors?.raw_name}
         onChange={(event) =>
-          onChange({ ...item, raw_name: event.currentTarget.value })
+          onChange({
+            ...item,
+            raw_name: event.currentTarget.value,
+            matched_item: null,
+          })
         }
       />
 
@@ -122,55 +109,6 @@ function ReceiptItemRow({
           onValueChange={(line_total) => onChange({ ...item, line_total })}
         />
       </div>
-
-      {isEditingMatchedItem ? (
-        <form
-          className="space-y-3 border-t pt-3"
-          onSubmit={saveMatchedItem}
-        >
-          <label
-            htmlFor={`${rowId}-matched-item`}
-            className="block text-base font-medium"
-          >
-            Nama barang yang cocok
-          </label>
-          <Input
-            id={`${rowId}-matched-item`}
-            autoFocus
-            value={matchedItemDraft}
-            onChange={(event) => setMatchedItemDraft(event.currentTarget.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit">Simpan</Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsEditingMatchedItem(false)}
-            >
-              Batal
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t pt-3">
-          <p className="flex min-w-0 items-center gap-2 text-base">
-            <span aria-hidden="true" className="shrink-0 text-muted-foreground">
-              →
-            </span>
-            <span className="truncate font-medium">
-              {item.matched_item ?? "Belum dicocokkan"}
-            </span>
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-w-20"
-            onClick={startEditingMatchedItem}
-          >
-            Ubah
-          </Button>
-        </div>
-      )}
     </section>
   );
 }

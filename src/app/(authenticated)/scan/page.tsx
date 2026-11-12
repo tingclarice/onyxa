@@ -9,12 +9,12 @@ export default function ScanPage() {
           Scan nota belanja
         </h1>
         <p className="text-base text-muted-foreground">
-          Foto nota atau pilih gambar dari HP. Kamu bisa menambahkan beberapa
+          Foto nota atau pilih gambar dari HP. Anda bisa menambahkan beberapa
           nota sekaligus.
         </p>
         <p className="text-sm text-muted-foreground">
-          Foto disimpan di Cloudinary, lalu Gemini menyiapkan data awal untuk
-          dicek dan diperbaiki.
+          Onyxa akan membaca isi foto nota secara otomatis agar Anda tinggal
+          memeriksa dan menyimpannya.
         </p>
       </header>
 

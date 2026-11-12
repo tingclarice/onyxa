@@ -14,6 +14,29 @@ export function isLowConfidence(confidence: number): boolean {
   return confidence < LOW_CONFIDENCE_THRESHOLD;
 }
 
+/**
+ * Derives Harga satuan = Jumlah harga / Jumlah when unit_price is missing (0)
+ * while line_total > 0 and qty > 0.
+ */
+export function deriveUnitPrice(lineTotal: number, qty: number): number {
+  if (!Number.isFinite(lineTotal) || !Number.isFinite(qty) || qty <= 0 || lineTotal <= 0) {
+    return 0;
+  }
+  return Math.round((lineTotal / qty) * 100) / 100;
+}
+
+/** Fills missing unit_price (0) on scanned receipt items using line_total / qty. */
+export function fillMissingUnitPrices(receipt: ScanReceipt): ScanReceipt {
+  return {
+    ...receipt,
+    items: receipt.items.map((item) =>
+      item.unit_price === 0 && item.line_total > 0 && item.qty > 0
+        ? { ...item, unit_price: deriveUnitPrice(item.line_total, item.qty) }
+        : item,
+    ),
+  };
+}
+
 /** Sum of all line totals. Empty or invalid numbers count as 0. */
 export function sumLineTotals(items: ScanReceiptItem[]): number {
   let total = 0;
@@ -26,6 +49,27 @@ export function sumLineTotals(items: ScanReceiptItem[]): number {
 /** True when the lines do not add up to the total printed on the receipt. */
 export function hasTotalMismatch(receipt: ScanReceipt): boolean {
   return sumLineTotals(receipt.items) !== receipt.total;
+}
+
+/** True when all required header and item fields are filled with valid values. */
+export function isReceiptComplete(receipt: ScanReceipt): boolean {
+  if (!receipt.supplier_name?.trim() || !receipt.date?.trim() || receipt.total <= 0) {
+    return false;
+  }
+  if (!Array.isArray(receipt.items) || receipt.items.length === 0) {
+    return false;
+  }
+  return receipt.items.every(
+    (item) =>
+      Boolean(item.raw_name?.trim()) &&
+      Boolean(item.unit?.trim()) &&
+      Number.isFinite(item.qty) &&
+      item.qty > 0 &&
+      Number.isFinite(item.unit_price) &&
+      item.unit_price >= 0 &&
+      Number.isFinite(item.line_total) &&
+      item.line_total >= 0,
+  );
 }
 
 /**

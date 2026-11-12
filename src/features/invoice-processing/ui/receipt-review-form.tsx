@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Controller,
   useFieldArray,
@@ -9,7 +10,7 @@ import {
 } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ImageUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ImageUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfidenceField } from "./review/confidence-field";
 import { CurrencyInput } from "./review/currency-input";
@@ -21,6 +22,7 @@ import { saveReceiptAction } from "./actions";
 import {
   countFieldsNeedingReview,
   hasTotalMismatch,
+  isReceiptComplete,
   sumLineTotals,
 } from "../core/receipt-review-rules";
 import {
@@ -62,6 +64,7 @@ export function ReceiptReviewForm() {
   const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
+  const [isManualMode, setIsManualMode] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [receiptReady, setReceiptReady] = useState(false);
   const [receiptLoadError, setReceiptLoadError] = useState(false);
@@ -90,13 +93,38 @@ export function ReceiptReviewForm() {
   const itemsTotal = sumLineTotals(items);
   const totalMismatch = hasTotalMismatch(receiptForChecks);
   const flaggedCount = countFieldsNeedingReview(receiptForChecks);
+  const receiptComplete = isReceiptComplete(receiptForChecks);
+  const hasValidationErrors = Object.keys(errors).length > 0;
+  const showReceiptPreview = !isManualMode || Boolean(previewUrl);
 
   useEffect(() => {
     if (didLoad.current) return;
     didLoad.current = true;
-    const receiptId = new URLSearchParams(window.location.search).get(
-      "receiptId",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    if (mode === "manual") {
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      window.setTimeout(() => {
+        reset({
+          supplier_name: "",
+          date: today,
+          items: [createEmptyItem()],
+          total: 0,
+          overall_confidence: 1,
+        });
+        setIsManualMode(true);
+        setPreviewUrl(undefined);
+        setReceiptReady(true);
+      }, 0);
+      return;
+    }
+
+    const receiptId = params.get("receiptId");
     if (receiptId) {
       const storageKey = `onyxa:scan-review:${receiptId}`;
       const storedReceipt = window.sessionStorage.getItem(storageKey);
@@ -162,11 +190,51 @@ export function ReceiptReviewForm() {
   }
 
   function updateItem(index: number, item: ScanReceiptItem) {
-    setValue(`items.${index}`, item, {
+    const previous = items[index];
+    const previousItemsTotal = sumLineTotals(items);
+    let nextItem = item;
+    if (previous) {
+      const qtyChanged = previous.qty !== item.qty;
+      const lineTotalChanged = previous.line_total !== item.line_total;
+      const unitPriceChanged = previous.unit_price !== item.unit_price;
+
+      if (unitPriceChanged && !lineTotalChanged && item.qty > 0 && item.unit_price > 0) {
+        nextItem = {
+          ...item,
+          line_total: Math.round(item.qty * item.unit_price * 100) / 100,
+        };
+      } else if (
+        ((qtyChanged || lineTotalChanged) && !unitPriceChanged) ||
+        item.unit_price === 0
+      ) {
+        if (item.line_total > 0 && item.qty > 0) {
+          nextItem = {
+            ...item,
+            unit_price: Math.round((item.line_total / item.qty) * 100) / 100,
+          };
+        } else if (qtyChanged && item.unit_price > 0 && item.qty > 0) {
+          nextItem = {
+            ...item,
+            line_total: Math.round(item.qty * item.unit_price * 100) / 100,
+          };
+        }
+      }
+    }
+
+    setValue(`items.${index}`, nextItem, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
     });
+
+    const currentTotal = getValues("total");
+    if (currentTotal === 0 || currentTotal === previousItemsTotal) {
+      const nextItems = items.map((it, idx) => (idx === index ? nextItem : it));
+      setValue("total", sumLineTotals(nextItems), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
   }
 
   async function saveReceipt(reviewed: ScanReceipt) {
@@ -229,15 +297,26 @@ export function ReceiptReviewForm() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 md:py-8">
+    <div
+      className={`mx-auto w-full px-4 py-5 sm:px-6 md:py-8 ${
+        showReceiptPreview ? "max-w-7xl" : "max-w-3xl"
+      }`}
+    >
       <header className="mb-5 space-y-3 md:mb-7">
+        <Link
+          href="/scan"
+          className="inline-flex min-h-11 items-center gap-2 text-base font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft aria-hidden="true" className="size-5" />
+          Kembali ke scan
+        </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              Cek struk belanja
+              {isManualMode ? "Catat nota manual" : "Cek struk belanja"}
             </h1>
             <p className="mt-1 text-base text-muted-foreground">
-              Pastikan nama barang dan jumlahnya sudah benar.
+              Pastikan nama pemasok, barang, dan jumlahnya sudah benar.
             </p>
           </div>
           {flaggedCount > 0 ? (
@@ -250,81 +329,91 @@ export function ReceiptReviewForm() {
           aria-live="polite"
           className="text-base font-medium text-amber-800 dark:text-amber-200"
         >
-          {flaggedCount > 0
-            ? `${flaggedCount} bagian perlu dicek`
-            : "Semua bagian siap disimpan"}
+          {!receiptComplete || hasValidationErrors
+            ? "Lengkapi data struk sebelum menyimpan"
+            : flaggedCount > 0
+              ? `${flaggedCount} bagian perlu dicek`
+              : "Semua bagian siap disimpan"}
         </p>
       </header>
 
       <form onSubmit={handleSubmit(saveReceipt)} noValidate>
-        <div className="grid min-w-0 gap-6 md:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.4fr)] md:gap-8">
-          <aside className="min-w-0 space-y-3 md:sticky md:top-6 md:self-start">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Foto nota</h2>
-              <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-base font-medium transition-colors hover:bg-muted">
-                <ImageUp aria-hidden="true" className="size-5" />
-                <span>Pilih foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(event) =>
-                    handleImageSelected(event.currentTarget.files?.[0])
-                  }
-                />
-              </label>
-            </div>
-            <div
-              role="img"
-              aria-label="Pratinjau nota belanja"
-              className="mx-auto w-full max-w-md overflow-hidden rounded-xl border bg-muted p-3 md:max-w-none"
-            >
-              {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt="Foto nota yang dipilih"
-                  className="max-h-[70dvh] w-full rounded-lg object-contain"
-                />
-              ) : (
-                <div className="mx-auto max-w-sm bg-white px-5 py-6 font-mono text-sm text-zinc-900 shadow-sm">
-                  <p className="text-center text-base font-bold">
-                    {receipt.supplier_name}
-                  </p>
-                  <p className="mt-1 text-center text-xs">
-                    {receipt.date ? formatDate(receipt.date) : "Tanggal nota"}
-                  </p>
-                  <div className="my-4 border-t border-dashed border-zinc-400" />
-                  <div className="space-y-3">
-                    {items.map((item, index) => (
-                      <div
-                        key={`${item.raw_name}-${index}`}
-                        className="flex justify-between gap-3"
-                      >
-                        <span className="min-w-0 break-words">
-                          {item.raw_name || "Nama barang"}{" "}
-                          <span className="whitespace-nowrap">
-                            {item.qty} {item.unit}
+        <div
+          className={
+            showReceiptPreview
+              ? "grid min-w-0 gap-6 md:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.4fr)] md:gap-8"
+              : "min-w-0 space-y-6"
+          }
+        >
+          {showReceiptPreview && (
+            <aside className="min-w-0 space-y-3 md:sticky md:top-6 md:self-start">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Foto nota</h2>
+                <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-base font-medium transition-colors hover:bg-muted">
+                  <ImageUp aria-hidden="true" className="size-5" />
+                  <span>Pilih foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={(event) =>
+                      handleImageSelected(event.currentTarget.files?.[0])
+                    }
+                  />
+                </label>
+              </div>
+              <div
+                role="img"
+                aria-label="Pratinjau nota belanja"
+                className="mx-auto w-full max-w-md overflow-hidden rounded-xl border bg-muted p-3 md:max-w-none"
+              >
+                {previewUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewUrl}
+                    alt="Foto nota yang dipilih"
+                    className="max-h-[70dvh] w-full rounded-lg object-contain"
+                  />
+                ) : (
+                  <div className="mx-auto max-w-sm bg-white px-5 py-6 font-mono text-sm text-zinc-900 shadow-sm">
+                    <p className="text-center text-base font-bold">
+                      {receipt.supplier_name}
+                    </p>
+                    <p className="mt-1 text-center text-xs">
+                      {receipt.date ? formatDate(receipt.date) : "Tanggal nota"}
+                    </p>
+                    <div className="my-4 border-t border-dashed border-zinc-400" />
+                    <div className="space-y-3">
+                      {items.map((item, index) => (
+                        <div
+                          key={`${item.raw_name}-${index}`}
+                          className="flex justify-between gap-3"
+                        >
+                          <span className="min-w-0 break-words">
+                            {item.raw_name || "Nama barang"}{" "}
+                            <span className="whitespace-nowrap">
+                              {item.qty} {item.unit}
+                            </span>
                           </span>
-                        </span>
-                        <span className="shrink-0">
-                          {formatRupiah(item.line_total)}
-                        </span>
-                      </div>
-                    ))}
+                          <span className="shrink-0">
+                            {formatRupiah(item.line_total)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="my-4 border-t border-dashed border-zinc-400" />
+                    <div className="flex justify-between gap-3 font-bold">
+                      <span>TOTAL</span>
+                      <span>{formatRupiah(receipt.total)}</span>
+                    </div>
+                    <p className="mt-5 text-center text-xs text-zinc-500">
+                      Pratinjau contoh nota
+                    </p>
                   </div>
-                  <div className="my-4 border-t border-dashed border-zinc-400" />
-                  <div className="flex justify-between gap-3 font-bold">
-                    <span>TOTAL</span>
-                    <span>{formatRupiah(receipt.total)}</span>
-                  </div>
-                  <p className="mt-5 text-center text-xs text-zinc-500">
-                    Pratinjau contoh nota
-                  </p>
-                </div>
-              )}
-            </div>
-          </aside>
+                )}
+              </div>
+            </aside>
+          )}
 
           <section className="min-w-0 space-y-6">
             <section aria-labelledby="receipt-info-title" className="space-y-4">
@@ -439,26 +528,33 @@ export function ReceiptReviewForm() {
         <div className="sticky bottom-16 z-20 -mx-4 mt-6 border-t bg-background/95 px-4 py-3 shadow-[0_-8px_24px_-20px_rgba(0,0,0,0.4)] backdrop-blur md:bottom-0 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
             <p className="hidden text-sm text-muted-foreground sm:block">
-              {flaggedCount > 0
-                ? "Periksa bagian yang ditandai sebelum menyimpan."
-                : "Struk siap disimpan."}
+              {!receiptComplete || hasValidationErrors
+                ? "Lengkapi bagian yang wajib diisi sebelum menyimpan."
+                : flaggedCount > 0
+                  ? "Periksa bagian yang ditandai sebelum menyimpan."
+                  : "Struk siap disimpan."}
             </p>
-            <Button
-              type="submit"
-              className="w-full sm:ml-auto sm:w-auto sm:min-w-40"
-              disabled={isSubmitting || (isSaved && !isDirty)}
-            >
-              {isSubmitting ? (
-                <>
-                  <LoaderCircle aria-hidden="true" className="animate-spin" />
-                  Menyimpan...
-                </>
-              ) : isSaved && !isDirty ? (
-                "Tersimpan"
-              ) : (
-                "Simpan"
-              )}
-            </Button>
+            <div className="flex w-full items-center justify-end gap-3 sm:ml-auto sm:w-auto">
+              <Button asChild type="button" variant="outline">
+                <Link href="/scan">Batal</Link>
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 sm:flex-initial sm:min-w-40"
+                disabled={isSubmitting || (isSaved && !isDirty)}
+              >
+                {isSubmitting ? (
+                  <>
+                    <LoaderCircle aria-hidden="true" className="animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : isSaved && !isDirty ? (
+                  "Tersimpan"
+                ) : (
+                  "Simpan"
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </form>

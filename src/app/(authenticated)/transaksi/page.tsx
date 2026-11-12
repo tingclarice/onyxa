@@ -85,7 +85,7 @@ export default function TransaksiPage() {
           Transaksi
         </h1>
         <p className="text-base text-muted-foreground">
-          Semua nota belanja yang sudah kamu unggah.
+          Semua nota belanja yang sudah Anda unggah.
         </p>
       </header>
 
@@ -208,25 +208,37 @@ export default function TransaksiPage() {
             aria-hidden="true"
             className="size-9 text-muted-foreground"
           />
-          <h2 className="text-lg font-semibold">
-            Belum ada nota. Yuk, unggah yang pertama!
-          </h2>
-          <p className="max-w-md text-base text-muted-foreground">
-            Nota yang kamu unggah akan tersimpan di sini supaya mudah dicari
-            lagi.
-          </p>
-          <Button asChild className="mt-2">
-            <Link href="/scan">Unggah nota</Link>
-          </Button>
-          {transactions.length > 0 && (
-            <Button
-              type="button"
-              variant="link"
-              className="h-12"
-              onClick={resetFilters}
-            >
-              Hapus filter
-            </Button>
+          {transactions.length > 0 ? (
+            <>
+              <h2 className="text-lg font-semibold">
+                Tidak ada transaksi yang sesuai dengan filter
+              </h2>
+              <p className="max-w-md text-base text-muted-foreground">
+                Coba ubah kata kunci pencarian, rentang tanggal, atau status
+                filter Anda.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2"
+                onClick={resetFilters}
+              >
+                Hapus filter
+              </Button>
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold">
+                Belum ada nota. Yuk, unggah yang pertama!
+              </h2>
+              <p className="max-w-md text-base text-muted-foreground">
+                Nota yang Anda unggah akan tersimpan di sini supaya mudah dicari
+                lagi.
+              </p>
+              <Button asChild className="mt-2">
+                <Link href="/scan">Unggah nota</Link>
+              </Button>
+            </>
           )}
         </section>
       ) : (

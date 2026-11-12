@@ -36,7 +36,7 @@ export function ItemMovementList({
     return (
       <div className="rounded-2xl border border-dashed px-5 py-10 text-center">
         <p className="text-base text-muted-foreground">
-          Belum ada barang. Barang akan muncul otomatis setelah kamu menyimpan
+          Belum ada barang. Barang akan muncul otomatis setelah Anda menyimpan
           nota.
         </p>
       </div>

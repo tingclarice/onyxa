@@ -28,7 +28,7 @@ export function formatDays(days: number): string {
 export function describeMovement(status: MovementStatus): string {
   switch (status.kind) {
     case "not_enough_data":
-      return `Belum cukup data: baru ${status.purchaseDays} kali dibeli (butuh 3).`;
+      return `Belum cukup data: baru tercatat di ${status.purchaseDays} tanggal pembelian (butuh 3 tanggal).`;
     case "slowing":
       return `Kecepatan habis turun ${status.burnRateDropPercent}% · restock terlambat ${formatDays(status.restockDelayDays)}`;
     case "normal":

@@ -267,7 +267,7 @@ export function ReceiptScanner() {
           <h2 id="scan-upload-title" className="text-lg font-semibold">
             Tambahkan foto nota
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Button
               type="button"
               onClick={handleOpenCamera}
@@ -284,6 +284,16 @@ export function ReceiptScanner() {
             >
               <Upload aria-hidden="true" />
               Pilih dari galeri
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full"
+            >
+              <Link href="/scan/review?mode=manual">
+                <Plus aria-hidden="true" />
+                Catat manual
+              </Link>
             </Button>
           </div>
           <input

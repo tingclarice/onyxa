@@ -74,15 +74,22 @@ function ProfileFields({
   );
 }
 
-export function CreateBusinessForm() {
+export function CreateBusinessForm({ cancelHref }: { cancelHref?: string }) {
   const [result, action, pending] = useActionState(createBusinessAction, null);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} noValidate className="space-y-4">
       <ProfileFields disabled={pending} />
       <ActionMessage result={result} />
-      <Button type="submit" disabled={pending}>
-        {pending ? "Membuat usaha..." : "Buat usaha"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Membuat usaha..." : "Buat usaha"}
+        </Button>
+        {cancelHref && (
+          <Button asChild type="button" variant="outline">
+            <Link href={cancelHref}>Batal</Link>
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
@@ -96,7 +103,7 @@ export function BusinessProfileForm({
 }) {
   const [result, action, pending] = useActionState(updateProfileAction, null);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} noValidate className="space-y-4">
       <input type="hidden" name="businessId" value={business.id} />
       <ProfileFields business={business} disabled={pending || !owner} />
       <ActionMessage result={result} />
@@ -118,7 +125,7 @@ export function AlertPreferencesForm({
 }) {
   const [result, action, pending] = useActionState(updateAlertsAction, null);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} noValidate className="space-y-4">
       <input type="hidden" name="businessId" value={business.id} />
       <fieldset disabled={pending || !owner} className="space-y-4">
         <label
@@ -190,7 +197,7 @@ export function AlertPreferencesForm({
 export function InviteMemberForm({ businessId }: { businessId: string }) {
   const [result, action, pending] = useActionState(inviteMemberAction, null);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} noValidate className="space-y-4">
       <input type="hidden" name="businessId" value={businessId} />
       <label htmlFor="invite-email" className="block text-sm font-medium">
         Email staf

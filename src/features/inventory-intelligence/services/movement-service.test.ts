@@ -38,6 +38,10 @@ mock.module(
         requestedBusinesses.push(businessId);
         return histories.find((h) => h.itemId === itemId) ?? null;
       },
+      async archiveItem(businessId: string, itemId: string) {
+        requestedBusinesses.push(businessId);
+        return histories.some((h) => h.itemId === itemId);
+      },
     },
   },
 );

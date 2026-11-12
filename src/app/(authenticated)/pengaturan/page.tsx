@@ -65,7 +65,10 @@ export default async function PengaturanPage() {
           <>
             <div className="rounded-2xl bg-muted/50 p-5">
               <h3 className="mb-4 font-semibold">Undang staf</h3>
-              <InviteMemberForm businessId={membership.businessId} />
+              <InviteMemberForm
+                key={invitations.length}
+                businessId={membership.businessId}
+              />
             </div>
             <PendingInvitationList invitations={invitations} />
           </>

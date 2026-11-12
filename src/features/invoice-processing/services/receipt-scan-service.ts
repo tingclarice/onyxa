@@ -9,6 +9,7 @@ import {
 } from "../types/scan";
 import type { ReceiptImageUploader } from "../types/ports";
 import { getReceiptImageProblem } from "../core/receipt-image-rules";
+import { fillMissingUnitPrices } from "../core/receipt-review-rules";
 import { extractReceiptFromImageUrl } from "./extract-receipt";
 
 /**
@@ -48,7 +49,7 @@ export async function scanReceipt(
   }
 
   return ScanReceiptResultSchema.parse({
-    receipt: parsedReceipt.data,
+    receipt: fillMissingUnitPrices(parsedReceipt.data),
     ...(imageUrl ? { imageUrl } : {}),
   });
 }

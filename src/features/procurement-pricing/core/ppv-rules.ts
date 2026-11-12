@@ -54,19 +54,27 @@ export function calculateNormalizedUnitPrice(
   }
 
   const effectiveTotal =
-    Number.isFinite(line.lineTotal) && line.lineTotal > 0
-      ? line.lineTotal
-      : line.unitPrice * line.quantity;
+    Number.isFinite(line.unitPrice) && line.unitPrice > 0
+      ? line.unitPrice * line.quantity
+      : Number.isFinite(line.lineTotal) && line.lineTotal > 0
+        ? line.lineTotal
+        : 0;
 
   if (!Number.isFinite(effectiveTotal) || effectiveTotal < 0) {
     return null;
   }
 
+  const cleanRawUnit =
+    !line.unit.trim() ||
+    line.unit.trim().toLocaleLowerCase("id-ID") === "tidak diketahui"
+      ? itemBaseUnit.toLowerCase()
+      : line.unit;
+
   const unitPrice = roundCurrency(effectiveTotal / normalizedQuantity);
   return {
     unitPrice,
     normalizedQuantity,
-    normalizedUnit: hasCompatibleBaseQuantity ? itemBaseUnit : line.unit,
+    normalizedUnit: hasCompatibleBaseQuantity ? itemBaseUnit : cleanRawUnit,
     isBaseUnitNormalized: hasCompatibleBaseQuantity,
   };
 }
@@ -368,9 +376,22 @@ export function calculateItemPriceSummary(
   record: ItemPriceHistoryRecord,
   options: PpvCalculationOptions = {},
 ): ItemPriceSummary {
-  const { series: _series, suppliers: _suppliers, ...summary } =
-    calculateItemPriceDetail(record, options);
-  return summary;
+  const detail = calculateItemPriceDetail(record, options);
+  return {
+    itemId: detail.itemId,
+    name: detail.name,
+    baseUnit: detail.baseUnit,
+    purchaseCount: detail.purchaseCount,
+    latestPurchaseDate: detail.latestPurchaseDate,
+    latestSupplierName: detail.latestSupplierName,
+    normalizedUnit: detail.normalizedUnit,
+    latestUnitPrice: detail.latestUnitPrice,
+    previousEmaUnitPrice: detail.previousEmaUnitPrice,
+    currentEmaUnitPrice: detail.currentEmaUnitPrice,
+    latestVariancePercent: detail.latestVariancePercent,
+    alertLevel: detail.alertLevel,
+    cheapestAlternative: detail.cheapestAlternative,
+  };
 }
 
 /**

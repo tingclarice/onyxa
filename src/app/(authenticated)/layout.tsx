@@ -58,12 +58,18 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
           className={`min-w-0 flex-1 ${workspace.active ? "pb-20 md:pb-0" : ""}`}
         >
           <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-4 py-2 sm:px-8">
-            <Link
-              href="/beranda"
-              className="min-w-0 truncate text-sm font-semibold"
-            >
-              {workspace.active?.business.name ?? "Onyxa"}
-            </Link>
+            {workspace.active ? (
+              <Link
+                href="/pengaturan"
+                className="min-w-0 truncate text-sm font-semibold hover:underline"
+              >
+                {workspace.active.business.name}
+              </Link>
+            ) : (
+              <span className="min-w-0 truncate text-sm font-semibold">
+                Onyxa
+              </span>
+            )}
             <div className="flex shrink-0 items-center gap-2">
               <InboxLink pendingCount={workspace.invitations.length} />
               <SignOutButton />

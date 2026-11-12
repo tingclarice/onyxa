@@ -223,21 +223,28 @@ export async function findItemPriceHistory(
 
 function toItemPriceHistoryRecord(row: ItemPriceRow): ItemPriceHistoryRecord {
   const lines: ReceiptLinePriceInput[] = row.receiptLines
-    .map((line) => ({
-      receiptLineId: line.id,
-      receiptDate: line.receipt.receiptDate.toISOString().slice(0, 10),
-      supplierId: line.receipt.supplierId,
-      supplierName: line.receipt.supplierName,
-      quantity: line.quantity.toNumber(),
-      unit: line.unit,
-      unitPrice: line.unitPrice.toNumber(),
-      lineTotal: line.lineTotal.toNumber(),
-      baseQuantity:
-        line.baseUnit === row.baseUnit
-          ? (line.baseQuantity?.toNumber() ?? null)
-          : null,
-      baseUnit: line.baseUnit === row.baseUnit ? line.baseUnit : null,
-    }))
+    .map((line) => {
+      const rawUnit = line.unit.trim();
+      const unit =
+        !rawUnit || rawUnit.toLocaleLowerCase("id-ID") === "tidak diketahui"
+          ? row.baseUnit.toLowerCase()
+          : rawUnit;
+      return {
+        receiptLineId: line.id,
+        receiptDate: line.receipt.receiptDate.toISOString().slice(0, 10),
+        supplierId: line.receipt.supplierId,
+        supplierName: line.receipt.supplierName,
+        quantity: line.quantity.toNumber(),
+        unit,
+        unitPrice: line.unitPrice.toNumber(),
+        lineTotal: line.lineTotal.toNumber(),
+        baseQuantity:
+          line.baseUnit === row.baseUnit
+            ? (line.baseQuantity?.toNumber() ?? null)
+            : null,
+        baseUnit: line.baseUnit === row.baseUnit ? line.baseUnit : null,
+      };
+    })
     .sort((a, b) => a.receiptDate.localeCompare(b.receiptDate));
 
   return {
