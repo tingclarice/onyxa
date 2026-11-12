@@ -64,35 +64,55 @@ async function requestGemini(
   apiKey: string,
   image: ReceiptImage,
 ): Promise<string | undefined> {
-  const modelName = process.env.GEMINI_RECEIPT_MODEL || "gemini-3.8-flash";
+  const configuredModel = process.env.GEMINI_RECEIPT_MODEL;
+  const candidateModels = configuredModel
+    ? [configuredModel]
+    : ["gemini-3.5-flash", "gemini-3.8-flash"];
+
   const client = new GoogleGenAI({ apiKey });
-  const response = await client.models.generateContent({
-    model: modelName,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: extractionInstructions },
+  const base64Image = Buffer.from(image.bytes).toString("base64");
+
+  let lastError: unknown;
+  for (const modelName of candidateModels) {
+    try {
+      const response = await client.models.generateContent({
+        model: modelName,
+        contents: [
           {
-            inlineData: {
-              mimeType: image.mimeType,
-              data: Buffer.from(image.bytes).toString("base64"),
-            },
+            role: "user",
+            parts: [
+              { text: extractionInstructions },
+              {
+                inlineData: {
+                  mimeType: image.mimeType,
+                  data: base64Image,
+                },
+              },
+            ],
           },
         ],
-      },
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseJsonSchema: receiptJsonSchema,
-      temperature: 0,
-      thinkingConfig: {
-        thinkingBudget: 512,
-      },
-    },
-  });
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: receiptJsonSchema,
+          temperature: 0,
+          thinkingConfig: {
+            thinkingBudget: 512,
+          },
+          abortSignal: AbortSignal.timeout(25_000),
+        },
+      });
 
-  return response.text;
+      return response.text;
+    } catch (error) {
+      lastError = error;
+      const status = getGeminiErrorStatus(error);
+      if (status !== 404 && status !== 503) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 function getGeminiErrorStatus(error: unknown): number | undefined {

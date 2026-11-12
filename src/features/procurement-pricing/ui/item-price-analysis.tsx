@@ -187,7 +187,8 @@ function PriceTrendSection({
           </h2>
           <p className="text-sm text-muted-foreground">
             Grafik dan riwayat perubahan harga per {unitDisplay} dari waktu ke
-            waktu
+            waktu (kiri: pembelian terlama → kanan: terbaru). Garis putus-putus
+            oranye adalah baseline EMA sebagai acuan kewajaran harga.
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs font-medium">
@@ -269,24 +270,44 @@ function PriceTrendSection({
   );
 }
 
+function formatShortDate(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
 function PriceTrendSvgChart({ series }: { series: PriceSeriesPoint[] }) {
-  const width = 640;
-  const height = 180;
-  const padX = 28;
-  const padY = 24;
+  const width = 680;
+  const height = 210;
+  const padLeft = 72;
+  const padRight = 24;
+  const padTop = 24;
+  const padBottom = 38;
 
   const allValues = series.flatMap((s) => [s.unitPrice, s.emaUnitPrice]);
   const minVal = Math.min(...allValues);
   const maxVal = Math.max(...allValues);
+  const midVal = Math.round((minVal + maxVal) / 2);
   const range = maxVal - minVal > 0 ? maxVal - minVal : Math.max(1, maxVal * 0.1);
+
+  const minPoint = series.reduce((best, cur) =>
+    cur.unitPrice < best.unitPrice ? cur : best,
+  );
+  const maxPoint = series.reduce((best, cur) =>
+    cur.unitPrice > best.unitPrice ? cur : best,
+  );
 
   const toX = (index: number) =>
     series.length === 1
-      ? width / 2
-      : padX + (index / (series.length - 1)) * (width - padX * 2);
+      ? (padLeft + (width - padRight)) / 2
+      : padLeft +
+        (index / (series.length - 1)) * (width - padLeft - padRight);
 
   const toY = (value: number) =>
-    height - padY - ((value - minVal) / range) * (height - padY * 2);
+    height - padBottom - ((value - minVal) / range) * (height - padTop - padBottom);
 
   const actualPoints = series
     .map((pt, idx) => `${toX(idx)},${toY(pt.unitPrice)}`)
@@ -295,32 +316,43 @@ function PriceTrendSvgChart({ series }: { series: PriceSeriesPoint[] }) {
     .map((pt, idx) => `${toX(idx)},${toY(pt.emaUnitPrice)}`)
     .join(" ");
 
+  // Pick up to 6 evenly spaced X-axis labels so dates don't overlap on long series
+  const maxLabels = 6;
+  const labelStep = Math.max(1, Math.ceil(series.length / maxLabels));
+
   return (
-    <div className="rounded-xl bg-muted/30 p-3">
+    <div className="rounded-xl bg-muted/30 p-3 sm:p-4">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label="Grafik tren harga aktual dibandingkan baseline EMA"
-        className="h-44 w-full overflow-visible"
+        className="h-52 w-full overflow-visible"
       >
-        <line
-          x1={padX}
-          y1={padY}
-          x2={width - padX}
-          y2={padY}
-          stroke="currentColor"
-          className="text-border"
-          strokeDasharray="4 4"
-        />
-        <line
-          x1={padX}
-          y1={height - padY}
-          x2={width - padX}
-          y2={height - padY}
-          stroke="currentColor"
-          className="text-border"
-          strokeDasharray="4 4"
-        />
+        {[
+          { value: maxVal, y: toY(maxVal) },
+          { value: midVal, y: toY(midVal) },
+          { value: minVal, y: toY(minVal) },
+        ].map((tick, i) => (
+          <g key={`${tick.value}-${i}`}>
+            <line
+              x1={padLeft}
+              y1={tick.y}
+              x2={width - padRight}
+              y2={tick.y}
+              stroke="currentColor"
+              className="text-border"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={padLeft - 8}
+              y={tick.y + 4}
+              textAnchor="end"
+              className="fill-muted-foreground text-[11px] tabular-nums"
+            >
+              {formatRupiah(tick.value)}
+            </text>
+          </g>
+        ))}
 
         {/* EMA Baseline polyline */}
         <polyline
@@ -340,37 +372,72 @@ function PriceTrendSvgChart({ series }: { series: PriceSeriesPoint[] }) {
           points={actualPoints}
         />
 
-        {series.map((pt, idx) => (
-          <g key={pt.receiptLineId}>
-            <circle
-              cx={toX(idx)}
-              cy={toY(pt.emaUnitPrice)}
-              r="3.5"
-              fill="#f59e0b"
-            />
-            <circle
-              cx={toX(idx)}
-              cy={toY(pt.unitPrice)}
-              r="4.5"
-              fill="currentColor"
-              className={
-                pt.alertLevel === "CRITICAL"
-                  ? "text-red-600"
-                  : pt.alertLevel === "WARNING"
-                    ? "text-amber-600"
-                    : "text-primary"
-              }
-            />
-          </g>
-        ))}
+        {series.map((pt, idx) => {
+          const cx = toX(idx);
+          const showXLabel =
+            idx === 0 ||
+            idx === series.length - 1 ||
+            idx % labelStep === 0;
+          return (
+            <g key={pt.receiptLineId}>
+              <circle
+                cx={cx}
+                cy={toY(pt.emaUnitPrice)}
+                r="3.5"
+                fill="#f59e0b"
+              >
+                <title>
+                  {`${formatDate(pt.date)} · Baseline EMA: ${formatRupiah(pt.emaUnitPrice)}`}
+                </title>
+              </circle>
+              <circle
+                cx={cx}
+                cy={toY(pt.unitPrice)}
+                r="5"
+                fill="currentColor"
+                className={
+                  pt.alertLevel === "CRITICAL"
+                    ? "text-red-600"
+                    : pt.alertLevel === "WARNING"
+                      ? "text-amber-600"
+                      : pt.alertLevel === "PRICE_DROP"
+                        ? "text-green-600"
+                        : "text-primary"
+                }
+              >
+                <title>
+                  {`${formatDate(pt.date)} · ${pt.supplierName}\nHarga: ${formatRupiah(pt.unitPrice)}\nEMA: ${formatRupiah(pt.emaUnitPrice)}\nVarians: ${formatSignedPercent(pt.variancePercent)}`}
+                </title>
+              </circle>
+              {showXLabel && (
+                <text
+                  x={cx}
+                  y={height - 10}
+                  textAnchor={
+                    idx === 0
+                      ? "start"
+                      : idx === series.length - 1
+                        ? "end"
+                        : "middle"
+                  }
+                  className="fill-muted-foreground text-[11px] tabular-nums"
+                >
+                  {formatShortDate(pt.date)}
+                </text>
+              )}
+            </g>
+          );
+        })}
       </svg>
-      <div className="mt-1 flex justify-between px-2 text-xs text-muted-foreground tabular-nums">
+      <div className="mt-2 flex flex-wrap justify-between gap-2 border-t pt-2 text-xs text-muted-foreground tabular-nums">
         <span>
-          Terendah: {formatRupiah(minVal)} ({formatDate(series[0].date)})
+          Periode: {formatDate(series[0].date)} –{" "}
+          {formatDate(series[series.length - 1].date)} ({series.length} transaksi)
         </span>
         <span>
-          Tertinggi: {formatRupiah(maxVal)} (
-          {formatDate(series[series.length - 1].date)})
+          Terendah: {formatRupiah(minPoint.unitPrice)} (
+          {formatDate(minPoint.date)}) · Tertinggi:{" "}
+          {formatRupiah(maxPoint.unitPrice)} ({formatDate(maxPoint.date)})
         </span>
       </div>
     </div>

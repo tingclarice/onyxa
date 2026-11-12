@@ -14,6 +14,29 @@ export function isLowConfidence(confidence: number): boolean {
   return confidence < LOW_CONFIDENCE_THRESHOLD;
 }
 
+/**
+ * Derives Harga satuan = Jumlah harga / Jumlah when unit_price is missing (0)
+ * while line_total > 0 and qty > 0.
+ */
+export function deriveUnitPrice(lineTotal: number, qty: number): number {
+  if (!Number.isFinite(lineTotal) || !Number.isFinite(qty) || qty <= 0 || lineTotal <= 0) {
+    return 0;
+  }
+  return Math.round((lineTotal / qty) * 100) / 100;
+}
+
+/** Fills missing unit_price (0) on scanned receipt items using line_total / qty. */
+export function fillMissingUnitPrices(receipt: ScanReceipt): ScanReceipt {
+  return {
+    ...receipt,
+    items: receipt.items.map((item) =>
+      item.unit_price === 0 && item.line_total > 0 && item.qty > 0
+        ? { ...item, unit_price: deriveUnitPrice(item.line_total, item.qty) }
+        : item,
+    ),
+  };
+}
+
 /** Sum of all line totals. Empty or invalid numbers count as 0. */
 export function sumLineTotals(items: ScanReceiptItem[]): number {
   let total = 0;

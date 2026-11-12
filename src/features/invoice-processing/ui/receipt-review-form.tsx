@@ -94,9 +94,30 @@ export function ReceiptReviewForm() {
   useEffect(() => {
     if (didLoad.current) return;
     didLoad.current = true;
-    const receiptId = new URLSearchParams(window.location.search).get(
-      "receiptId",
-    );
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode");
+    if (mode === "manual") {
+      const today = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+      window.setTimeout(() => {
+        reset({
+          supplier_name: "",
+          date: today,
+          items: [createEmptyItem()],
+          total: 0,
+          overall_confidence: 1,
+        });
+        setPreviewUrl(undefined);
+        setReceiptReady(true);
+      }, 0);
+      return;
+    }
+
+    const receiptId = params.get("receiptId");
     if (receiptId) {
       const storageKey = `onyxa:scan-review:${receiptId}`;
       const storedReceipt = window.sessionStorage.getItem(storageKey);
@@ -162,11 +183,51 @@ export function ReceiptReviewForm() {
   }
 
   function updateItem(index: number, item: ScanReceiptItem) {
-    setValue(`items.${index}`, item, {
+    const previous = items[index];
+    const previousItemsTotal = sumLineTotals(items);
+    let nextItem = item;
+    if (previous) {
+      const qtyChanged = previous.qty !== item.qty;
+      const lineTotalChanged = previous.line_total !== item.line_total;
+      const unitPriceChanged = previous.unit_price !== item.unit_price;
+
+      if (unitPriceChanged && !lineTotalChanged && item.qty > 0 && item.unit_price > 0) {
+        nextItem = {
+          ...item,
+          line_total: Math.round(item.qty * item.unit_price * 100) / 100,
+        };
+      } else if (
+        ((qtyChanged || lineTotalChanged) && !unitPriceChanged) ||
+        item.unit_price === 0
+      ) {
+        if (item.line_total > 0 && item.qty > 0) {
+          nextItem = {
+            ...item,
+            unit_price: Math.round((item.line_total / item.qty) * 100) / 100,
+          };
+        } else if (qtyChanged && item.unit_price > 0 && item.qty > 0) {
+          nextItem = {
+            ...item,
+            line_total: Math.round(item.qty * item.unit_price * 100) / 100,
+          };
+        }
+      }
+    }
+
+    setValue(`items.${index}`, nextItem, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
     });
+
+    const currentTotal = getValues("total");
+    if (currentTotal === 0 || currentTotal === previousItemsTotal) {
+      const nextItems = items.map((it, idx) => (idx === index ? nextItem : it));
+      setValue("total", sumLineTotals(nextItems), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
   }
 
   async function saveReceipt(reviewed: ScanReceipt) {

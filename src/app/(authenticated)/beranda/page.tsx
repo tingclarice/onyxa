@@ -46,9 +46,14 @@ export default async function BerandaPage() {
             Scan nota belanja lalu simpan. Barang dan peringatan melambat
             dihitung dari nota yang sudah disimpan.
           </p>
-          <Button asChild variant="outline">
-            <Link href="/scan">Scan nota</Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="outline">
+              <Link href="/scan">Scan nota</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/scan/review?mode=manual">Catat manual</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>
