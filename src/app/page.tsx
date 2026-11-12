@@ -131,9 +131,6 @@ function PhonePreview() {
               </div>
               <p className="text-sm font-semibold">{formatRupiah(56000)}</p>
             </div>
-            <div className="border-t pt-2 text-xs text-muted-foreground">
-              → Telur ayam
-            </div>
           </div>
           <div className="space-y-3 rounded-xl border p-3">
             <div className="flex items-start justify-between gap-2">
@@ -142,9 +139,6 @@ function PhonePreview() {
                 <p className="mt-1 text-xs text-muted-foreground">3 kg</p>
               </div>
               <p className="text-sm font-semibold">{formatRupiah(114000)}</p>
-            </div>
-            <div className="border-t pt-2 text-xs text-muted-foreground">
-              → Ayam potong
             </div>
           </div>
         </div>
@@ -315,7 +309,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t">
+          <footer className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-7 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <Link
             href="/"
@@ -327,16 +321,6 @@ export default function HomePage() {
             Onyxa
           </Link>
           <p>Catatan belanja yang lebih rapi untuk usaha Anda.</p>
-          {/* TODO: Replace the placeholder URL with Onyxa's WhatsApp number. */}
-          <a
-            href="https://wa.me/"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-12 items-center gap-2 font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Hubungi kami di WhatsApp
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </a>
         </div>
       </footer>
     </main>

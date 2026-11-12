@@ -32,7 +32,7 @@ export function AppNavigation({
     <>
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
         <Link
-          href="/"
+          href="/beranda"
           className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6 text-xl font-bold tracking-tight"
         >
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 export function DemoNotice() {
   const pathname = usePathname();
   if (
-    !["/barang", "/transaksi", "/scan", "/dev"].some(
+    !["/transaksi", "/dev"].some(
       (path) => pathname === path || pathname.startsWith(`${path}/`),
     )
   )

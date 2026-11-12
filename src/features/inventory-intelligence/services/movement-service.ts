@@ -10,6 +10,7 @@ import {
   toLocalDateKey,
 } from "../core/burn-rate-rules";
 import {
+  archiveItem,
   findItemPurchaseHistory,
   listItemPurchaseHistories,
 } from "../repository/purchase-history-repository";
@@ -18,6 +19,15 @@ import {
 export interface MovementSettings {
   /** From Pengaturan: grace % before an item counts as slowing. */
   gracePercent: number;
+}
+
+/** Archives (deletes from active catalog) one item of the business. */
+export async function deleteCatalogItem(
+  businessId: string,
+  itemId: string,
+  now: Date = new Date(),
+): Promise<boolean> {
+  return archiveItem(businessId, itemId, now);
 }
 
 /** Every item of the business with its movement status, slowing items first. */

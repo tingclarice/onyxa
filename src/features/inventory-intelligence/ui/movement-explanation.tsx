@@ -21,8 +21,9 @@ export function MovementExplanation({ item }: { item: ItemMovementDetail }) {
 
       {status.kind === "not_enough_data" ? (
         <p className="text-base leading-7 text-muted-foreground">
-          Barang ini baru dibeli {status.purchaseDays} kali. Setelah 3 kali
-          pembelian, Onyxa bisa menghitung berapa cepat barang ini habis.
+          Barang ini baru tercatat di {status.purchaseDays} tanggal pembelian.
+          Setelah 3 tanggal pembelian berbeda, Onyxa bisa menghitung berapa
+          cepat barang ini habis.
         </p>
       ) : (
         <dl className="grid gap-4 sm:grid-cols-2">

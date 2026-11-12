@@ -19,7 +19,7 @@ export default async function BarangPage() {
           Barang
         </h1>
         <p className="text-base text-muted-foreground">
-          Barang dari nota yang sudah kamu simpan. Pantau pergerakan stok dan
+          Barang dari nota yang sudah Anda simpan. Pantau pergerakan stok dan
           fluktuasi harga supplier (EMA).
         </p>
       </header>

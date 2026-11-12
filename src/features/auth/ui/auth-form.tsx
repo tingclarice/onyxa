@@ -109,8 +109,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         </h1>
         <p className="mt-2 text-base text-muted-foreground">
           {isSignup
-            ? "Mulai catat belanja usaha dengan lebih mudah."
-            : "Lanjutkan mengelola belanja usahamu."}
+            ? "Mulai catat belanja usaha Anda dengan lebih mudah."
+            : "Lanjutkan mengelola belanja usaha Anda."}
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
 
         <FormField
           id="password"
-          label="Password"
+          label="Kata sandi"
           error={errors.password?.message}
         >
           <div className="relative">
@@ -172,7 +172,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               id="password"
               type={passwordVisible ? "text" : "password"}
               autoComplete={isSignup ? "new-password" : "current-password"}
-              placeholder="Masukkan password"
+              placeholder="Masukkan kata sandi"
               className="pr-12"
               aria-invalid={Boolean(errors.password) || undefined}
               aria-describedby={errors.password ? "password-error" : undefined}
@@ -182,7 +182,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               id="toggle-password"
               type="button"
               aria-label={
-                passwordVisible ? "Sembunyikan password" : "Lihat password"
+                passwordVisible ? "Sembunyikan kata sandi" : "Lihat kata sandi"
               }
               aria-pressed={passwordVisible}
               onClick={() => setPasswordVisible((visible) => !visible)}

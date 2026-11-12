@@ -19,13 +19,13 @@ Google Gen AI SDK
 
 
 ###  Progress: 
-| Modul / Fitur Utama | Status | Progress |
+| Modul / Fitur Utama | Status | 
 | :--- | :--- | :---: |
 | **1. Authentication & Session (`auth`)** | 100% |
-| **2. Business, Onboarding & Team Invitations (`business-management`)** | 100% |
+<!-- | **2. Business, Onboarding & Team Invitations (`business-management`)** | 100% | -->
 | **3. Receipt Upload & AI OCR Extraction (`invoice-processing`)** | 90% |
-| **4. Inventory Burn-Rate & Slow-Moving Detection (`inventory-intelligence`)** | 95% |
-| **5. Procurement Pricing / EMA & Price Variance (`procurement-pricing`)** | 95% |
+| **4. Inventory Burn-Rate & Slow-Moving Detection (`inventory-intelligence`)** | 90% |
+| **5. Procurement Pricing / EMA & Price Variance (`procurement-pricing`)** | 90% |
 | **6. Riwayat Transaksi & Pengaturan (`/transaksi`, `/pengaturan`)** | 50% |
 
 ---
@@ -37,8 +37,12 @@ Google Gen AI SDK
    - Mengaktifkan `AUTH_SECRET` di [`.env`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/.env) sehingga registrasi (`/daftar`), login (`/masuk`), buat usaha, dan simpan nota langsung masuk ke tabel Supabase.
    - Menambahkan opsi `DEV_AUTH_BYPASS=true` di [`session.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/auth/ui/session.ts) dan [`queries.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/business-management/ui/queries.ts) untuk mempercepat testing saat development.
 
-2. **Integrasi Cloudinary + Gemini AI OCR (`/scan`)**
-   - Memperbaiki konfigurasi model Gemini di [`gemini.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/repository/gemini.ts) ke `gemini-3.8-flash` (dengan structured JSON output) sehingga foto nota yang diunggah ke Cloudinary langsung diekstrak menjadi nama supplier, tanggal, item, kuantitas, satuan, dan harga.
+2. **Integrasi Cloudinary, Live Camera & Gemini AI OCR (`/scan` & `/scan/review`)**
+   - Menggunakan **`gemini-3.5-flash`** sebagai model utama (dengan auto-fallback ke `gemini-3.8-flash` & timeout 25 detik) di [`gemini.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/repository/gemini.ts) untuk ekstraksi JSON terstruktur yang cepat dan akurat.
+   - Menambahkan **Live Camera Viewfinder (`LiveCameraModal`)** di [`receipt-scanner.tsx`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/ui/receipt-scanner.tsx) pada tombol *"Ambil foto"* (mendukung webcam desktop & kamera HP, ganti kamera depan/belakang).
+   - Mempercepat proses scan lewat **parallel upload Cloudinary + Gemini OCR** (`uploadAndScanReceiptAction` di [`actions.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/ui/actions.ts)) dan batas resolusi native `2048px` @ `92%` di [`use-scan-receipt.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/ui/use-scan-receipt.ts) tanpa menurunkan kualitas OCR.
+   - Menambahkan perhitungan otomatis **`Harga satuan = Jumlah harga / Jumlah`** di [`receipt-review-rules.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/core/receipt-review-rules.ts), [`receipt-scan-service.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/services/receipt-scan-service.ts), dan sinkronisasi real-time di [`receipt-review-form.tsx`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/ui/receipt-review-form.tsx).
+   - Menambahkan mode **Catat manual (tanpa nota)** (`/scan/review?mode=manual`) beserta tombol pintas di `/beranda` dan `/scan`.
 
 3. **Membangun Modul Procurement Pricing / Supplier Price Fluctuation (`src/features/procurement-pricing/`)**
    - **Core Math Engine ([`ppv-rules.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/core/ppv-rules.ts) & [`ppv-rules.test.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/core/ppv-rules.test.ts))**:
@@ -51,7 +55,7 @@ Google Gen AI SDK
    - **UI Integration**:
      - **Dashboard ([`/beranda`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/beranda/page.tsx))**: Menampilkan kartu peringatan kenaikan harga supplier ([`PriceFluctuationAlertCard`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/price-fluctuation-alert-card.tsx)).
      - **Daftar Barang ([`/barang`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/barang/page.tsx))**: Menampilkan badge fluktuasi harga ([`PriceVarianceBadge`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/price-variance-badge.tsx)), baseline EMA, dan info supplier alternatif yang lebih hemat.
-     - **Detail Barang ([`/barang/[id]`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/barang/%5Bid%5D/page.tsx))**: Menampilkan grafik tren Harga Aktual vs. Baseline EMA, tabel riwayat varians PPV, dan kartu **Perbandingan Harga Supplier** ([`ItemPriceAnalysis`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/item-price-analysis.tsx)).
+     - **Detail Barang ([`/barang/[id]`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/barang/%5Bid%5D/page.tsx))**: Menampilkan grafik tren **Harga Aktual vs. Baseline EMA** lengkap dengan label sumbu harga (Y), sumbu tanggal (X), tooltip detail per titik, tabel riwayat varians PPV, dan kartu **Perbandingan Harga Supplier** ([`ItemPriceAnalysis`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/item-price-analysis.tsx)).
 
 ---
 
@@ -60,10 +64,11 @@ Google Gen AI SDK
 ####  Done 
 - [x] Autentikasi akun (Daftar, Masuk, Keluar) & proteksi halaman.
 - [x] Pembuatan usaha (Onboarding), pemilihan usaha aktif, dan undangan anggota tim (Inbox).
-- [x] Upload foto nota ke Cloudinary & ekstraksi otomatis dengan Gemini AI.
+- [x] Upload foto nota ke Cloudinary, live camera viewfinder (*Ambil foto*), dan ekstraksi cepat dengan Gemini AI (`gemini-3.5-flash`).
+- [x] Input pengeluaran manual tanpa nota (`Catat manual`) & perhitungan otomatis `Harga satuan = Jumlah harga / Jumlah`.
 - [x] Review & simpan nota belanja ke database Supabase (otomatis membuat Supplier, Katalog Barang, dan konversi satuan dasar).
 - [x] Deteksi barang melambat (*Slow-Moving / Burn-Rate EMA*) di `/beranda` dan `/barang`.
-- [x] Deteksi kenaikan harga supplier (*Purchase Price Variance / Price EMA*) + grafik tren harga + rekomendasi supplier termurah di `/beranda`, `/barang`, dan `/barang/[id]`.
+- [x] Deteksi kenaikan harga supplier (*Purchase Price Variance / Price EMA*) + grafik tren harga berlabel timeline & tooltip + rekomendasi supplier termurah di `/beranda`, `/barang`, dan `/barang/[id]`.
 
 #### To-Do 
 - [ ] **Halaman `/transaksi`**: Saat ini masih membaca mock data dari [`src/lib/api/transactions.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/api/transactions.ts) — tinggal dihubungkan ke tabel `Receipt` yang sudah disimpan di Supabase.

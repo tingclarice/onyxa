@@ -4,8 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 import { getActiveBusinessItemDetail } from "@/features/inventory-intelligence/server";
+import { DeleteItemButton } from "@/features/inventory-intelligence/ui/delete-item-button";
 import { MovementExplanation } from "@/features/inventory-intelligence/ui/movement-explanation";
-import { PurchaseHistoryList } from "@/features/inventory-intelligence/ui/purchase-history-list";
 import { unitLabel } from "@/features/inventory-intelligence/ui/movement-format";
 import { getActiveBusinessItemPriceDetail } from "@/features/procurement-pricing/server";
 import { ItemPriceAnalysis } from "@/features/procurement-pricing/ui/item-price-analysis";
@@ -40,21 +40,23 @@ export default async function ItemDetailPage({
           <ArrowLeft aria-hidden="true" className="size-5" />
           Kembali ke barang
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            {item.name}
-          </h1>
-          <p className="mt-1 text-base text-muted-foreground">
-            Satuan dasar: {unitLabel(item.baseUnit)}
-            {last &&
-              ` · terakhir ${formatRupiah(last.unitPrice)}/${last.unit} dari ${last.supplierName} (${formatDate(last.date)})`}
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+              {item.name}
+            </h1>
+            <p className="mt-1 text-base text-muted-foreground">
+              Satuan dasar: {unitLabel(item.baseUnit)}
+              {last &&
+                ` · terakhir ${formatRupiah(last.unitPrice)}/${last.unit} dari ${last.supplierName} (${formatDate(last.date)})`}
+            </p>
+          </div>
+          <DeleteItemButton itemId={item.itemId} itemName={item.name} />
         </div>
       </header>
 
       {priceDetail && <ItemPriceAnalysis detail={priceDetail} />}
       <MovementExplanation item={item} />
-      <PurchaseHistoryList purchases={item.purchases} baseUnit={item.baseUnit} />
     </div>
   );
 }

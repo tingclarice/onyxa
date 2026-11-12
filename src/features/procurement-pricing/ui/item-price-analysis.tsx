@@ -130,7 +130,7 @@ export function ItemPriceAnalysis({ detail }: { detail: ItemPriceDetail }) {
                 Harga terakhir di{" "}
                 <span className="font-medium">{alt.currentSupplierName}</span>{" "}
                 adalah {formatRupiah(alt.currentUnitPrice)}/{unitDisplay}. Berdasarkan
-                riwayat belanjamu,{" "}
+                riwayat belanja Anda,{" "}
                 <span className="font-medium">
                   {alt.recommendedSupplierName}
                 </span>{" "}
@@ -211,6 +211,7 @@ function PriceTrendSection({
             <tr className="border-b text-xs font-medium uppercase tracking-wider text-muted-foreground">
               <th className="pb-2.5 pr-4">Tanggal</th>
               <th className="pb-2.5 pr-4">Supplier</th>
+              <th className="pb-2.5 pr-4 text-right">Jumlah</th>
               <th className="pb-2.5 pr-4 text-right">
                 Harga/{unitDisplay}
               </th>
@@ -229,6 +230,9 @@ function PriceTrendSection({
                   </td>
                   <td className="py-3 pr-4 font-medium">
                     {pt.supplierName}
+                  </td>
+                  <td className="py-3 pr-4 text-right whitespace-nowrap text-muted-foreground">
+                    {pt.normalizedQuantity} {pt.normalizedUnit.toLowerCase()}
                   </td>
                   <td className="py-3 pr-4 text-right font-semibold">
                     {formatRupiah(pt.unitPrice)}

@@ -34,15 +34,38 @@ export async function findItemByNameKey(
 ): Promise<CatalogItem | null> {
   const byName = await db.item.findUnique({
     where: { businessId_nameKey: { businessId, nameKey } },
-    select: { id: true, name: true, baseUnit: true },
+    select: { id: true, name: true, baseUnit: true, archivedAt: true },
   });
-  if (byName) return byName;
+  if (byName) {
+    if (byName.archivedAt !== null) {
+      await db.item.update({
+        where: { id: byName.id },
+        data: { archivedAt: null },
+      });
+    }
+    return { id: byName.id, name: byName.name, baseUnit: byName.baseUnit };
+  }
 
   const byAlias = await db.itemAlias.findUnique({
     where: { businessId_nameKey: { businessId, nameKey } },
-    select: { item: { select: { id: true, name: true, baseUnit: true } } },
+    select: {
+      item: { select: { id: true, name: true, baseUnit: true, archivedAt: true } },
+    },
   });
-  return byAlias?.item ?? null;
+  if (byAlias?.item) {
+    if (byAlias.item.archivedAt !== null) {
+      await db.item.update({
+        where: { id: byAlias.item.id },
+        data: { archivedAt: null },
+      });
+    }
+    return {
+      id: byAlias.item.id,
+      name: byAlias.item.name,
+      baseUnit: byAlias.item.baseUnit,
+    };
+  }
+  return null;
 }
 
 export async function createItem(

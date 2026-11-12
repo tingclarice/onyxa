@@ -51,6 +51,27 @@ export function hasTotalMismatch(receipt: ScanReceipt): boolean {
   return sumLineTotals(receipt.items) !== receipt.total;
 }
 
+/** True when all required header and item fields are filled with valid values. */
+export function isReceiptComplete(receipt: ScanReceipt): boolean {
+  if (!receipt.supplier_name?.trim() || !receipt.date?.trim() || receipt.total <= 0) {
+    return false;
+  }
+  if (!Array.isArray(receipt.items) || receipt.items.length === 0) {
+    return false;
+  }
+  return receipt.items.every(
+    (item) =>
+      Boolean(item.raw_name?.trim()) &&
+      Boolean(item.unit?.trim()) &&
+      Number.isFinite(item.qty) &&
+      item.qty > 0 &&
+      Number.isFinite(item.unit_price) &&
+      item.unit_price >= 0 &&
+      Number.isFinite(item.line_total) &&
+      item.line_total >= 0,
+  );
+}
+
 /**
  * How many fields the user should check, for the "N bagian perlu dicek" badge:
  * - 3 header fields when the header confidence is low,

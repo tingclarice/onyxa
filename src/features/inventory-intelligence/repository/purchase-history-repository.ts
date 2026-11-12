@@ -132,18 +132,41 @@ export async function findItemPurchaseHistory(
   }
 }
 
+/** Soft-deletes (archives) one catalog item belonging to the business. */
+export async function archiveItem(
+  businessId: string,
+  itemId: string,
+  archivedAt: Date,
+  db: DatabaseClient = getPrisma(),
+): Promise<boolean> {
+  const result = await db.item.updateMany({
+    where: { id: itemId, businessId, archivedAt: null },
+    data: { archivedAt },
+  });
+  return result.count > 0;
+}
+
 function toPurchaseHistory(row: ItemRow): ItemPurchaseHistory {
   const lines = row.receiptLines
-    .map((line) => ({
-      date: line.receipt.receiptDate.toISOString().slice(0, 10),
-      supplierName: line.receipt.supplierName,
-      quantity: line.quantity.toNumber(),
-      unit: line.unit,
-      unitPrice: line.unitPrice.toNumber(),
-      // Only lines stored in the item's own unit can be compared.
-      baseQuantity:
-        line.baseUnit === row.baseUnit ? (line.baseQuantity?.toNumber() ?? null) : null,
-    }))
+    .map((line) => {
+      const rawUnit = line.unit.trim();
+      const unit =
+        !rawUnit || rawUnit.toLocaleLowerCase("id-ID") === "tidak diketahui"
+          ? row.baseUnit.toLowerCase()
+          : rawUnit;
+      return {
+        date: line.receipt.receiptDate.toISOString().slice(0, 10),
+        supplierName: line.receipt.supplierName,
+        quantity: line.quantity.toNumber(),
+        unit,
+        unitPrice: line.unitPrice.toNumber(),
+        // Only lines stored in the item's own unit can be compared.
+        baseQuantity:
+          line.baseUnit === row.baseUnit
+            ? (line.baseQuantity?.toNumber() ?? null)
+            : null,
+      };
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const last = lines.at(-1);
