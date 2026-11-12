@@ -16,232 +16,56 @@ the review screen without an image still loads demo receipt data.
 Next.js, TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL, NextAuth/Auth.js,
 Google Gen AI SDK
 
-## Project structure
-```text
-src/
-  app/          Next.js routes; each page.tsx loads data and lays out feature components
-  components/   Shared UI primitives and application shell
-  features/     One folder per feature: ui, services, core, repository, types
-  lib/          Feature-independent helpers (formatting, Prisma client, transactions)
-public/         Static assets
-prisma/         Application database schema and Mermaid review diagram
-```
-
-Inside each feature the flow goes one way, so it is easy to follow:
-
-```text
-app/…/page.tsx  →  feature ui/ (components, queries, actions)
-                →  services/  →  core/        (rules and calculations)
-                              →  repository/  (database and outside services)
-types/  shared shapes used by all of them
-```
-
-Open a route's `page.tsx` to see the feature component that renders the page.
-Services orchestrate core rules and typed repository ports; server-side delivery
-code wires concrete adapters. See [AGENTS.md](AGENTS.md) for the full rules.
-The `@/*` import alias resolves to `src/*`. Configuration and environment files
-remain at the repository root. Use Next.js Server Functions for client-triggered
-mutations and server-only queries for reads; do not add internal API endpoints.
-Receipt upload and scanning call Server Functions in `invoice-processing`.
 
 
-## Getting started
+###  Progress: 
+| Modul / Fitur Utama | Status | Progress |
+| :--- | :--- | :---: |
+| **1. Authentication & Session (`auth`)** | 100% |
+| **2. Business, Onboarding & Team Invitations (`business-management`)** | 100% |
+| **3. Receipt Upload & AI OCR Extraction (`invoice-processing`)** | 90% |
+| **4. Inventory Burn-Rate & Slow-Moving Detection (`inventory-intelligence`)** | 95% |
+| **5. Procurement Pricing / EMA & Price Variance (`procurement-pricing`)** | 95% |
+| **6. Riwayat Transaksi & Pengaturan (`/transaksi`, `/pengaturan`)** | 50% |
 
-**Requirements:** Node.js 22.12+ (Docker uses Node.js 24) and pnpm 10.32.1
-(`npm install -g pnpm@10.32.1`)
+---
 
-```bash
-git clone https://github.com/tingclarice/onyxa.git
-cd onyxa
-cp .env.example .env        # fill in DATABASE_URL, AUTH_SECRET, AUTH_URL and Cloudinary settings
-pnpm install
-pnpm db:deploy              # apply committed account/business migrations
-pnpm dev                    # http://localhost:3000
-```
+### Summary of Updates 
 
-Keep local environment files at the repository root and never commit secrets.
-The committed `.env.example` contains placeholder values only.
-Cloudinary uploads require an authenticated user and accept JPEG, PNG, WebP,
-HEIC, or HEIF images up to 8 MB.
+1. **Integrasi Database Cloud Supabase via HTTPS ([`src/lib/prisma.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/prisma.ts))**
+   - Menghubungkan aplikasi langsung ke Supabase (`SUPABASE_URL` + `SUPABASE_SECRET_KEY`) lewat REST API PostgREST tanpa butuh koneksi TCP/password DB manual.
+   - Mengaktifkan `AUTH_SECRET` di [`.env`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/.env) sehingga registrasi (`/daftar`), login (`/masuk`), buat usaha, dan simpan nota langsung masuk ke tabel Supabase.
+   - Menambahkan opsi `DEV_AUTH_BYPASS=true` di [`session.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/auth/ui/session.ts) dan [`queries.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/business-management/ui/queries.ts) untuk mempercepat testing saat development.
 
-Create a Gemini API key in
-[Google AI Studio](https://aistudio.google.com/apikey) and set it as
-`GEMINI_API_KEY` in the root `.env`. The key is read only by server-side code;
-do not rename it to a `NEXT_PUBLIC_` variable. Image uploads are read back from
-the configured Cloudinary cloud and sent to Gemini for draft extraction. Review
-the extracted values before saving; confidence is a review heuristic, not a
-probability. Receipts are saved only after a user reviews and confirms them.
+2. **Integrasi Cloudinary + Gemini AI OCR (`/scan`)**
+   - Memperbaiki konfigurasi model Gemini di [`gemini.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/repository/gemini.ts) ke `gemini-3.8-flash` (dengan structured JSON output) sehingga foto nota yang diunggah ke Cloudinary langsung diekstrak menjadi nama supplier, tanggal, item, kuantitas, satuan, dan harga.
 
-## Prisma and PostgreSQL
+3. **Membangun Modul Procurement Pricing / Supplier Price Fluctuation (`src/features/procurement-pricing/`)**
+   - **Core Math Engine ([`ppv-rules.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/core/ppv-rules.ts) & [`ppv-rules.test.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/core/ppv-rules.test.ts))**:
+     - Normalisasi harga satuan ke `baseUnit` (`KG`, `LITER`, `PCS`).
+     - Perhitungan *Exponential Moving Average* ($\text{EMA}, \alpha = 0.25$).
+     - Deteksi *Purchase Price Variance* (PPV %) terhadap baseline EMA sebelumnya (`CRITICAL` $\ge 10\%$, `WARNING` $\ge 5\%$, `PRICE_DROP` $\le -5\%$, `NORMAL`).
+     - Perbandingan harga antar-supplier & rekomendasi substitusi supplier termurah.
+   - **Data & Service Layer ([`price-history-repository.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/repository/price-history-repository.ts), [`pricing-service.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/services/pricing-service.ts), [`server.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/server.ts))**:
+     - Membaca riwayat `ReceiptLine` dari nota berstatus `SAVED` dan menghitung metrik PPV per barang & per usaha.
+   - **UI Integration**:
+     - **Dashboard ([`/beranda`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/beranda/page.tsx))**: Menampilkan kartu peringatan kenaikan harga supplier ([`PriceFluctuationAlertCard`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/price-fluctuation-alert-card.tsx)).
+     - **Daftar Barang ([`/barang`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/barang/page.tsx))**: Menampilkan badge fluktuasi harga ([`PriceVarianceBadge`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/price-variance-badge.tsx)), baseline EMA, dan info supplier alternatif yang lebih hemat.
+     - **Detail Barang ([`/barang/[id]`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/app/(authenticated)/barang/%5Bid%5D/page.tsx))**: Menampilkan grafik tren Harga Aktual vs. Baseline EMA, tabel riwayat varians PPV, dan kartu **Perbandingan Harga Supplier** ([`ItemPriceAnalysis`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/procurement-pricing/ui/item-price-analysis.tsx)).
 
-Prisma 7.10.1 defines nine PostgreSQL application models in
-`prisma/schema.prisma`. Review the [schema design](prisma/database-schema.md)
-and [detailed Mermaid ER diagram](prisma/database-schema.mmd) before backend
-implementation. The initial migration is committed under `prisma/migrations/`.
-Auth.js handles sessions; Prisma persists local accounts, businesses, memberships,
-invitations, and business preferences. Receipt, inventory, and procurement data
-remain demos, explicitly labeled in the application. No seed data is included.
+---
 
-Add your connection string to the root `.env` when ready:
+###  Done vs.  To-Do 
 
-```dotenv
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE"
-```
+####  Done 
+- [x] Autentikasi akun (Daftar, Masuk, Keluar) & proteksi halaman.
+- [x] Pembuatan usaha (Onboarding), pemilihan usaha aktif, dan undangan anggota tim (Inbox).
+- [x] Upload foto nota ke Cloudinary & ekstraksi otomatis dengan Gemini AI.
+- [x] Review & simpan nota belanja ke database Supabase (otomatis membuat Supplier, Katalog Barang, dan konversi satuan dasar).
+- [x] Deteksi barang melambat (*Slow-Moving / Burn-Rate EMA*) di `/beranda` dan `/barang`.
+- [x] Deteksi kenaikan harga supplier (*Purchase Price Variance / Price EMA*) + grafik tren harga + rekomendasi supplier termurah di `/beranda`, `/barang`, dan `/barang/[id]`.
 
-Use your provider's required SSL settings and URL-encode special characters in
-credentials. Keep this variable server-only. For Supabase or another pooled
-service, use a migration-compatible direct/session connection when applying
-migrations; no additional connection variable is configured for this setup.
-
-```bash
-pnpm db:generate              # generate the typed client, without connecting
-pnpm db:validate              # validate the schema, without connecting
-pnpm test:db                  # verify lazy initialization and client reuse
-```
-
-`pnpm dev` and `pnpm build` generate the client automatically. For standalone
-TypeScript checks, run `pnpm db:generate` first. Generated files live in
-`src/generated/prisma/` and are excluded from Git, lint, and the Docker context;
-the Docker build generates its own client.
-
-In a server-only feature repository adapter, call `getPrisma()` from `@/lib/prisma`.
-It checks `DATABASE_URL` on first use and reuses one client across hot reloads.
-Importing the helper and building the application require no live database.
-Model-specific types and query methods become available as models are added.
-Keep feature/UI contracts independent of Prisma's database types.
-
-For subsequent schema changes, use `pnpm db:migrate --name <change>` against
-a development database and commit its migration. `pnpm db:deploy` applies
-committed migrations in production. Neither command runs during build or app
-startup.
-
-## Authentication without SMTP
-
-Email/password signup, login and sign-out use Next.js Server Functions in
-`src/features/auth/ui/actions.ts`. NextAuth/Auth.js Credentials manages encrypted
-JWT session cookies; Prisma stores local `User` accounts. Passwords use Node
-scrypt with independent random salts (N=131072, r=8, p=1), and constant-time
-comparison. Signup creates no business and sends no email.
-
-Set a cryptographically random 32+ byte `AUTH_SECRET` in the ignored root
-`.env`, plus `AUTH_URL=http://localhost:3000` locally. Set `AUTH_URL` to the
-public HTTPS origin in production; keep `AUTH_SECRET` consistent across app
-instances. Restart `pnpm dev` after changing environment settings. Apply
-`pnpm db:deploy` before starting an environment with the new account model.
-Existing ignored Supabase keys were left untouched but are no longer used.
-
-The seven-day session uses HTTP-only cookies with secure cookies over HTTPS.
-`src/proxy.ts` refreshes sessions. Protected pages and Server Functions also
-resolve the trusted account from the session on the server. Invalid and
-deleted-account sessions cannot access protected business operations.
-Five failed logins temporarily lock an account for fifteen minutes. Atomic
-version checks preserve this bound under concurrent attempts. This password
-guessing protection is independent of email delivery; there is no email quota.
-
-Felix approved the narrow Auth.js protocol handler at
-`/api/auth/[...nextauth]` in `AUTHJS_MIGRATION_PRD.md`. App UI uses Server
-Functions and server `auth()`, without client session polling or business APIs.
-Only safe error categories are logged; passwords, tokens and raw driver errors
-remain server-side. Run `pnpm test:auth` for service, crypto, adapter and delivery
-regressions. Google sign-in, email ownership verification and password recovery
-are not implemented. These local accounts are separate from Supabase Auth;
-users must sign up locally after switching providers.
-
-Set `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_UPLOAD_PRESET` in the same root
-environment file. Uploads use an unsigned preset from a server action; no
-Cloudinary API secret is required or exposed to the browser. Restrict the preset
-to image uploads and a dedicated folder. For sensitive production receipts,
-add a signed-upload flow and explicit retention/access controls.
-Set the server-only `GEMINI_API_KEY` in the same local `.env` file. For CloudPanel
-deployments, add `GEMINI_API_KEY` to the app's runtime environment (or to the
-`.env` file used by Docker Compose); the deployment workflow does not transfer
-secrets. The key is read at runtime and does not need to be included in the
-Docker image or build arguments.
-
-## Business onboarding and invitations
-
-After signing in, an account without memberships can create a business or wait
-for an invitation. Creating a business also creates the user's owner membership
-in the same transaction. No business is automatically created during signup.
-
-Owners invite staff by email in **Pengaturan > Anggota usaha**. Invitations are
-in-app only and can be issued before signup. The recipient signs in and opens
-**View Inbox** from onboarding or the header's Inbox icon, then chooses **Yes**
-to join as staff or **No** to decline. No code, secret link or invitation email
-is needed. Invites expire after seven days and owners can revoke them.
-Acceptance creates membership atomically.
-
-The inbox is scoped to the account's normalized email. Email ownership is not
-verified by the current local signup flow; the inbox follows that account email.
-The pending badge refreshes on navigation and window focus, without realtime push.
-Business-free accounts have no sidebar or bottom business navigation; the inbox
-and business-creation page remain available. The right-side menu is removed.
-
-Business switching and the create-another-business link live in **Pengaturan**.
-Selection stays in an HTTP-only cookie and is rechecked against current membership.
-Account/business changes reset the relevant client cache. Business profile, alert
-preferences, members and invitations use PostgreSQL, with owner-only mutations.
-
-`src/features/business-management/` owns this capability: forms and pages in
-`ui/`, use cases such as `acceptInvitation` in `services/`, permission and
-invitation rules in `core/`, Prisma queries in `repository/`, and shapes in
-`types/`. Its public `server.ts` entry gives other features the active business.
-The auth and invoice-processing features use the same layers.
-
-Apply the committed database migration before using business features:
-
-```bash
-pnpm db:deploy
-pnpm test:business
-```
-
-Business tests use fakes and adapter/action mocks; they create no live
-accounts, businesses, invitations, or memberships. To verify the live flow, use
-two test accounts: create a business with the first, invite the second's email,
-then choose Yes in the second account's inbox. The second account should
-remain business-free until it accepts or deliberately creates a business.
-
-## Docker deployment
-
-The Dockerfile builds Next.js standalone output and runs it as a non-root user
-on container port `3000`. The build uses the frozen pnpm lockfile; local
-dependencies, build output, and environment files are excluded by `.dockerignore`.
-
-The workflow in `.github/workflows/deploy.yml` builds and pushes
-`ghcr.io/tingclarice/onyxa:latest`, copies `docker-compose.yml` to
-`/home/deployer/onyxa`, and runs:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Compose pulls the published image without requiring source code on the VPS.
-It loads runtime variables from `/home/deployer/onyxa/.env` through `env_file`.
-Add new runtime variables to that file without editing Compose. An empty
-`DATABASE_URL` is allowed until a feature uses Prisma. The workflow does not
-upload the environment file or run database migrations.
-
-The app exposes container port `3000` on the existing external `npm_default`
-network, without publishing a host port. Configure the reverse proxy on that
-network to forward HTTP traffic to `onyxa:3000`. `APP_PORT` is no longer used.
-
-For a local image build and smoke test:
-
-```bash
-docker build -t onyxa:local .
-docker run --rm --init --env-file .env -p 3000:3000 onyxa:local
-```
-
-The VPS needs Docker Compose v2, GHCR pull access, and the SSH credentials used
-by the workflow. Provision the database, Auth.js, Cloudinary and Gemini runtime
-variables on the VPS before deployment. Google fonts are downloaded during the
-build, so the builder needs outbound network access.
-
-## Contributing
-- Use pnpm only (no `package-lock.json`)
-- Work on a feature branch and open a pull request into `main`
-- Commit style: `feat(web): ...`, `fix(api): ...`, `docs: ...`, `chore: ...`
-
-## Team
-Felix, Eileen, Clarice
+#### To-Do 
+- [ ] **Halaman `/transaksi`**: Saat ini masih membaca mock data dari [`src/lib/api/transactions.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/api/transactions.ts) — tinggal dihubungkan ke tabel `Receipt` yang sudah disimpan di Supabase.
+- [ ] **Pencocokan Katalog Otomatis saat OCR**: Mengirim daftar nama item yang sudah ada di katalog ke prompt Gemini saat scan agar `matched_item` otomatis terisi.
+- [ ] **Deployment & Final Polish**: Deploy ke Cloud Hosting (Vercel / Cloud Run) dan pengujian end-to-end dengan beberapa nota asli.

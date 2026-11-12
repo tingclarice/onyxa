@@ -18,7 +18,7 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -39,7 +39,7 @@ Database connection URL:
 
 ```typescript
 datasource: {
-  url: env('DATABASE_URL'),
+  url: env('SUPABASE_URL'),
 }
 ```
 
@@ -49,8 +49,8 @@ Direct connection URL (bypassing connection pooler):
 
 ```typescript
 datasource: {
-  url: env('DATABASE_URL'),
-  directUrl: env('DIRECT_DATABASE_URL'),
+  url: env('SUPABASE_URL'),
+  directUrl: env('DIRECT_SUPABASE_URL'),
 }
 ```
 
@@ -60,8 +60,8 @@ Shadow database for migrations:
 
 ```typescript
 datasource: {
-  url: env('DATABASE_URL'),
-  shadowDatabaseUrl: env('SHADOW_DATABASE_URL'),
+  url: env('SUPABASE_URL'),
+  shadowDatabaseUrl: env('SHADOW_SUPABASE_URL'),
 }
 ```
 
@@ -104,9 +104,9 @@ export default defineConfig({
   
   // Database connection
   datasource: {
-    url: env('DATABASE_URL'),
-    directUrl: env('DIRECT_DATABASE_URL'),
-    shadowDatabaseUrl: env('SHADOW_DATABASE_URL'),
+    url: env('SUPABASE_URL'),
+    directUrl: env('DIRECT_SUPABASE_URL'),
+    shadowDatabaseUrl: env('SHADOW_SUPABASE_URL'),
   },
 })
 ```
@@ -121,7 +121,7 @@ Use `env()` to reference environment variables:
 import { env } from 'prisma/config'
 
 datasource: {
-  url: env('DATABASE_URL'),
+  url: env('SUPABASE_URL'),
 }
 ```
 
@@ -147,7 +147,7 @@ import { defineConfig, env } from 'prisma/config'
 ```prisma
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  url       = env("SUPABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 ```
@@ -161,7 +161,7 @@ import { defineConfig, env } from 'prisma/config'
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
     directUrl: env('DIRECT_URL'),
   },
 })
@@ -197,7 +197,7 @@ export default defineConfig({
     path: path.join(__dirname, 'packages/database/prisma/migrations'),
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```

@@ -7,9 +7,37 @@ import { getWorkspace } from "../services/workspace-service";
 import { getBusinessSettings } from "../services/business-service";
 import { readActiveBusinessId } from "./active-business-cookie";
 
+const DEV_BYPASS_MEMBERSHIP = {
+  id: "00000000-0000-0000-0000-000000000002",
+  businessId: "00000000-0000-0000-0000-000000000003",
+  userId: "00000000-0000-0000-0000-000000000001",
+  email: "dev@onyxa.local",
+  role: "OWNER" as const,
+  removedAt: null,
+  business: {
+    id: "00000000-0000-0000-0000-000000000003",
+    name: "Dev Business",
+    businessType: "CAFE_RESTAURANT" as const,
+    priceIncreaseThresholdPercent: 10,
+    priceIncreaseAlertsEnabled: true,
+    slowMovingAlertsEnabled: true,
+    slowMovingGracePercent: 20,
+  },
+};
+
 /** The logged-in user + their businesses, active business and inbox. */
 export const getBusinessWorkspace = cache(async () => {
   const actor = await requireUser();
+
+  if (process.env.DEV_AUTH_BYPASS === "true") {
+    return {
+      actor,
+      memberships: [DEV_BYPASS_MEMBERSHIP],
+      active: DEV_BYPASS_MEMBERSHIP,
+      invitations: [],
+      inbox: [],
+    };
+  }
 
   const savedBusinessId = identifierSchema.safeParse(
     await readActiveBusinessId(actor.id),

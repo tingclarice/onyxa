@@ -6,12 +6,24 @@ import { ArrowUpRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 import type { ItemMovement } from "../types/inventory";
+import type { ItemPriceSummary } from "@/features/procurement-pricing/types/pricing";
+import { PriceVarianceBadge } from "@/features/procurement-pricing/ui/price-variance-badge";
 import { MovementBadge } from "./movement-badge";
 import { describeMovement, unitLabel } from "./movement-format";
 
-/** Searchable list of items, each with its movement badge. Slowing items come first. */
-export function ItemMovementList({ items }: { items: ItemMovement[] }) {
+/** Searchable list of items, each with its movement badge and price variance badge. */
+export function ItemMovementList({
+  items,
+  priceSummaries = [],
+}: {
+  items: ItemMovement[];
+  priceSummaries?: ItemPriceSummary[];
+}) {
   const [search, setSearch] = useState("");
+  const priceById = useMemo(
+    () => new Map(priceSummaries.map((p) => [p.itemId, p])),
+    [priceSummaries],
+  );
   const shownItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id-ID");
     if (!query) return items;
@@ -54,7 +66,10 @@ export function ItemMovementList({ items }: { items: ItemMovement[] }) {
         <ul className="grid gap-3 sm:grid-cols-2">
           {shownItems.map((item) => (
             <li key={item.itemId}>
-              <ItemMovementCard item={item} />
+              <ItemMovementCard
+                item={item}
+                priceSummary={priceById.get(item.itemId)}
+              />
             </li>
           ))}
         </ul>
@@ -63,7 +78,13 @@ export function ItemMovementList({ items }: { items: ItemMovement[] }) {
   );
 }
 
-function ItemMovementCard({ item }: { item: ItemMovement }) {
+function ItemMovementCard({
+  item,
+  priceSummary,
+}: {
+  item: ItemMovement;
+  priceSummary?: ItemPriceSummary;
+}) {
   const last = item.lastPurchase;
   return (
     <Link
@@ -85,19 +106,47 @@ function ItemMovementCard({ item }: { item: ItemMovement }) {
         </div>
 
         {last && (
-          <p className="text-base tabular-nums">
-            <span className="font-bold">{formatRupiah(last.unitPrice)}</span>
-            <span className="ml-1 text-sm text-muted-foreground">
-              / {last.unit} · dibeli {formatDate(last.date)}
-            </span>
-          </p>
+          <div className="space-y-0.5 tabular-nums">
+            <p className="text-base">
+              <span className="font-bold">{formatRupiah(last.unitPrice)}</span>
+              <span className="ml-1 text-sm text-muted-foreground">
+                / {last.unit} · dibeli {formatDate(last.date)}
+              </span>
+            </p>
+            {priceSummary && priceSummary.previousEmaUnitPrice !== null && (
+              <p className="text-xs text-muted-foreground">
+                Baseline EMA: {formatRupiah(priceSummary.previousEmaUnitPrice)}/
+                {priceSummary.normalizedUnit.toLowerCase()}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="space-y-2">
-          <MovementBadge status={item.status} />
+          <div className="flex flex-wrap gap-2">
+            <MovementBadge status={item.status} />
+            {priceSummary && priceSummary.purchaseCount > 0 && (
+              <PriceVarianceBadge
+                alertLevel={priceSummary.alertLevel}
+                variancePercent={priceSummary.latestVariancePercent}
+                purchaseCount={priceSummary.purchaseCount}
+              />
+            )}
+          </div>
           <p className="text-sm leading-6 text-muted-foreground">
             {describeMovement(item.status)}
           </p>
+          {priceSummary?.cheapestAlternative && (
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+              Alternatif lebih murah:{" "}
+              {priceSummary.cheapestAlternative.recommendedSupplierName} (
+              {formatRupiah(
+                priceSummary.cheapestAlternative.recommendedLatestUnitPrice,
+              )}
+              /
+              {priceSummary.cheapestAlternative.normalizedUnit.toLowerCase()})
+            </p>
+          )}
         </div>
       </article>
     </Link>

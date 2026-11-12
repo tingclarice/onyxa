@@ -100,9 +100,9 @@ datasource db {
 ```typescript
 export default defineConfig({
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
     directUrl: env('DIRECT_URL'),
-    shadowDatabaseUrl: env('SHADOW_DATABASE_URL'),
+    shadowDatabaseUrl: env('SHADOW_SUPABASE_URL'),
   },
 })
 ```

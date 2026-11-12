@@ -33,7 +33,7 @@ import { defineConfig, env } from 'prisma/config'
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('SUPABASE_URL'),
   },
 })
 ```
@@ -43,7 +43,7 @@ export default defineConfig({
 In `.env`:
 
 ```env
-DATABASE_URL="sqlserver://localhost:1433;database=mydb;user=sa;password=Password123;encrypt=true;trustServerCertificate=true"
+SUPABASE_URL="sqlserver://localhost:1433;database=mydb;user=sa;password=Password123;encrypt=true;trustServerCertificate=true"
 ```
 
 ### Connection String Format

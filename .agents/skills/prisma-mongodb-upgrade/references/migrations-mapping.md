@@ -28,8 +28,8 @@ the contract declares that v6 never created), and signs the database:
 
 ```bash
 npx prisma contract emit
-npx prisma db update --db "$DATABASE_URL" --dry-run
-npx prisma db update --db "$DATABASE_URL" --advance-ref db
+npx prisma db update --db "$SUPABASE_URL" --dry-run
+npx prisma db update --db "$SUPABASE_URL" --advance-ref db
 ```
 
 `--advance-ref db` records the result as the `db` ref that later migration plans diff from.
@@ -42,8 +42,8 @@ collection with existing documents counts as destructive, so it refuses.
 ```bash
 npx prisma contract emit
 npx prisma migration plan --name add_posts_indexes
-npx prisma db migrate --db "$DATABASE_URL" --advance-ref db
-npx prisma db verify --db "$DATABASE_URL"
+npx prisma db migrate --db "$SUPABASE_URL" --advance-ref db
+npx prisma db verify --db "$SUPABASE_URL"
 ```
 
 - **Declare, do not hand-write:** indexes and validators live in the contract, and

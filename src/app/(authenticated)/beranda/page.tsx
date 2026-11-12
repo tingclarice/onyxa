@@ -8,6 +8,8 @@ import { ActiveBusinessHeader } from "@/features/business-management/ui/active-b
 import { TeamSummaryCard } from "@/features/business-management/ui/team-summary-card";
 import { getActiveBusinessSlowMovingWarnings } from "@/features/inventory-intelligence/server";
 import { SlowMovingWarningCard } from "@/features/inventory-intelligence/ui/slow-moving-warning-card";
+import { getActiveBusinessPriceFluctuationAlerts } from "@/features/procurement-pricing/server";
+import { PriceFluctuationAlertCard } from "@/features/procurement-pricing/ui/price-fluctuation-alert-card";
 
 // The layout shows onboarding instead of this page until a business is selected.
 export const instant = false;
@@ -18,11 +20,16 @@ export default async function BerandaPage() {
   if (!active) return null;
 
   const { members, invitations, canManage } = await getActiveBusinessSettings();
-  const warnings = await getActiveBusinessSlowMovingWarnings();
+  const [warnings, priceAlerts] = await Promise.all([
+    getActiveBusinessSlowMovingWarnings(),
+    getActiveBusinessPriceFluctuationAlerts(),
+  ]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-8">
       <ActiveBusinessHeader membership={active} />
+
+      <PriceFluctuationAlertCard alerts={priceAlerts} />
 
       <SlowMovingWarningCard warnings={warnings} />
 

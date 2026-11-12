@@ -64,9 +64,10 @@ async function requestGemini(
   apiKey: string,
   image: ReceiptImage,
 ): Promise<string | undefined> {
+  const modelName = process.env.GEMINI_RECEIPT_MODEL || "gemini-3.8-flash";
   const client = new GoogleGenAI({ apiKey });
   const response = await client.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: modelName,
     contents: [
       {
         role: "user",
@@ -85,6 +86,9 @@ async function requestGemini(
       responseMimeType: "application/json",
       responseJsonSchema: receiptJsonSchema,
       temperature: 0,
+      thinkingConfig: {
+        thinkingBudget: 512,
+      },
     },
   });
 
@@ -126,6 +130,11 @@ function getSafeGeminiError(error: unknown): ScanReceiptError {
       return new ScanReceiptError(
         "Kuota atau batas permintaan Gemini tercapai. Cek kuota Google AI Studio atau coba lagi nanti.",
         "gemini_quota_exceeded",
+      );
+    case 503:
+      return new ScanReceiptError(
+        "Layanan Gemini sedang mengalami lonjakan beban sementara (503). Silakan coba klik scan lagi dalam beberapa detik.",
+        "gemini_request_failed",
       );
     default:
       return new ScanReceiptError(

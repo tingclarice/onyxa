@@ -85,7 +85,7 @@ A repository with `prisma.compute.ts` or a `compute:deploy` script was set up fo
 - `app-composer-required` - A deployable app has `module.ts` (default export `module(name, ...)`), a `service.ts` per server (`compute({ name, deps, build })`), and a `composer` section in `prisma.config.ts` with `prismaCloud()`, `nodeBuild()` (plus `nextjsBuild()` for Next.js), and `state: prismaState()`.
 - `app-build-adapter` - `node({ module: import.meta.url, entry })` for one self-contained bundle, `node({ module, dir, entry })` for a built directory, `nextjs({ module, appDir })` for Next.js standalone. Add `dependencies: "external"` to `node()` when the build leaves packages as imports. See [`app-framework-builds.md`](references/app-framework-builds.md).
 - `app-region` - The first deploy creates the project and needs a region: `prismaCloud({ region: "eu-central-1" })` or `PRISMA_REGION`. The region cannot change later.
-- `app-databases` - `rawPostgres()` (package root) delivers `{ url }`; `postgres(contract)` from `@prisma/composer-prisma-cloud/orm` adds a typed client and applies committed migrations on deploy. Read both through `service.load()`, not `process.env.DATABASE_URL`.
+- `app-databases` - `rawPostgres()` (package root) delivers `{ url }`; `postgres(contract)` from `@prisma/composer-prisma-cloud/orm` adds a typed client and applies committed migrations on deploy. Read both through `service.load()`, not `process.env.SUPABASE_URL`.
 - `app-names` - Provision ids and service names allow `[A-Za-z0-9]` only, and the platform rejects ids shorter than three characters. The root module name becomes the project name.
 
 ### 3. Runtime (CRITICAL)
