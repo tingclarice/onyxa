@@ -6,6 +6,14 @@ Staff photograph a supplier receipt. The app uploads the image to Cloudinary,
 uses Gemini to extract a draft, and opens it in an editable review flow. Opening
 the review screen without an image still loads demo receipt data.
 
+## Task Distribution
+
+| Team Member | Module | Responsibilities |
+| --- | --- | --- |
+| Felix | Inventory Intelligence | Track inventory movement and flag dead stock. |
+| Clarice | Invoice Processing | Scan invoices and automatically categorize them. |
+| Eileen | Procurement Pricing | Track changes in supplier prices over time. |
+
 ## Features
 - **Receipt scanner**: Cloudinary photo upload, Gemini receipt extraction, editable review, and saving reviewed receipts (supplier, items, quantities) to PostgreSQL
 - **Price change alerts**: flags when a supplier raises the unit price of an item
