@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -14,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { LandingEntrances } from "@/components/landing-entrances";
 import { LandingReceiptField } from "@/components/landing-receipt-field";
+import { getCurrentUser } from "@/features/auth/server";
+import { AccountAvatar } from "@/features/auth/ui/account-avatar";
 import "./landing-entrances.css";
 
 const painPoints = [
@@ -122,14 +125,10 @@ export default function HomePage() {
             </span>
             Onyxa
           </Link>
-          <nav aria-label="Navigasi">
-            <Link
-              href="/masuk"
-              data-landing-enter="60"
-              className="inline-flex h-12 items-center px-3 text-base font-medium text-zinc-700 hover:text-foreground dark:text-zinc-300"
-            >
-              Masuk
-            </Link>
+          <nav aria-label="Navigasi" data-landing-enter="60" className="flex h-12 items-center">
+            <Suspense fallback={<span aria-hidden="true" className="size-12" />}>
+              <LandingAccountLink />
+            </Suspense>
           </nav>
         </header>
 
@@ -142,12 +141,11 @@ export default function HomePage() {
               Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada
               perubahan.
             </p>
-            <Button asChild className="mt-5 min-w-40 sm:mt-8">
-              <Link href="/daftar" data-landing-enter="125">
-                Coba Gratis
-                <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
+            <div data-landing-enter="125" className="mt-5 min-h-12 sm:mt-8">
+              <Suspense>
+                <LandingCallToAction className="min-w-40" />
+              </Suspense>
+            </div>
           </div>
           <div data-landing-enter="175" className="landing-hero-artwork mx-auto">
             <ReceiptIllustration />
@@ -252,15 +250,11 @@ export default function HomePage() {
               Foto nota pertama Anda dan biarkan Onyxa membantu merapikannya.
             </p>
           </div>
-          <Button
-            asChild
-            className="w-full shrink-0 md:w-auto"
-          >
-            <Link href="/daftar" data-landing-enter="125">
-              Coba Gratis
-              <ArrowRight aria-hidden="true" />
-            </Link>
-          </Button>
+          <div data-landing-enter="125" className="min-h-12 w-full shrink-0 md:w-auto">
+            <Suspense>
+              <LandingCallToAction className="w-full md:w-auto" />
+            </Suspense>
+          </div>
         </div>
       </section>
 
@@ -280,5 +274,43 @@ export default function HomePage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+async function LandingAccountLink() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    return (
+      <Link
+        href="/pengaturan"
+        aria-label={`Pengaturan akun ${user.name}`}
+        className="inline-grid size-12 place-items-center rounded-full hover:bg-emerald-100/60 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-emerald-900/60"
+      >
+        <AccountAvatar name={user.name} imageUrl={user.profileImageUrl} />
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href="/masuk"
+      className="inline-flex h-12 items-center px-3 text-base font-medium text-zinc-700 hover:text-foreground dark:text-zinc-300"
+    >
+      Masuk
+    </Link>
+  );
+}
+
+async function LandingCallToAction({ className }: { className: string }) {
+  const user = await getCurrentUser();
+
+  return (
+    <Button asChild className={className}>
+      <Link href={user ? "/beranda" : "/daftar"}>
+        {user ? "Buka Dashboard" : "Coba Gratis"}
+        <ArrowRight aria-hidden="true" />
+      </Link>
+    </Button>
   );
 }

@@ -23,7 +23,11 @@ mock.module(pathToFileURL(resolve("src/lib/prisma.ts")).href, {
               code: "P2002",
               clientVersion: "7.10.1",
             });
-          return { id: "user", email: "user@example.com", name: "User" };
+          return { id: "user", email: "user@example.com", name: "User", profileImageUrl: null };
+        },
+        async update(input: unknown) {
+          calls.push({ operation: "update", input });
+          return { id: "user" };
         },
         async updateMany(input: unknown) {
           calls.push({ operation: "updateMany", input });
@@ -44,7 +48,7 @@ test("identity queries select only public fields while credential lookup stays e
   await findUserById("trusted-user");
   assert.deepEqual(calls[0].input, {
     where: { id: "trusted-user" },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, profileImageUrl: true },
   });
   await findAccountByEmail("user@example.com");
   const credentials = calls[1].input;
@@ -54,6 +58,16 @@ test("identity queries select only public fields while credential lookup stays e
       "where" in credentials,
   );
   assert.deepEqual(credentials.where, { email: "user@example.com" });
+});
+
+test("the profile image write is scoped to the authenticated user's row", async () => {
+  const { saveAccountProfileImage } = await repository;
+  const imageUrl = "https://res.cloudinary.com/test/image/upload/profile.png";
+  await saveAccountProfileImage("trusted-user", imageUrl);
+  assert.deepEqual(calls, [{
+    operation: "update",
+    input: { where: { id: "trusted-user" }, data: { profileImageUrl: imageUrl }, select: { id: true } },
+  }]);
 });
 
 test("login updates compare versions and report stale writes without overwriting newer state", async () => {

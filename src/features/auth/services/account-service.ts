@@ -75,7 +75,12 @@ export async function loginWithPassword(
     if (!saved) continue;
 
     if (!passwordIsCorrect) return null;
-    return { id: account.id, email: account.email, name: account.name };
+    return {
+      id: account.id,
+      email: account.email,
+      name: account.name,
+      profileImageUrl: account.profileImageUrl,
+    };
   }
   return null;
 }

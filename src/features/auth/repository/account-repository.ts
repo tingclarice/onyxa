@@ -14,6 +14,7 @@ const publicUserColumns = {
   id: true,
   email: true,
   name: true,
+  profileImageUrl: true,
 } satisfies Prisma.UserSelect;
 
 /** Includes the password hash: use only for checking a login. */
@@ -38,6 +39,18 @@ export async function findUserById(
   db: DatabaseClient = getPrisma(),
 ): Promise<AuthUser | null> {
   return db.user.findUnique({ where: { id }, select: publicUserColumns });
+}
+
+export async function saveAccountProfileImage(
+  userId: string,
+  imageUrl: string,
+  db: DatabaseClient = getPrisma(),
+): Promise<void> {
+  await db.user.update({
+    where: { id: userId },
+    data: { profileImageUrl: imageUrl },
+    select: { id: true },
+  });
 }
 
 /** Throws AccountExistsError when the email is already registered. */

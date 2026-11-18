@@ -23,7 +23,7 @@ mock.module(repositoryFile("account-repository"), {
     },
     async findUserById(id: string) {
       return account?.id === id
-        ? { id: account.id, name: account.name, email: account.email }
+        ? { id: account.id, name: account.name, email: account.email, profileImageUrl: account.profileImageUrl }
         : null;
     },
     async createAccount(input: {
@@ -35,11 +35,12 @@ mock.module(repositoryFile("account-repository"), {
       account = {
         ...input,
         id: "user",
+        profileImageUrl: null,
         failedLoginAttempts: 0,
         lockedUntil: null,
         loginVersion: 0,
       };
-      return { id: account.id, email: account.email, name: account.name };
+      return { id: account.id, email: account.email, name: account.name, profileImageUrl: account.profileImageUrl };
     },
     async saveLoginAttempt(id: string, version: number, state: LoginState) {
       if (racesToLose > 0) {
@@ -88,6 +89,7 @@ test("signup stores a normalized local account and hash; returns no password or 
     id: "user",
     name: "Felix",
     email: "owner@example.com",
+    profileImageUrl: null,
   });
   assert.equal(account?.passwordHash, "hash:safe-password");
   assert.equal(accountWrites, 1);

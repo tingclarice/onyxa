@@ -14,7 +14,12 @@ export function BusinessWorkspace({
   children?: ReactNode;
 }) {
   const pathname = usePathname();
-  if (businessReady || pathname === "/inbox" || pathname === "/bisnis/baru")
+  if (
+    businessReady ||
+    pathname === "/inbox" ||
+    pathname === "/bisnis/baru" ||
+    pathname === "/pengaturan"
+  )
     return children;
   return <BusinessOnboarding />;
 }

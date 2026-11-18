@@ -58,9 +58,9 @@ test("business-free onboarding retains creation and links directly to the inbox"
   );
 });
 
-test("business-free users can open the inbox and create-business page", async () => {
+test("business-free users can open the inbox, create-business page, and account settings", async () => {
   const { BusinessWorkspace } = await delivery;
-  for (const route of ["/inbox", "/bisnis/baru"]) {
+  for (const route of ["/inbox", "/bisnis/baru", "/pengaturan"]) {
     pathname = route;
     const html = renderToStaticMarkup(
       createElement(

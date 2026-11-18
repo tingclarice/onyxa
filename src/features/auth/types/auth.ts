@@ -45,7 +45,14 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  profileImageUrl: string | null;
 }
+
+export const accountPhotoSchema = z
+  .file()
+  .min(1)
+  .max(8 * 1024 * 1024)
+  .mime(["image/jpeg", "image/png", "image/webp"]);
 export interface LoginState {
   failedLoginAttempts: number;
   lockedUntil: Date | null;
