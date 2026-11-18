@@ -5,15 +5,15 @@ import {
   BellRing,
   Camera,
   Check,
-  CircleAlert,
   ClipboardCheck,
   PackageSearch,
   ReceiptText,
-  Store,
+  Scan,
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatRupiah } from "@/lib/utils/format";
+import { LandingEntrances } from "@/components/landing-entrances";
+import "./landing-entrances.css";
 
 const painPoints = [
   {
@@ -84,69 +84,17 @@ function ScanLineIcon({ className }: { className?: string }) {
   return <Camera aria-hidden="true" className={className} />;
 }
 
-function PhonePreview() {
+function ReceiptIllustration() {
   return (
     <div
-      aria-label="Contoh tampilan cek nota di Onyxa"
-      className="relative mx-auto w-full max-w-[310px] rounded-[2.5rem] border-[8px] border-zinc-900 bg-zinc-900 p-2 shadow-2xl shadow-zinc-900/15"
+      aria-hidden="true"
+      className="relative mx-auto grid aspect-[5/4] w-full max-w-lg place-items-center overflow-hidden rounded-[2rem] bg-emerald-50 dark:bg-emerald-950"
     >
-      <div className="absolute left-1/2 top-1 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-zinc-900" />
-      <div className="min-h-[510px] overflow-hidden rounded-[1.9rem] bg-background px-4 pb-5 pt-9">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Cek struk belanja</p>
-            <p className="text-base font-bold">Info nota</p>
-          </div>
-          <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
-            Perlu dicek
-          </span>
-        </div>
-
-        <div className="space-y-3 rounded-xl border p-3">
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">Nama pemasok</p>
-            <div className="flex h-10 items-center rounded-md border border-amber-400 px-2 text-sm">
-              Pasar Segar Bu Rina
-            </div>
-            <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-amber-800">
-              <CircleAlert aria-hidden="true" className="size-3" />
-              Perlu dicek
-            </p>
-          </div>
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">Total nota</p>
-            <div className="flex h-10 items-center rounded-md border px-2 text-sm font-medium">
-              Rp207.000
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <p className="text-sm font-bold">Barang di nota</p>
-          <div className="space-y-3 rounded-xl border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm font-semibold">Telur ayam</p>
-                <p className="mt-1 text-xs text-muted-foreground">2 kg</p>
-              </div>
-              <p className="text-sm font-semibold">{formatRupiah(56000)}</p>
-            </div>
-          </div>
-          <div className="space-y-3 rounded-xl border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm font-semibold">Ayam potong</p>
-                <p className="mt-1 text-xs text-muted-foreground">3 kg</p>
-              </div>
-              <p className="text-sm font-semibold">{formatRupiah(114000)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex h-11 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-          <Check aria-hidden="true" className="size-4" />
-          Simpan
-        </div>
+      <Scan className="absolute size-[64%] text-emerald-300/75 dark:text-emerald-700" strokeWidth={0.55} />
+      <ReceiptText className="size-[32%] text-emerald-900 dark:text-emerald-100" strokeWidth={1.3} />
+      <span data-landing-enter="260" data-scan-beam className="absolute top-1/2 h-1 w-[23%] rounded-full bg-emerald-400/80" />
+      <div data-landing-enter="590" className="absolute bottom-[23%] right-[24%] grid size-[12%] place-items-center rounded-full bg-primary text-primary-foreground">
+        <Check className="size-1/2" strokeWidth={2.5} />
       </div>
     </div>
   );
@@ -155,9 +103,11 @@ function PhonePreview() {
 export default function HomePage() {
   return (
     <main className="min-h-dvh bg-background">
+      <LandingEntrances />
       <header className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
+          data-landing-enter="0"
           className="flex items-center gap-2.5 text-xl font-bold tracking-tight"
         >
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -168,55 +118,50 @@ export default function HomePage() {
         <nav aria-label="Navigasi" className="flex items-center gap-2 sm:gap-4">
           <Link
             href="/masuk"
+            data-landing-enter="60"
             className="inline-flex h-12 items-center px-3 text-base font-medium text-muted-foreground hover:text-foreground"
           >
             Masuk
           </Link>
-          <Button asChild>
-            <Link href="/daftar">Coba Gratis</Link>
-          </Button>
         </nav>
       </header>
 
       <section className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-8 sm:px-6 md:pb-24 md:pt-12 lg:grid-cols-2 lg:gap-16 lg:px-8">
         <div className="max-w-2xl">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
-            <Store aria-hidden="true" className="size-4" />
-            Catatan belanja untuk usaha kecil
-          </p>
-          <h1 className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
-            Foto nota, Onyxa yang catat. Anda tinggal lihat hasilnya.
+          <h1 data-landing-enter="0" className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
+            Foto nota. Onyxa yang catat.
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+          <p data-landing-enter="65" className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
             Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada
             perubahan.
           </p>
           <Button asChild className="mt-8 min-w-40">
-            <Link href="/daftar">
+            <Link href="/daftar" data-landing-enter="125">
               Coba Gratis
               <ArrowRight aria-hidden="true" />
             </Link>
           </Button>
         </div>
-        <div className="py-2">
-          <PhonePreview />
+        <div data-landing-enter="175" className="py-2">
+          <ReceiptIllustration />
         </div>
       </section>
 
       <section className="border-y bg-zinc-50/70">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-accent">
+            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
               Kenal rasanya?
             </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               Hal kecil yang bikin usaha terasa berat
             </h2>
           </div>
           <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-            {painPoints.map(({ icon: Icon, title, description }) => (
+            {painPoints.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
+                data-landing-enter={index * 60}
                 className="rounded-2xl border bg-background p-5 sm:p-6"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-muted">
@@ -234,16 +179,16 @@ export default function HomePage() {
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
         <div className="mb-10 max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-accent">
+          <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
             Gampang dimulai
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+          <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
             Cara kerja Onyxa
           </h2>
         </div>
         <div className="grid gap-8 md:grid-cols-3 md:gap-6">
-          {steps.map(({ icon: Icon, number, title, description }) => (
-            <article key={number} className="relative">
+          {steps.map(({ icon: Icon, number, title, description }, index) => (
+            <article key={number} data-landing-enter={index * 60} className="relative">
               <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
                 <Icon aria-hidden="true" className="size-6" />
               </div>
@@ -260,17 +205,18 @@ export default function HomePage() {
       <section className="border-y bg-zinc-50/70">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-accent">
+            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
               Satu tempat untuk catatan belanja
             </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               Biar keputusan usaha lebih jelas
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map(({ icon: Icon, title, description }) => (
+            {features.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
+                data-landing-enter={index * 60}
                 className="rounded-2xl border bg-background p-5"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-muted">
@@ -289,10 +235,10 @@ export default function HomePage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
         <div className="flex flex-col items-start justify-between gap-6 rounded-3xl bg-primary px-6 py-10 text-primary-foreground sm:px-10 md:flex-row md:items-center md:py-12">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 data-landing-enter="55" className="text-3xl font-bold tracking-tight sm:text-4xl">
               Mulai catat belanja dengan lebih rapi.
             </h2>
-            <p className="mt-3 text-base leading-7 text-primary-foreground/75">
+            <p data-landing-enter="95" className="mt-3 text-base leading-7 text-primary-foreground/75">
               Foto nota pertama Anda dan biarkan Onyxa membantu merapikannya.
             </p>
           </div>
@@ -301,7 +247,7 @@ export default function HomePage() {
             variant="secondary"
             className="w-full shrink-0 md:w-auto"
           >
-            <Link href="/daftar">
+            <Link href="/daftar" data-landing-enter="125">
               Coba Gratis
               <ArrowRight aria-hidden="true" />
             </Link>
@@ -309,10 +255,11 @@ export default function HomePage() {
         </div>
       </section>
 
-          <footer className="border-t">
+      <footer className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-7 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <Link
             href="/"
+            data-landing-enter="0"
             className="flex items-center gap-2 font-semibold text-foreground"
           >
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -320,7 +267,7 @@ export default function HomePage() {
             </span>
             Onyxa
           </Link>
-          <p>Catatan belanja yang lebih rapi untuk usaha Anda.</p>
+          <p data-landing-enter="65">Catatan belanja yang lebih rapi untuk usaha Anda.</p>
         </div>
       </footer>
     </main>
