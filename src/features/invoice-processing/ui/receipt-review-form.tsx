@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Controller,
   useFieldArray,
@@ -10,14 +11,15 @@ import {
 } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, ImageUp, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfidenceField } from "./review/confidence-field";
 import { CurrencyInput } from "./review/currency-input";
 import { ReceiptItemRow } from "./review/receipt-item-row";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { useScanReceipt } from "./use-scan-receipt";
+import { ImageUploadButton } from "@/components/ui/image-upload-button";
+import { uploadAndReadReceipt } from "./use-scan-receipt";
 import { saveReceiptAction } from "./actions";
 import {
   countFieldsNeedingReview,
@@ -32,7 +34,7 @@ import {
   type ScanReceipt,
   type ScanReceiptItem,
 } from "../types/scan";
-import { formatDate, formatRupiah } from "@/lib/utils/format";
+import { formatRupiah } from "@/lib/utils/format";
 
 const emptyReceipt: ScanReceipt = {
   supplier_name: "",
@@ -58,16 +60,14 @@ function createEmptyItem(): ScanReceiptItem {
  * The /scan/review screen: loads the scanned receipt, lets the user correct
  * it, and shows live checks (totals, low-confidence fields) from core rules.
  */
-export function ReceiptReviewForm() {
+export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftId?: string }) {
   const router = useRouter();
-  const scanMutation = useScanReceipt();
-  const { mutate: loadReceipt } = scanMutation;
   const didLoad = useRef(false);
   const [previewUrl, setPreviewUrl] = useState<string>();
-  const [isManualMode, setIsManualMode] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [receiptReady, setReceiptReady] = useState(false);
   const [receiptLoadError, setReceiptLoadError] = useState(false);
+  const [uploadPending, setUploadPending] = useState(false);
   const {
     control,
     register,
@@ -95,14 +95,12 @@ export function ReceiptReviewForm() {
   const flaggedCount = countFieldsNeedingReview(receiptForChecks);
   const receiptComplete = isReceiptComplete(receiptForChecks);
   const hasValidationErrors = Object.keys(errors).length > 0;
-  const showReceiptPreview = !isManualMode || Boolean(previewUrl);
+  const showReceiptPreview = !manual || Boolean(previewUrl);
 
   useEffect(() => {
     if (didLoad.current) return;
     didLoad.current = true;
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get("mode");
-    if (mode === "manual") {
+    if (manual) {
       const today = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Jakarta",
         year: "numeric",
@@ -117,16 +115,14 @@ export function ReceiptReviewForm() {
           total: 0,
           overall_confidence: 1,
         });
-        setIsManualMode(true);
         setPreviewUrl(undefined);
         setReceiptReady(true);
       }, 0);
       return;
     }
 
-    const receiptId = params.get("receiptId");
-    if (receiptId) {
-      const storageKey = `onyxa:scan-review:${receiptId}`;
+    if (draftId) {
+      const storageKey = `onyxa:scan-review:${draftId}`;
       const storedReceipt = window.sessionStorage.getItem(storageKey);
       if (storedReceipt) {
         window.sessionStorage.removeItem(storageKey);
@@ -154,40 +150,8 @@ export function ReceiptReviewForm() {
         return;
       }
     }
-    loadReceipt(undefined);
-  }, [loadReceipt, reset]);
-
-  useEffect(() => {
-    if (scanMutation.data?.receipt) {
-      const timer = window.setTimeout(() => {
-        reset(scanMutation.data.receipt);
-        setPreviewUrl(scanMutation.data.imageUrl);
-        setReceiptReady(true);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-  }, [reset, scanMutation.data]);
-
-  useEffect(
-    () => () => {
-      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    },
-    [previewUrl],
-  );
-
-  function retryScan() {
-    setReceiptLoadError(false);
-    setReceiptReady(false);
-    scanMutation.reset();
-    scanMutation.mutate(undefined);
-  }
-
-  function handleImageSelected(file?: File) {
-    if (!file) return;
-    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
-    scanMutation.mutate(file);
-  }
+    window.setTimeout(() => setReceiptLoadError(true), 0);
+  }, [draftId, manual, reset]);
 
   function updateItem(index: number, item: ScanReceiptItem) {
     const previous = items[index];
@@ -238,11 +202,10 @@ export function ReceiptReviewForm() {
   }
 
   async function saveReceipt(reviewed: ScanReceipt) {
-    // A photo picked on this screen is only a local preview (blob:), not a stored image.
-    const storedImageUrl = previewUrl?.startsWith("https://") ? previewUrl : undefined;
+    if (uploadPending) return;
     const result = await saveReceiptAction({
       receipt: reviewed,
-      imageUrl: storedImageUrl,
+      imageUrl: previewUrl,
     });
     if (!result.ok) {
       toast.error(result.message);
@@ -257,41 +220,27 @@ export function ReceiptReviewForm() {
   if (receiptLoadError) {
     return (
       <div className="mx-auto flex min-h-[70dvh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
-        <p role="alert" className="text-base text-destructive">
-          Hasil scan tidak bisa dibuka. Silakan coba scan ulang.
-        </p>
-        <Button type="button" onClick={retryScan}>
-          Coba lagi
-        </Button>
+        <h1 className="text-xl font-semibold">Belum ada hasil scan untuk dicek</h1>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button asChild><Link href="/scan">Scan nota</Link></Button>
+          <Button asChild variant="outline">
+            <Link href="/scan/review?mode=manual">Catat manual</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (scanMutation.isPending || scanMutation.isError || !receiptReady) {
+  if (!receiptReady) {
     return (
       <div className="mx-auto flex min-h-[70dvh] w-full max-w-2xl flex-col items-center justify-center gap-4 px-4 text-center">
-        {scanMutation.isError ? (
-          <>
-            <p role="alert" className="text-base text-destructive">
-              {scanMutation.error instanceof ScanReceiptError
-                ? scanMutation.error.message
-                : "Struk belum bisa dibuka. Coba lagi, ya."}
-            </p>
-            <Button type="button" onClick={retryScan}>
-              Coba lagi
-            </Button>
-          </>
-        ) : (
-          <>
-            <LoaderCircle
-              aria-hidden="true"
-              className="size-8 animate-spin text-accent"
-            />
-            <p className="text-base text-muted-foreground">
-              Menyiapkan struk untuk dicek...
-            </p>
-          </>
-        )}
+        <LoaderCircle
+          aria-hidden="true"
+          className="size-8 animate-spin text-accent"
+        />
+        <p role="status" className="text-base text-muted-foreground">
+          Menyiapkan struk untuk dicek...
+        </p>
       </div>
     );
   }
@@ -313,7 +262,7 @@ export function ReceiptReviewForm() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {isManualMode ? "Catat nota manual" : "Cek struk belanja"}
+              {manual ? "Catat nota manual" : "Cek struk belanja"}
             </h1>
             <p className="mt-1 text-base text-muted-foreground">
               Pastikan nama pemasok, barang, dan jumlahnya sudah benar.
@@ -349,67 +298,42 @@ export function ReceiptReviewForm() {
             <aside className="min-w-0 space-y-3 md:sticky md:top-6 md:self-start">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">Foto nota</h2>
-                <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-base font-medium transition-colors hover:bg-muted">
-                  <ImageUp aria-hidden="true" className="size-5" />
-                  <span>Pilih foto</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(event) =>
-                      handleImageSelected(event.currentTarget.files?.[0])
+                <ImageUploadButton
+                  label="Pilih foto"
+                  accept="image/*"
+                  disabled={isSubmitting}
+                  onPendingChange={setUploadPending}
+                  upload={async (file) => {
+                    try {
+                      const { receipt, imageUrl } = await uploadAndReadReceipt(file);
+                      if (imageUrl) return { ok: true, image: { receipt, imageUrl } };
+                    } catch (error) {
+                      if (error instanceof ScanReceiptError) {
+                        return { ok: false, message: error.message };
+                      }
                     }
-                  />
-                </label>
+                    return { ok: false, message: "Foto nota belum bisa dibaca." };
+                  }}
+                  onUploaded={({ receipt, imageUrl }) => {
+                    reset(receipt);
+                    setPreviewUrl(imageUrl);
+                  }}
+                />
               </div>
               <div
-                role="img"
-                aria-label="Pratinjau nota belanja"
                 className="mx-auto w-full max-w-md overflow-hidden rounded-xl border bg-muted p-3 md:max-w-none"
               >
                 {previewUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={previewUrl}
                     alt="Foto nota yang dipilih"
-                    className="max-h-[70dvh] w-full rounded-lg object-contain"
+                    width={640}
+                    height={880}
+                    unoptimized
+                    className="h-auto max-h-[70dvh] w-full rounded-lg object-contain"
                   />
                 ) : (
-                  <div className="mx-auto max-w-sm bg-white px-5 py-6 font-mono text-sm text-zinc-900 shadow-sm">
-                    <p className="text-center text-base font-bold">
-                      {receipt.supplier_name}
-                    </p>
-                    <p className="mt-1 text-center text-xs">
-                      {receipt.date ? formatDate(receipt.date) : "Tanggal nota"}
-                    </p>
-                    <div className="my-4 border-t border-dashed border-zinc-400" />
-                    <div className="space-y-3">
-                      {items.map((item, index) => (
-                        <div
-                          key={`${item.raw_name}-${index}`}
-                          className="flex justify-between gap-3"
-                        >
-                          <span className="min-w-0 break-words">
-                            {item.raw_name || "Nama barang"}{" "}
-                            <span className="whitespace-nowrap">
-                              {item.qty} {item.unit}
-                            </span>
-                          </span>
-                          <span className="shrink-0">
-                            {formatRupiah(item.line_total)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="my-4 border-t border-dashed border-zinc-400" />
-                    <div className="flex justify-between gap-3 font-bold">
-                      <span>TOTAL</span>
-                      <span>{formatRupiah(receipt.total)}</span>
-                    </div>
-                    <p className="mt-5 text-center text-xs text-zinc-500">
-                      Pratinjau contoh nota
-                    </p>
-                  </div>
+                  <p className="p-4 text-sm text-muted-foreground">Belum ada foto nota.</p>
                 )}
               </div>
             </aside>
@@ -541,7 +465,7 @@ export function ReceiptReviewForm() {
               <Button
                 type="submit"
                 className="flex-1 sm:flex-initial sm:min-w-40"
-                disabled={isSubmitting || (isSaved && !isDirty)}
+                disabled={uploadPending || isSubmitting || (isSaved && !isDirty)}
               >
                 {isSubmitting ? (
                   <>

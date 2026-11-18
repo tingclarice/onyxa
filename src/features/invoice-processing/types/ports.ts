@@ -2,12 +2,7 @@ import type {
   BaseUnit,
   CatalogItem,
   ReceiptLineToSave,
-  UploadReceiptImageResult,
 } from "./scan";
-
-export interface ReceiptImageUploader {
-  upload(file: File): Promise<UploadReceiptImageResult>;
-}
 
 export interface ReceiptImageUrlValidator {
   isValid(imageUrl: string): boolean;

@@ -7,10 +7,7 @@ import {
   type ScanReceiptResult,
 } from "../types/scan";
 import { getReceiptImageProblem } from "../core/receipt-image-rules";
-import {
-  scanReceiptAction,
-  uploadAndScanReceiptAction,
-} from "./actions";
+import { uploadAndScanReceiptAction } from "./actions";
 
 const MAX_VISION_DIMENSION = 2048;
 const JPEG_HIGH_QUALITY = 0.92;
@@ -78,35 +75,19 @@ async function optimizeImageIfOversized(file: File): Promise<File> {
 }
 
 /** Browser hook: check the photo → upload & scan in parallel. */
+export async function uploadAndReadReceipt(file: File): Promise<ScanReceiptResult> {
+  const problem = getReceiptImageProblem(file);
+  if (problem) throw new ScanReceiptError(problem.message, problem.code);
+
+  const optimizedFile = await optimizeImageIfOversized(file);
+  const formData = new FormData();
+  formData.set("file", optimizedFile);
+
+  const result = await uploadAndScanReceiptAction(formData);
+  if (!result.ok) throw new ScanReceiptError(result.message, result.code);
+  return ScanReceiptResultSchema.parse(result.result);
+}
+
 export function useScanReceipt() {
-  return useMutation({
-    mutationFn: async (file?: File): Promise<ScanReceiptResult> => {
-      if (file) {
-        // Instant check in the browser; the server checks again.
-        const problem = getReceiptImageProblem(file);
-        if (problem) throw new ScanReceiptError(problem.message, problem.code);
-
-        const optimizedFile = await optimizeImageIfOversized(file);
-        const formData = new FormData();
-        formData.set("file", optimizedFile);
-
-        const combinedResult = await uploadAndScanReceiptAction(formData);
-        if (!combinedResult.ok) {
-          throw new ScanReceiptError(
-            combinedResult.message,
-            combinedResult.code,
-          );
-        }
-
-        return ScanReceiptResultSchema.parse(combinedResult.result);
-      }
-
-      const scanResult = await scanReceiptAction(undefined);
-      if (!scanResult.ok) {
-        throw new ScanReceiptError(scanResult.message, scanResult.code);
-      }
-
-      return ScanReceiptResultSchema.parse(scanResult.result);
-    },
-  });
+  return useMutation({ mutationFn: uploadAndReadReceipt });
 }

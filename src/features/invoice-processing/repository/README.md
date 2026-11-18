@@ -8,10 +8,10 @@ Photo storage, receipt reading and receipt saving.
 
 | File | What it has |
 |---|---|
-| `receipt-image-storage.ts` | Cloudinary: `uploadImageToCloudinary`, `isOurCloudinaryImageUrl` |
 | `cloudinary-image.ts` | Validates and retrieves bounded receipt image data from Cloudinary |
+| `receipt-image-storage.ts` | Connects receipt scanning to the shared Cloudinary uploader |
 | `gemini.ts` | Gemini extraction provider; returns untrusted structured output |
-| `demo-receipt-reader.ts` | DEMO: `readReceiptFromImage` returns sample receipts when no image is supplied |
+| `receipt-transaction-repository.ts` | Transaction rows scoped to the active business |
 | `receipt-repository.ts` | `findOrCreateSupplier`, `findItemByNameKey` (name or alias), `createItem`, `saveItemAliasIfFree`, `createSavedReceipt` |
 | `receipt-save-adapter.ts` | Implements the receipt-save transaction port using `runInTransaction` and the persistence functions |
 

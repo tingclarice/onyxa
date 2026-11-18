@@ -20,7 +20,6 @@ const businessId = "bdf50100-0000-4000-8000-000000000001";
 const otherBusinessId = "bdf50100-0000-4000-8000-000000000002";
 let actor: Actor | null = null;
 let cookieValue: string | undefined;
-let receiptReads = 0;
 
 const membership: Membership = {
   id: "member",
@@ -61,26 +60,12 @@ mock.module(pathToFileURL(resolve("src/features/auth/server.ts")).href, {
     },
   },
 });
-mock.module(
-  pathToFileURL(
-    resolve("src/features/invoice-processing/repository/demo-receipt-reader.ts"),
-  ).href,
-  {
-    namedExports: {
-      async readReceiptFromImage() {
-        receiptReads++;
-        return {};
-      },
-    },
-  },
-);
 const queries = import("./queries");
 
 beforeEach(() => {
   resetDatabase();
   actor = { id: "user", email: "Staff@Example.com" };
   cookieValue = undefined;
-  receiptReads = 0;
 });
 
 test("an account without a business stays logged in, and business-only actions redirect", async () => {
@@ -91,15 +76,14 @@ test("an account without a business stays logged in, and business-only actions r
     (error: unknown) =>
       error instanceof TestRedirect && error.destination === "/beranda",
   );
-  const { scanReceiptAction } = await import(
+  const { uploadAndScanReceiptAction } = await import(
     "@/features/invoice-processing/ui/actions"
   );
   await assert.rejects(
-    scanReceiptAction(),
+    uploadAndScanReceiptAction(new FormData()),
     (error: unknown) =>
       error instanceof TestRedirect && error.destination === "/beranda",
   );
-  assert.equal(receiptReads, 0);
 });
 
 test("the saved business cookie belongs to one account and cannot invent a membership", async () => {

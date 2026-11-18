@@ -2,6 +2,7 @@ import {
   ScanReceiptError,
   ScanReceiptSchema,
   type ReceiptExtractionProvider,
+  type ReceiptImage,
   type ReceiptImageSource,
   type ScanReceipt,
 } from "@/features/invoice-processing/types/scan";
@@ -14,7 +15,14 @@ export async function extractReceiptFromImageUrl(
   },
 ): Promise<ScanReceipt> {
   const image = await dependencies.imageSource.load(imageUrl);
-  const candidate = await dependencies.extractor.extract(image);
+  return extractReceipt(image, dependencies.extractor);
+}
+
+export async function extractReceipt(
+  image: ReceiptImage,
+  extractor: ReceiptExtractionProvider,
+): Promise<ScanReceipt> {
+  const candidate = await extractor.extract(image);
   const result = ScanReceiptSchema.safeParse(candidate);
 
   if (!result.success) {

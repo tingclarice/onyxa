@@ -117,13 +117,6 @@ export type ScanReceiptActionResult =
       message: string;
     };
 
-export type UploadReceiptImageResult =
-  | { ok: true; imageUrl: string }
-  | {
-      ok: false;
-      code: ScanReceiptErrorCode;
-      message: string;
-    };
 
 export class ScanReceiptError extends Error {
   constructor(

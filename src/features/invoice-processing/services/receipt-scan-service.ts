@@ -1,55 +1,38 @@
+import { uploadImageToCloudinary } from "../repository/receipt-image-storage";
+import { fetchCloudinaryReceiptImage } from "../repository/cloudinary-image";
+import { createGeminiReceiptExtractor } from "../repository/gemini";
 import {
   ScanReceiptError,
-  ScanReceiptResultSchema,
-  ScanReceiptSchema,
-  type ReceiptExtractionProvider,
-  type ReceiptImageSource,
   type ScanReceiptResult,
-  type UploadReceiptImageResult,
 } from "../types/scan";
-import type { ReceiptImageUploader } from "../types/ports";
-import { getReceiptImageProblem } from "../core/receipt-image-rules";
+import { getReceiptImageProblem, isReceiptImageType } from "../core/receipt-image-rules";
 import { fillMissingUnitPrices } from "../core/receipt-review-rules";
-import { extractReceiptFromImageUrl } from "./extract-receipt";
+import { extractReceipt, extractReceiptFromImageUrl } from "./extract-receipt";
 
-/**
- * Step 1 of scanning: check the photo and store it.
- * Returns the stored image address, or a safe error the screen can show.
- */
-export async function uploadReceiptPhoto(
-  file: File,
-  imageUploader: ReceiptImageUploader,
-): Promise<UploadReceiptImageResult> {
-  const problem = getReceiptImageProblem(file);
-  if (problem) return { ok: false, ...problem };
-  return imageUploader.upload(file);
+/** Read a receipt from a previously uploaded photo. */
+export async function scanReceipt(
+  imageUrl: string,
+): Promise<ScanReceiptResult> {
+  const receipt = await extractReceiptFromImageUrl(imageUrl, {
+    imageSource: { load: fetchCloudinaryReceiptImage },
+    extractor: createGeminiReceiptExtractor(),
+  });
+  return { receipt: fillMissingUnitPrices(receipt), imageUrl };
 }
 
-/**
- * Step 2 of scanning: read the receipt from the stored photo.
- * Without a photo, the demo still returns a sample receipt.
- */
-export async function scanReceipt(
-  imageUrl: string | undefined,
-  dependencies: {
-    readonly readDemoReceipt: () => Promise<unknown>;
-    readonly imageSource: ReceiptImageSource;
-    readonly extractor: ReceiptExtractionProvider;
-  },
-): Promise<ScanReceiptResult> {
-  const candidate = imageUrl
-    ? await extractReceiptFromImageUrl(imageUrl, dependencies)
-    : await dependencies.readDemoReceipt();
-  const parsedReceipt = ScanReceiptSchema.safeParse(candidate);
-  if (!parsedReceipt.success) {
-    throw new ScanReceiptError(
-      "Hasil pembacaan nota belum sesuai format. Coba unggah ulang foto.",
-      "invalid_model_output",
-    );
+/** Store a receipt photo and extract its contents from the same file in parallel. */
+export async function uploadAndScanReceipt(file: File): Promise<ScanReceiptResult> {
+  const problem = getReceiptImageProblem(file);
+  if (problem) throw new ScanReceiptError(problem.message, problem.code);
+  if (!isReceiptImageType(file.type)) {
+    throw new ScanReceiptError("Format foto belum didukung.", "unreadable_image");
   }
 
-  return ScanReceiptResultSchema.parse({
-    receipt: fillMissingUnitPrices(parsedReceipt.data),
-    ...(imageUrl ? { imageUrl } : {}),
-  });
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const [uploaded, receipt] = await Promise.all([
+    uploadImageToCloudinary(file),
+    extractReceipt({ bytes, mimeType: file.type }, createGeminiReceiptExtractor()),
+  ]);
+  if (!uploaded.ok) throw new ScanReceiptError(uploaded.message, uploaded.code);
+  return { receipt: fillMissingUnitPrices(receipt), imageUrl: uploaded.imageUrl };
 }

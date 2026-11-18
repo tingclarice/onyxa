@@ -24,14 +24,17 @@ export function getReceiptImageProblem(image: {
       message: "Ukuran foto maksimal 8 MB. Pilih foto yang lebih kecil.",
     };
 
-  const isSupportedType = SUPPORTED_RECEIPT_IMAGE_TYPES.some(
-    (type) => type === image.type,
-  );
-  if (!isSupportedType || image.size === 0)
+  if (!isReceiptImageType(image.type) || image.size === 0)
     return {
       code: "unreadable_image",
       message: "Format foto belum didukung. Gunakan JPG, PNG, WebP, atau HEIC.",
     };
 
   return null;
+}
+
+export function isReceiptImageType(
+  mimeType: string,
+): mimeType is (typeof SUPPORTED_RECEIPT_IMAGE_TYPES)[number] {
+  return SUPPORTED_RECEIPT_IMAGE_TYPES.some((type) => type === mimeType);
 }

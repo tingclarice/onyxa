@@ -5,44 +5,17 @@ import { z } from "zod";
 import { requireUser } from "@/features/auth/server";
 import { requireActiveBusiness } from "@/features/business-management/server";
 import type {
-  ReceiptImage,
   SaveReceiptResult,
   ScanReceiptActionResult,
-  UploadReceiptImageResult,
 } from "../types/scan";
 import { ScanReceiptError } from "../types/scan";
 import {
   scanReceipt,
-  uploadReceiptPhoto,
+  uploadAndScanReceipt,
 } from "../services/receipt-scan-service";
 import { saveReviewedReceipt } from "../services/receipt-save-service";
-import { fetchCloudinaryReceiptImage } from "../repository/cloudinary-image";
-import { createGeminiReceiptExtractor } from "../repository/gemini";
-import { readReceiptFromImage } from "../repository/demo-receipt-reader";
-import {
-  isOurCloudinaryImageUrl,
-  uploadReceiptImage,
-} from "../repository/receipt-image-storage";
+import { isOurCloudinaryImageUrl } from "@/lib/cloudinary-images";
 import { receiptSaveRepository } from "../repository/receipt-save-adapter";
-
-// Both actions need a logged-in user who has an active business.
-
-export async function uploadReceiptImageAction(
-  formData: FormData,
-): Promise<UploadReceiptImageResult> {
-  await requireUser();
-  await requireActiveBusiness();
-
-  const file = formData.get("file");
-  if (!(file instanceof File))
-    return {
-      ok: false,
-      code: "unreadable_image",
-      message: "Pilih foto nota terlebih dahulu.",
-    };
-
-  return uploadReceiptPhoto(file, { upload: uploadReceiptImage });
-}
 
 export async function scanReceiptAction(
   imageUrl?: unknown,
@@ -50,7 +23,7 @@ export async function scanReceiptAction(
   await requireUser();
   await requireActiveBusiness();
 
-  if (imageUrl !== undefined && typeof imageUrl !== "string") {
+  if (typeof imageUrl !== "string" || !imageUrl) {
     return {
       ok: false,
       code: "cloudinary_image_invalid",
@@ -59,11 +32,7 @@ export async function scanReceiptAction(
   }
 
   try {
-    const result = await scanReceipt(imageUrl, {
-      readDemoReceipt: () => readReceiptFromImage(undefined),
-      imageSource: { load: fetchCloudinaryReceiptImage },
-      extractor: createGeminiReceiptExtractor(),
-    });
+    const result = await scanReceipt(imageUrl);
     return { ok: true, result };
   } catch (error) {
     if (error instanceof ScanReceiptError) {
@@ -98,46 +67,8 @@ export async function uploadAndScanReceiptAction(
   }
 
   try {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const allowedMimeTypes: ReceiptImage["mimeType"][] = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/heic",
-      "image/heif",
-    ];
-    const mimeType: ReceiptImage["mimeType"] = allowedMimeTypes.includes(
-      file.type as ReceiptImage["mimeType"],
-    )
-      ? (file.type as ReceiptImage["mimeType"])
-      : "image/jpeg";
-
-    const [uploadResult, scanResult] = await Promise.all([
-      uploadReceiptPhoto(file, { upload: uploadReceiptImage }),
-      scanReceipt("https://res.cloudinary.com/direct-buffer", {
-        readDemoReceipt: () => readReceiptFromImage(undefined),
-        imageSource: {
-          load: async () => ({ bytes, mimeType }),
-        },
-        extractor: createGeminiReceiptExtractor(),
-      }),
-    ]);
-
-    if (!uploadResult.ok) {
-      return {
-        ok: false,
-        code: uploadResult.code,
-        message: uploadResult.message,
-      };
-    }
-
-    return {
-      ok: true,
-      result: {
-        receipt: scanResult.receipt,
-        imageUrl: uploadResult.imageUrl,
-      },
-    };
+    const result = await uploadAndScanReceipt(file);
+    return { ok: true, result };
   } catch (error) {
     if (error instanceof ScanReceiptError) {
       return {
@@ -185,5 +116,6 @@ export async function saveReceiptAction(
   // Items and the home-screen warnings depend on saved receipts.
   revalidatePath("/barang");
   revalidatePath("/beranda");
+  revalidatePath("/transaksi");
   return { ok: true, ...saved };
 }
