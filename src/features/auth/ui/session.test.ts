@@ -42,6 +42,11 @@ mock.module("next/navigation", {
     },
   },
 });
+mock.module("next/server", {
+  namedExports: {
+    async connection() {},
+  },
+});
 mock.module(pathToFileURL(resolve("src/features/auth/ui/authjs.ts")).href, {
   namedExports: {
     async auth() {

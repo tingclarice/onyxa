@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { z } from "zod";
 import { auth } from "./authjs";
 import { getUserById } from "../services/account-service";
@@ -8,6 +9,8 @@ import type { AuthUser } from "../types/auth";
 
 /** The logged-in user, read fresh from the database. Null when logged out. */
 export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
+  // Auth.js can use cryptographic randomness while reading a session.
+  await connection();
   const session = await auth();
   const userId = z.uuid().safeParse(session?.user?.id);
   if (!userId.success) return null;
