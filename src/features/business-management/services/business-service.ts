@@ -65,16 +65,18 @@ export async function getBusinessSettings(
   now: Date = new Date(),
 ): Promise<BusinessSettings> {
   const membership = await getMembershipInBusiness(actor, businessId);
-  const members = await listActiveMembersOfBusiness(businessId);
-
   const canManage = canManageBusiness(membership);
+  const [members, invitations] = await Promise.all([
+    listActiveMembersOfBusiness(businessId),
+    canManage ? listUnansweredInvitationsOfBusiness(businessId) : [],
+  ]);
 
-  let invitations = canManage
-    ? await listUnansweredInvitationsOfBusiness(businessId)
-    : [];
-  invitations = keepOpenInvitations(invitations, now);
-
-  return { membership, members, invitations, canManage };
+  return {
+    membership,
+    members,
+    invitations: keepOpenInvitations(invitations, now),
+    canManage,
+  };
 }
 
 /** Owner only: change the business name, type or image. */

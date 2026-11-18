@@ -23,11 +23,12 @@ export async function getWorkspace(
   selectedBusinessId: string | undefined,
   now: Date = new Date(),
 ): Promise<Workspace> {
-  const memberships = await listActiveMembershipsOfUser(actor.id);
-
-  const inbox = actor.email
-    ? await listUnansweredInvitationsForRecipient(normalizeEmail(actor.email))
-    : [];
+  const [memberships, inbox] = await Promise.all([
+    listActiveMembershipsOfUser(actor.id),
+    actor.email
+      ? listUnansweredInvitationsForRecipient(normalizeEmail(actor.email))
+      : [],
+  ]);
 
   return {
     memberships,

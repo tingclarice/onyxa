@@ -15,15 +15,38 @@ export default function AuthenticatedLayout({
   children: ReactNode;
 }) {
   return (
-    <Suspense
-      fallback={
-        <p role="status" className="p-6">
-          Memeriksa sesi...
-        </p>
-      }
-    >
+    <Suspense fallback={<WorkspaceLoadingShell />}>
       <AuthenticatedContent>{children}</AuthenticatedContent>
     </Suspense>
+  );
+}
+
+function WorkspaceLoadingShell() {
+  return (
+    <div className="min-h-dvh md:flex">
+      <aside
+        aria-hidden="true"
+        className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block"
+      >
+        <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6 text-xl font-bold tracking-tight">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            O
+          </span>
+          Onyxa
+        </div>
+      </aside>
+      <div className="min-w-0 flex-1">
+        <header className="flex min-h-16 items-center border-b border-border px-4 sm:px-8">
+          <span className="text-sm font-semibold md:sr-only">Onyxa</span>
+        </header>
+        <main aria-label="Ruang kerja Onyxa" aria-busy="true">
+          <div className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-8" aria-hidden="true">
+            <div className="h-8 w-40 rounded-md bg-muted" />
+            <div className="min-h-32 rounded-2xl border border-border" />
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }
 
