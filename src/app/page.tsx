@@ -88,7 +88,7 @@ function ReceiptIllustration() {
   return (
     <div
       aria-hidden="true"
-      className="relative mx-auto grid aspect-[5/4] w-full max-w-lg place-items-center overflow-hidden rounded-[2rem] bg-emerald-50 dark:bg-emerald-950"
+      className="relative mx-auto grid aspect-[5/4] w-full max-w-lg place-items-center overflow-hidden rounded-[2rem] bg-emerald-100 dark:bg-emerald-950"
     >
       <Scan className="absolute size-[64%] text-emerald-300/75 dark:text-emerald-700" strokeWidth={0.55} />
       <ReceiptText className="size-[32%] text-emerald-900 dark:text-emerald-100" strokeWidth={1.3} />
@@ -104,53 +104,60 @@ export default function HomePage() {
   return (
     <main className="min-h-dvh bg-background">
       <LandingEntrances />
-      <header className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          data-landing-enter="0"
-          className="flex items-center gap-2.5 text-xl font-bold tracking-tight"
-        >
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            O
-          </span>
-          Onyxa
-        </Link>
-        <nav aria-label="Navigasi" className="flex items-center gap-2 sm:gap-4">
+      <section
+        data-landing-hero
+        aria-labelledby="landing-title"
+        className="landing-hero relative isolate grid overflow-clip bg-[#f4faf6] dark:bg-[#101b16]"
+      >
+        <div aria-hidden="true" className="landing-hero-background pointer-events-none absolute inset-0 -z-10 text-emerald-700 dark:text-emerald-300" />
+        <header className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
           <Link
-            href="/masuk"
-            data-landing-enter="60"
-            className="inline-flex h-12 items-center px-3 text-base font-medium text-muted-foreground hover:text-foreground"
+            href="/"
+            data-landing-enter="0"
+            className="flex items-center gap-2.5 text-xl font-bold tracking-tight"
           >
-            Masuk
+            <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              O
+            </span>
+            Onyxa
           </Link>
-        </nav>
-      </header>
-
-      <section className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-8 sm:px-6 md:pb-24 md:pt-12 lg:grid-cols-2 lg:gap-16 lg:px-8">
-        <div className="max-w-2xl">
-          <h1 data-landing-enter="0" className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
-            Foto nota. Onyxa yang catat.
-          </h1>
-          <p data-landing-enter="65" className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada
-            perubahan.
-          </p>
-          <Button asChild className="mt-8 min-w-40">
-            <Link href="/daftar" data-landing-enter="125">
-              Coba Gratis
-              <ArrowRight aria-hidden="true" />
+          <nav aria-label="Navigasi">
+            <Link
+              href="/masuk"
+              data-landing-enter="60"
+              className="inline-flex h-12 items-center px-3 text-base font-medium text-zinc-700 hover:text-foreground dark:text-zinc-300"
+            >
+              Masuk
             </Link>
-          </Button>
-        </div>
-        <div data-landing-enter="175" className="py-2">
-          <ReceiptIllustration />
+          </nav>
+        </header>
+
+        <div className="landing-hero-content mx-auto grid w-full max-w-7xl content-center items-center gap-6 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-2 lg:gap-16 lg:px-8">
+          <div className="max-w-2xl">
+            <h1 id="landing-title" data-landing-enter="0" className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
+              Foto nota. Onyxa yang catat.
+            </h1>
+            <p data-landing-enter="65" className="mt-4 max-w-xl text-lg leading-8 text-zinc-700 sm:mt-6 dark:text-zinc-300">
+              Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada
+              perubahan.
+            </p>
+            <Button asChild className="mt-5 min-w-40 sm:mt-8">
+              <Link href="/daftar" data-landing-enter="125">
+                Coba Gratis
+                <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+          <div data-landing-enter="175" className="landing-hero-artwork mx-auto">
+            <ReceiptIllustration />
+          </div>
         </div>
       </section>
 
-      <section className="border-y bg-zinc-50/70">
+      <section className="bg-stone-200 dark:bg-stone-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
-            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
+            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-300">
               Kenal rasanya?
             </p>
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -177,35 +184,37 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-        <div className="mb-10 max-w-2xl">
-          <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
-            Gampang dimulai
-          </p>
-          <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Cara kerja Onyxa
-          </h2>
-        </div>
-        <div className="grid gap-8 md:grid-cols-3 md:gap-6">
-          {steps.map(({ icon: Icon, number, title, description }, index) => (
-            <article key={number} data-landing-enter={index * 60} className="relative">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
-                <Icon aria-hidden="true" className="size-6" />
-              </div>
-              <p className="mt-5 text-sm font-semibold text-accent">{number}</p>
-              <h3 className="mt-1 text-xl font-bold">{title}</h3>
-              <p className="mt-2 text-base leading-7 text-muted-foreground">
-                {description}
-              </p>
-            </article>
-          ))}
+      <section className="bg-emerald-950 text-emerald-50">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
+          <div className="mb-10 max-w-2xl">
+            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
+              Gampang dimulai
+            </p>
+            <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+              Cara kerja Onyxa
+            </h2>
+          </div>
+          <div className="grid gap-8 md:grid-cols-3 md:gap-6">
+            {steps.map(({ icon: Icon, number, title, description }, index) => (
+              <article key={number} data-landing-enter={index * 60}>
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+                  <Icon aria-hidden="true" className="size-6" />
+                </div>
+                <p className="mt-5 text-sm font-semibold text-emerald-300">{number}</p>
+                <h3 className="mt-1 text-xl font-bold">{title}</h3>
+                <p className="mt-2 text-base leading-7 text-emerald-100">
+                  {description}
+                </p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="border-y bg-zinc-50/70">
+      <section className="bg-emerald-100 dark:bg-emerald-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
-            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-accent">
+            <p data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-950 dark:text-emerald-100">
               Satu tempat untuk catatan belanja
             </p>
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -232,19 +241,18 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-3xl bg-primary px-6 py-10 text-primary-foreground sm:px-10 md:flex-row md:items-center md:py-12">
+      <section className="bg-zinc-100 dark:bg-zinc-900">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:py-20 lg:px-8">
           <div className="max-w-2xl">
             <h2 data-landing-enter="55" className="text-3xl font-bold tracking-tight sm:text-4xl">
               Mulai catat belanja dengan lebih rapi.
             </h2>
-            <p data-landing-enter="95" className="mt-3 text-base leading-7 text-primary-foreground/75">
+            <p data-landing-enter="95" className="mt-3 text-base leading-7 text-zinc-700 dark:text-zinc-300">
               Foto nota pertama Anda dan biarkan Onyxa membantu merapikannya.
             </p>
           </div>
           <Button
             asChild
-            variant="secondary"
             className="w-full shrink-0 md:w-auto"
           >
             <Link href="/daftar" data-landing-enter="125">

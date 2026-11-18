@@ -16,7 +16,26 @@ export function LandingEntrances() {
     }, { threshold: 0.12 });
 
     document.querySelectorAll("[data-landing-enter]").forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
+
+    const hero = document.querySelector("[data-landing-hero]");
+    let heroIsVisible = false;
+    const updateHeroMotion = () => {
+      hero?.toggleAttribute("data-landing-hero-visible", heroIsVisible && !document.hidden);
+    };
+    const heroObserver = new IntersectionObserver(([entry]) => {
+      heroIsVisible = entry?.isIntersecting ?? false;
+      updateHeroMotion();
+    });
+    if (hero) {
+      heroObserver.observe(hero);
+      document.addEventListener("visibilitychange", updateHeroMotion);
+    }
+
+    return () => {
+      observer.disconnect();
+      heroObserver.disconnect();
+      document.removeEventListener("visibilitychange", updateHeroMotion);
+    };
   }, []);
 
   return null;

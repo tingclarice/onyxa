@@ -1,4 +1,93 @@
+.landing-hero {
+  min-height: 100vh;
+  min-height: 100svh;
+  grid-template-rows: auto 1fr;
+}
+
+.landing-hero-artwork {
+  width: min(100%, 32rem, 43vh);
+  width: min(100%, 32rem, 43svh);
+}
+
+.landing-hero-background {
+  transform: translateY(54%);
+}
+
+.landing-hero-background::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  content: "";
+}
+
+@media (max-width: 39.999rem) and (max-height: 40rem) {
+  .landing-hero-content {
+    row-gap: 1rem;
+  }
+
+  .landing-hero-content h1 {
+    font-size: 2rem;
+  }
+
+  .landing-hero-content p {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .landing-hero-artwork {
+    width: min(100%, 37vh);
+    width: min(100%, 37svh);
+  }
+}
+
+@media (min-width: 64rem) {
+  .landing-hero-artwork {
+    width: min(100%, 32rem, 68vh);
+    width: min(100%, 32rem, 68svh);
+  }
+}
+
+@media (min-width: 40rem) and (max-height: 36rem) {
+  .landing-hero > header {
+    height: 4rem;
+  }
+
+  .landing-hero-content {
+    padding-block: 1rem;
+  }
+
+  .landing-hero-content h1 {
+    font-size: clamp(2rem, 4.8vw, 3rem);
+  }
+
+  .landing-hero-content p {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+@media (min-width: 40rem) and (max-width: 63.999rem) and (max-height: 36rem) {
+  .landing-hero-content {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .landing-hero-artwork {
+    width: min(100%, 60vh);
+    width: min(100%, 60svh);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
+  .landing-hero-background {
+    animation: onyxa-background-scan 15s linear infinite paused;
+  }
+
+  [data-landing-hero-visible] .landing-hero-background {
+    animation-play-state: running;
+  }
+
   [data-landing-entered] {
     animation: onyxa-landing-arrive 420ms cubic-bezier(0.2, 0.65, 0.3, 1) var(--landing-delay, 0ms) backwards;
   }
@@ -6,6 +95,22 @@
   [data-landing-entered][data-scan-beam] {
     animation-name: onyxa-landing-scan;
     animation-duration: 640ms;
+  }
+}
+
+@keyframes onyxa-background-scan {
+  from {
+    opacity: 0;
+    transform: translateY(-1.5rem);
+  }
+
+  16%, 84% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(100%);
   }
 }
 
