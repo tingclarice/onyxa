@@ -4,7 +4,7 @@ Scan-first purchasing and expense tracker for Indonesian small businesses (UMKM)
 
 Staff photograph a supplier receipt. The app uploads the image to Cloudinary,
 uses Gemini to extract a draft, and opens it in an editable review flow. Opening
-the review screen without an image still loads demo receipt data.
+the review screen can also start with a blank manual entry.
 
 ## Task Distribution
 
@@ -43,7 +43,7 @@ Google Gen AI SDK
 1. **Integrasi Database Cloud Supabase via HTTPS ([`src/lib/prisma.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/prisma.ts))**
    - Menghubungkan aplikasi langsung ke Supabase (`SUPABASE_URL` + `SUPABASE_SECRET_KEY`) lewat REST API PostgREST tanpa butuh koneksi TCP/password DB manual.
    - Mengaktifkan `AUTH_SECRET` di [`.env`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/.env) sehingga registrasi (`/daftar`), login (`/masuk`), buat usaha, dan simpan nota langsung masuk ke tabel Supabase.
-   - Menambahkan opsi `DEV_AUTH_BYPASS=true` di [`session.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/auth/ui/session.ts) dan [`queries.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/business-management/ui/queries.ts) untuk mempercepat testing saat development.
+   - Gunakan `DATABASE_URL` untuk menjalankan migrasi Prisma ke PostgreSQL Supabase.
 
 2. **Integrasi Cloudinary, Live Camera & Gemini AI OCR (`/scan` & `/scan/review`)**
    - Menggunakan **`gemini-3.5-flash`** sebagai model utama (dengan auto-fallback ke `gemini-3.8-flash` & timeout 25 detik) di [`gemini.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/repository/gemini.ts) untuk ekstraksi JSON terstruktur yang cepat dan akurat.
@@ -78,7 +78,9 @@ Google Gen AI SDK
 - [x] Deteksi barang melambat (*Slow-Moving / Burn-Rate EMA*) di `/beranda` dan `/barang`.
 - [x] Deteksi kenaikan harga supplier (*Purchase Price Variance / Price EMA*) + grafik tren harga berlabel timeline & tooltip + rekomendasi supplier termurah di `/beranda`, `/barang`, dan `/barang/[id]`.
 
+- [x] Halaman `/transaksi` menampilkan nota usaha aktif dari Supabase.
+- [x] Pemilik dapat menyimpan foto profil usaha melalui Pengaturan.
+
 #### To-Do 
-- [ ] **Halaman `/transaksi`**: Saat ini masih membaca mock data dari [`src/lib/api/transactions.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/api/transactions.ts) — tinggal dihubungkan ke tabel `Receipt` yang sudah disimpan di Supabase.
 - [ ] **Pencocokan Katalog Otomatis saat OCR**: Mengirim daftar nama item yang sudah ada di katalog ke prompt Gemini saat scan agar `matched_item` otomatis terisi.
 - [ ] **Deployment & Final Polish**: Deploy ke Cloud Hosting (Vercel / Cloud Run) dan pengujian end-to-end dengan beberapa nota asli.

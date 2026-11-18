@@ -4,7 +4,6 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 declare global {
-  var onyxaPrisma: PrismaClient | undefined;
   var onyxaPrismaV3: PrismaClient | undefined;
 }
 
@@ -245,11 +244,16 @@ function createSupabaseRestPrismaClient(
       appendWhereFilters(params, args.where as QueryObject | undefined);
 
       if (args.orderBy && typeof args.orderBy === "object") {
-        const [field, dir] = Object.entries(args.orderBy as QueryObject)[0] ?? [];
-        if (field && dir) {
-          params.set("order", `${field}.${String(dir)}`);
-        }
+        const orderBy: QueryObject[] = Array.isArray(args.orderBy)
+          ? args.orderBy
+          : [args.orderBy as QueryObject];
+        const order = orderBy.flatMap((fields) =>
+          Object.entries(fields).map(([field, direction]) => `${field}.${String(direction)}`),
+        );
+        if (order.length) params.set("order", order.join(","));
       }
+      if (typeof args.skip === "number") params.set("offset", String(args.skip));
+      if (typeof args.take === "number") params.set("limit", String(args.take));
 
       const rawRows = (await requestSupabase(
         `${table}?${params.toString()}`,
