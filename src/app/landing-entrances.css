@@ -101,56 +101,27 @@
     animation-name: onyxa-landing-scan;
     animation-duration: 640ms;
   }
-}
 
-@supports (animation-timeline: view()) and (animation-range: cover 0% cover 14%) {
-  @media (prefers-reduced-motion: no-preference) {
-    [data-landing-scroll] {
-      --landing-scroll-start: 0%;
-      --landing-scroll-span: 14%;
-      --landing-scroll-lift: 24px;
-      animation: onyxa-landing-scroll-in linear both;
-      animation-timeline: view();
-      animation-range: cover var(--landing-scroll-start)
-        cover calc(var(--landing-scroll-start) + var(--landing-scroll-span));
-    }
+  [data-landing-reveal][data-landing-entered] {
+    animation: onyxa-landing-reveal 540ms cubic-bezier(0.2, 0.65, 0.28, 1) var(--landing-delay, 0ms) backwards;
+  }
 
-    [data-landing-scroll="card"] {
-      --landing-scroll-lift: 32px;
+  @media (max-width: 39.999rem) {
+    [data-landing-reveal][data-landing-entered] {
+      animation-delay: min(var(--landing-delay, 0ms), 130ms);
     }
+  }
 
-    [data-landing-scroll="card"]:nth-child(2) {
-      --landing-scroll-start: 2%;
-    }
-
-    [data-landing-scroll="card"]:nth-child(3) {
-      --landing-scroll-start: 4%;
-    }
-
-    [data-landing-scroll="card"]:nth-child(4) {
-      --landing-scroll-start: 6%;
-    }
-
-    [data-landing-scroll="action"] {
-      --landing-scroll-start: 4%;
-      --landing-scroll-lift: 16px;
-    }
-
-    [data-landing-scroll="footer"] {
-      --landing-scroll-span: 3%;
-      --landing-scroll-lift: 10px;
-    }
-
-    [data-landing-scroll]:focus-within {
-      animation: none;
-    }
+  [data-landing-reveal][data-landing-entered]:focus-within {
+    opacity: 1 !important;
+    translate: none !important;
   }
 }
 
-@keyframes onyxa-landing-scroll-in {
+@keyframes onyxa-landing-reveal {
   from {
-    opacity: 0.9;
-    translate: 0 var(--landing-scroll-lift);
+    opacity: 0.35;
+    translate: 0 42px;
   }
 
   to {

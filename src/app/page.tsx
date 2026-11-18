@@ -157,11 +157,11 @@ export default function HomePage() {
 
       <section className="bg-stone-200 dark:bg-stone-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-          <div className="mb-9 max-w-2xl">
-            <p data-landing-scroll data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-300">
+          <div data-landing-reveal data-landing-enter="0" className="mb-9 max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-300">
               Kenal rasanya?
             </p>
-            <h2 data-landing-scroll data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               Hal kecil yang bikin usaha terasa berat
             </h2>
           </div>
@@ -169,8 +169,8 @@ export default function HomePage() {
             {painPoints.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
-                data-landing-scroll="card"
-                data-landing-enter={index * 60}
+                data-landing-reveal
+                data-landing-enter={70 + index * 75}
                 className="rounded-2xl border bg-background p-5 sm:p-6"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-muted">
@@ -188,17 +188,17 @@ export default function HomePage() {
 
       <section className="bg-emerald-950 text-emerald-50">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-          <div className="mb-10 max-w-2xl">
-            <p data-landing-scroll data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
+          <div data-landing-reveal data-landing-enter="0" className="mb-10 max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
               Gampang dimulai
             </p>
-            <h2 data-landing-scroll data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               Cara kerja Onyxa
             </h2>
           </div>
           <div className="grid gap-8 md:grid-cols-3 md:gap-6">
             {steps.map(({ icon: Icon, number, title, description }, index) => (
-              <article key={number} data-landing-scroll="card" data-landing-enter={index * 60}>
+              <article key={number} data-landing-reveal data-landing-enter={70 + index * 75}>
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
                   <Icon aria-hidden="true" className="size-6" />
                 </div>
@@ -215,11 +215,11 @@ export default function HomePage() {
 
       <section className="bg-emerald-100 dark:bg-emerald-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
-          <div className="mb-9 max-w-2xl">
-            <p data-landing-scroll data-landing-enter="0" className="text-sm font-semibold uppercase tracking-wide text-emerald-950 dark:text-emerald-100">
+          <div data-landing-reveal data-landing-enter="0" className="mb-9 max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-950 dark:text-emerald-100">
               Satu tempat untuk catatan belanja
             </p>
-            <h2 data-landing-scroll data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               Biar keputusan usaha lebih jelas
             </h2>
           </div>
@@ -227,8 +227,8 @@ export default function HomePage() {
             {features.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
-                data-landing-scroll="card"
-                data-landing-enter={index * 60}
+                data-landing-reveal
+                data-landing-enter={70 + index * 75}
                 className="rounded-2xl border bg-background p-5"
               >
                 <span className="flex size-11 items-center justify-center rounded-xl bg-muted">
@@ -246,11 +246,11 @@ export default function HomePage() {
 
       <section className="bg-zinc-100 dark:bg-zinc-900">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:py-20 lg:px-8">
-          <div className="max-w-2xl">
-            <h2 data-landing-scroll data-landing-enter="55" className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <div data-landing-reveal data-landing-enter="0" className="max-w-2xl">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Mulai catat belanja dengan lebih rapi.
             </h2>
-            <p data-landing-scroll data-landing-enter="95" className="mt-3 text-base leading-7 text-zinc-700 dark:text-zinc-300">
+            <p className="mt-3 text-base leading-7 text-zinc-700 dark:text-zinc-300">
               Foto nota pertama Anda dan biarkan Onyxa membantu merapikannya.
             </p>
           </div>
@@ -258,7 +258,7 @@ export default function HomePage() {
             asChild
             className="w-full shrink-0 md:w-auto"
           >
-            <Link href="/daftar" data-landing-scroll="action" data-landing-enter="125">
+            <Link href="/daftar" data-landing-reveal data-landing-enter="110">
               Coba Gratis
               <ArrowRight aria-hidden="true" />
             </Link>
@@ -270,8 +270,6 @@ export default function HomePage() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-7 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <Link
             href="/"
-            data-landing-scroll="footer"
-            data-landing-enter="0"
             className="flex items-center gap-2 font-semibold text-foreground"
           >
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -279,7 +277,7 @@ export default function HomePage() {
             </span>
             Onyxa
           </Link>
-          <p data-landing-scroll="footer" data-landing-enter="65">
+          <p>
             Catatan belanja yang lebih rapi untuk usaha Anda.
           </p>
         </div>
