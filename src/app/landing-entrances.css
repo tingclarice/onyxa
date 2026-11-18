@@ -9,17 +9,22 @@
   width: min(100%, 32rem, 43svh);
 }
 
-.landing-hero-background {
-  transform: translateY(54%);
+.landing-flying-receipt {
+  --receipt-opacity: 0.23;
+  width: var(--receipt-size);
+  translate: -50% -50%;
+  transform: rotate(var(--receipt-tilt));
+  opacity: var(--receipt-opacity);
 }
 
-.landing-hero-background::before {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1.5rem;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
-  background: color-mix(in srgb, currentColor 4%, transparent);
-  content: "";
+@media (max-width: 39.999rem) {
+  .landing-flying-receipt {
+    width: calc(var(--receipt-size) * 0.7);
+  }
+
+  .landing-flying-receipt:nth-child(n + 7) {
+    display: none;
+  }
 }
 
 @media (max-width: 39.999rem) and (max-height: 40rem) {
@@ -80,11 +85,11 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .landing-hero-background {
-    animation: onyxa-background-scan 15s linear infinite paused;
+  .landing-flying-receipt {
+    animation: onyxa-receipt-flight var(--receipt-period) linear var(--receipt-offset) infinite paused;
   }
 
-  [data-landing-hero-visible] .landing-hero-background {
+  [data-landing-hero-visible] .landing-flying-receipt {
     animation-play-state: running;
   }
 
@@ -98,19 +103,23 @@
   }
 }
 
-@keyframes onyxa-background-scan {
+@keyframes onyxa-receipt-flight {
   from {
     opacity: 0;
-    transform: translateY(-1.5rem);
+    transform: translate(0, 16svh) rotate(calc(var(--receipt-tilt) - 18deg));
   }
 
-  16%, 84% {
-    opacity: 1;
+  14%, 86% {
+    opacity: var(--receipt-opacity);
+  }
+
+  48% {
+    transform: translate(calc(var(--receipt-drift) * 0.56), -7svh) rotate(var(--receipt-tilt));
   }
 
   to {
     opacity: 0;
-    transform: translateY(100%);
+    transform: translate(var(--receipt-drift), -31svh) rotate(calc(var(--receipt-tilt) + 16deg));
   }
 }
 

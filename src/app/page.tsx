@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandingEntrances } from "@/components/landing-entrances";
+import { LandingReceiptField } from "@/components/landing-receipt-field";
 import "./landing-entrances.css";
 
 const painPoints = [
@@ -109,7 +110,7 @@ export default function HomePage() {
         aria-labelledby="landing-title"
         className="landing-hero relative isolate grid overflow-clip bg-[#f4faf6] dark:bg-[#101b16]"
       >
-        <div aria-hidden="true" className="landing-hero-background pointer-events-none absolute inset-0 -z-10 text-emerald-700 dark:text-emerald-300" />
+        <LandingReceiptField />
         <header className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
           <Link
             href="/"
