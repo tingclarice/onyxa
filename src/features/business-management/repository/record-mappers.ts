@@ -8,6 +8,7 @@ import type { Business, Invitation, Membership } from "../types/business";
 export const businessColumns = {
   id: true,
   name: true,
+  profileImageUrl: true,
   businessType: true,
   priceIncreaseThresholdPercent: true,
   priceIncreaseAlertsEnabled: true,

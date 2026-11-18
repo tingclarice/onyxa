@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import type {
   ActionResult,
@@ -16,9 +16,12 @@ import {
   revokeInvitationAction,
   updateAlertsAction,
   updateProfileAction,
+  uploadBusinessProfileImageAction,
 } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageUploadButton } from "@/components/ui/image-upload-button";
+import { BusinessAvatar } from "./business-avatar";
 
 export function ActionMessage({ result }: { result: ActionResult | null }) {
   if (!result) return null;
@@ -101,14 +104,57 @@ export function BusinessProfileForm({
   business: Business;
   owner: boolean;
 }) {
-  const [result, action, pending] = useActionState(updateProfileAction, null);
+  const [selectedImage, setSelectedImage] = useState<string | null>();
+  const [uploadPending, setUploadPending] = useState(false);
+  const [result, action, pending] = useActionState(
+    async (previous: ActionResult | null, data: FormData) => {
+      const saved = await updateProfileAction(previous, data);
+      if (saved.status === "success") setSelectedImage(undefined);
+      return saved;
+    },
+    null,
+  );
+  const imageUrl = selectedImage === undefined ? business.profileImageUrl : selectedImage;
+
   return (
     <form action={action} noValidate className="space-y-4">
       <input type="hidden" name="businessId" value={business.id} />
+      {selectedImage !== undefined && (
+        <input type="hidden" name="profileImageUrl" value={selectedImage ?? ""} />
+      )}
+      <div className="flex flex-wrap items-start gap-3">
+        <BusinessAvatar imageUrl={imageUrl} size={48} />
+        {owner && (
+          <ImageUploadButton
+            label="Pilih foto usaha"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={pending}
+            onPendingChange={setUploadPending}
+            upload={async (file) => {
+              const data = new FormData();
+              data.set("businessId", business.id);
+              data.set("file", file);
+              const uploaded = await uploadBusinessProfileImageAction(data);
+              return uploaded.ok ? { ok: true, image: uploaded } : uploaded;
+            }}
+            onUploaded={({ imageUrl }) => setSelectedImage(imageUrl)}
+          />
+        )}
+        {owner && imageUrl && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending || uploadPending}
+            onClick={() => setSelectedImage(null)}
+          >
+            Hapus foto
+          </Button>
+        )}
+      </div>
       <ProfileFields business={business} disabled={pending || !owner} />
       <ActionMessage result={result} />
       {owner && (
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || uploadPending}>
           {pending ? "Menyimpan..." : "Simpan profil"}
         </Button>
       )}

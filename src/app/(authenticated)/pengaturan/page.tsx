@@ -51,7 +51,7 @@ export default async function PengaturanPage() {
         description="Informasi ini dibagikan kepada anggota usaha Anda."
       >
         <div className="rounded-2xl bg-muted/50 p-5">
-          <BusinessProfileForm business={business} owner={canManage} />
+          <BusinessProfileForm key={business.id} business={business} owner={canManage} />
         </div>
       </SettingsSection>
 

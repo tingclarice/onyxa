@@ -4,6 +4,10 @@ export const businessProfileSchema = z.object({
   name: z.string().trim().min(1, "Nama usaha harus diisi.").max(200),
   businessType: z.enum(["CAFE_RESTAURANT", "STORE", "OTHER"]),
 });
+export const businessProfileUpdateSchema = businessProfileSchema.extend({
+  profileImageUrl: z.url().max(2048).nullable().optional(),
+});
+export type BusinessProfileUpdate = z.infer<typeof businessProfileUpdateSchema>;
 export const invitationSchema = z.object({
   email: z
     .string()
@@ -33,6 +37,7 @@ export interface Actor {
 }
 export interface Business extends BusinessProfileInput, AlertPreferences {
   id: string;
+  profileImageUrl: string | null;
 }
 export interface Membership {
   id: string;
@@ -90,6 +95,7 @@ export type BusinessErrorCode =
   | "already_member"
   | "already_invited"
   | "cannot_invite_self"
+  | "invalid_profile_image"
   | "conflict";
 export class BusinessError extends Error {
   constructor(readonly code: BusinessErrorCode) {

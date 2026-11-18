@@ -14,6 +14,7 @@ import { requireUser } from "@/features/auth/server";
 import {
   alertPreferencesSchema,
   businessProfileSchema,
+  businessProfileUpdateSchema,
   identifierSchema,
   invitationSchema,
   type ActionResult,
@@ -22,6 +23,7 @@ import {
   createBusiness,
   updateAlertPreferences,
   updateBusinessProfile,
+  uploadBusinessProfileImage,
 } from "../services/business-service";
 import { getMembershipInBusiness } from "../services/workspace-service";
 import {
@@ -33,6 +35,7 @@ import {
 import { toErrorResult } from "./error-messages";
 import { saveActiveBusiness } from "./active-business-cookie";
 import { readFormFields } from "./form-fields";
+import { requireActiveBusiness } from "./queries";
 
 export async function createBusinessAction(
   _previous: ActionResult | null,
@@ -154,16 +157,22 @@ export async function updateProfileAction(
   _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const actor = await requireUser();
+  await requireUser();
+
+  const fields = readFormFields(formData);
+  const input = businessProfileUpdateSchema.safeParse({
+    ...fields,
+    profileImageUrl: fields.profileImageUrl === "" ? null : fields.profileImageUrl,
+  });
+  if (!input.success) return toErrorResult(input.error);
+
+  const { actor, membership } = await requireActiveBusiness();
+  if (fields.businessId !== membership.businessId) {
+    return { status: "error", message: "Usaha aktif telah berubah. Buka ulang pengaturan." };
+  }
 
   try {
-    const input = businessProfileSchema
-      .extend({ businessId: identifierSchema })
-      .parse(readFormFields(formData));
-    await updateBusinessProfile(actor, input.businessId, {
-      name: input.name,
-      businessType: input.businessType,
-    });
+    await updateBusinessProfile(actor, membership.businessId, input.data);
   } catch (error) {
     return toErrorResult(error);
   }
@@ -172,6 +181,27 @@ export async function updateProfileAction(
   return { status: "success", message: "Profil usaha tersimpan." };
 }
 
+export async function uploadBusinessProfileImageAction(formData: FormData) {
+  const { actor, membership } = await requireActiveBusiness();
+  const photo = z.file().min(1).max(8 * 1024 * 1024).mime([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]).safeParse(formData.get("file"));
+
+  if (formData.get("businessId") !== membership.businessId) {
+    return { ok: false, message: "Usaha aktif telah berubah. Buka ulang pengaturan." } as const;
+  }
+  if (!photo.success) {
+    return { ok: false, message: "Pilih foto JPG, PNG, atau WebP berukuran maksimal 8 MB." } as const;
+  }
+
+  try {
+    return await uploadBusinessProfileImage(actor, membership.businessId, photo.data);
+  } catch (error) {
+    return { ok: false, message: toErrorResult(error).message } as const;
+  }
+}
 export async function updateAlertsAction(
   _previous: ActionResult | null,
   formData: FormData,

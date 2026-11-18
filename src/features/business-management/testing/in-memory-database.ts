@@ -109,6 +109,7 @@ export function installInMemoryDatabase() {
         const business: Business = {
           id: `business-${++idSequence}`,
           ...profile,
+          profileImageUrl: null,
           priceIncreaseThresholdPercent: 5,
           priceIncreaseAlertsEnabled: true,
           slowMovingAlertsEnabled: true,

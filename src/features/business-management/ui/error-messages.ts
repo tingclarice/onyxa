@@ -7,6 +7,7 @@ import {
 } from "../types/business";
 
 const MESSAGES: Record<BusinessErrorCode, string> = {
+  invalid_profile_image: "Pilih ulang foto usaha sebelum menyimpan.",
   not_member: "Anda tidak memiliki akses ke usaha ini.",
   owner_required: "Hanya pemilik usaha yang dapat melakukan tindakan ini.",
   missing_email: "Email akun tidak tersedia. Silakan masuk kembali.",

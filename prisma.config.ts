@@ -4,5 +4,5 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: { path: "prisma/migrations" },
-  datasource: { url: process.env.SUPABASE_URL },
+  datasource: { url: process.env.DATABASE_URL || process.env.SUPABASE_URL },
 });

@@ -54,6 +54,7 @@ enum ExpenseCategory {
 model Business {
   id                            String       @id @default(uuid()) @db.Uuid
   name                          String
+  profileImageUrl               String?
   businessType                  BusinessType @default(OTHER)
   priceIncreaseThresholdPercent Decimal      @default(5) @db.Decimal(5, 2)
   priceIncreaseAlertsEnabled    Boolean      @default(true)

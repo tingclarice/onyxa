@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { signOutAction } from "./actions";
 import type { AuthResult } from "@/features/auth/types/auth";
 
-export function SignOutButton() {
+export function SignOutButton({ inMenu = false }: { inMenu?: boolean }) {
   const queryClient = useQueryClient();
   const [state, action, isPending] = useActionState<AuthResult | null>(
     signOutAction,
@@ -18,7 +18,13 @@ export function SignOutButton() {
       onSubmit={() => queryClient.clear()}
       className="flex flex-col items-end gap-2"
     >
-      <Button type="submit" variant="ghost" size="sm" disabled={isPending}>
+      <Button
+        type="submit"
+        variant="ghost"
+        size={inMenu ? "default" : "sm"}
+        className={inMenu ? "w-full justify-start" : undefined}
+        disabled={isPending}
+      >
         {isPending ? "Keluar..." : "Keluar"}
       </Button>
       {state?.status === "error" && (

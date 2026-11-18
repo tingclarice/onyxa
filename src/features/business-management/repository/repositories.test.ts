@@ -8,6 +8,7 @@ const calls: { operation: string; input: unknown }[] = [];
 const businessRow = {
   id: "business",
   name: "Warung Sari",
+  profileImageUrl: null,
   businessType: "STORE",
   priceIncreaseThresholdPercent: { toNumber: () => 5 },
   priceIncreaseAlertsEnabled: true,

@@ -1,14 +1,13 @@
 import { Suspense, type ReactNode } from "react";
-import Link from "next/link";
 import { AppNavigation } from "@/components/app-navigation";
 import { requireUser } from "@/features/auth/server";
 import { SignOutButton } from "@/features/auth/ui/sign-out-button";
 import { QueryProvider } from "@/components/query-provider";
-import { DemoNotice } from "@/components/demo-notice";
 import { getBusinessWorkspace } from "@/features/business-management/server";
 import { InboxLink } from "@/features/business-management/ui/inbox-link";
 import { BusinessWorkspace } from "@/features/business-management/ui/onboarding";
 import { BusinessUnavailable } from "@/features/business-management/ui/business-unavailable";
+import { BusinessProfileMenu } from "@/features/business-management/ui/business-profile-menu";
 
 export default function AuthenticatedLayout({
   children,
@@ -57,30 +56,28 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
         <div
           className={`min-w-0 flex-1 ${workspace.active ? "pb-20 md:pb-0" : ""}`}
         >
-          <header className="flex min-h-16 items-center justify-between gap-4 border-b border-border px-4 py-2 sm:px-8">
-            {workspace.active ? (
-              <Link
-                href="/pengaturan"
-                className="min-w-0 truncate text-sm font-semibold hover:underline"
-              >
-                {workspace.active.business.name}
-              </Link>
-            ) : (
+          <header className="flex min-h-16 items-center gap-4 border-b border-border px-4 py-2 sm:px-8">
+            {!workspace.active && (
               <span className="min-w-0 truncate text-sm font-semibold">
                 Onyxa
               </span>
             )}
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex min-w-0 items-center gap-2">
               <InboxLink pendingCount={workspace.invitations.length} />
-              <SignOutButton />
+              {workspace.active ? (
+                <BusinessProfileMenu
+                  name={workspace.active.business.name}
+                  imageUrl={workspace.active.business.profileImageUrl}
+                  accountActions={<SignOutButton inMenu />}
+                />
+              ) : (
+                <SignOutButton />
+              )}
             </div>
           </header>
           <main>
             <BusinessWorkspace businessReady={Boolean(workspace.active)}>
-              <>
-                {workspace.active && <DemoNotice />}
-                {children}
-              </>
+              {children}
             </BusinessWorkspace>
           </main>
         </div>

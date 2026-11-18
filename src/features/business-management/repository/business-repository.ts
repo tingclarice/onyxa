@@ -5,6 +5,7 @@ import type {
   AlertPreferences,
   Business,
   BusinessProfileInput,
+  BusinessProfileUpdate,
   MemberRole,
 } from "../types/business";
 import { businessColumns, toBusiness } from "./record-mappers";
@@ -24,7 +25,7 @@ export async function createBusinessWithOwner(
 
 export async function saveBusinessProfile(
   businessId: string,
-  profile: BusinessProfileInput,
+  profile: BusinessProfileUpdate,
   db: DatabaseClient = getPrisma(),
 ): Promise<void> {
   await db.business.update({

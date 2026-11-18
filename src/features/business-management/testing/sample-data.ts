@@ -10,6 +10,7 @@ export const staff: Actor = { id: "staff", email: "staff@example.com" };
 export const business: Business = {
   id: "business",
   name: "Warung Sari",
+  profileImageUrl: null,
   businessType: "STORE",
   priceIncreaseThresholdPercent: 5,
   priceIncreaseAlertsEnabled: true,
