@@ -29,6 +29,8 @@ test("Supabase transaction reads carry tenant scope, pagination, and stable orde
     if (restoreSecret === undefined) delete process.env.SUPABASE_SECRET_KEY;
     else process.env.SUPABASE_SECRET_KEY = restoreSecret;
   });
+  const readDeadline = new AbortController().signal;
+  const timeout = context.mock.method(AbortSignal, "timeout", () => readDeadline);
   const request = context.mock.method(globalThis, "fetch", async () =>
     Response.json([{ receiptDate: "2026-11-18", total: "12500.50" }]),
   );
@@ -49,4 +51,14 @@ test("Supabase transaction reads carry tenant scope, pagination, and stable orde
   assert.equal(sent.searchParams.get("limit"), "100");
   assert.equal(receipt?.receiptDate.toISOString(), "2026-11-18T00:00:00.000Z");
   assert.equal(receipt?.total.toNumber(), 12500.5);
+  assert.equal(timeout.mock.calls[0]?.arguments[0], 10_000);
+  assert.equal(request.mock.calls[0]?.arguments[1]?.signal, readDeadline);
+
+  await getPrisma().receipt.update({
+    where: { id: "11111111-1111-4111-8111-111111111111" },
+    data: { total: 15000 },
+    select: { id: true },
+  });
+  assert.equal(timeout.mock.callCount(), 1);
+  assert.equal(request.mock.calls[1]?.arguments[1]?.signal, undefined);
 });

@@ -44,6 +44,7 @@ const DECIMAL_FIELDS = new Set([
 ]);
 
 type QueryObject = Record<string, unknown>;
+const SUPABASE_READ_TIMEOUT_MS = 10_000;
 
 function buildSelectParam(select?: QueryObject): string {
   if (!select) return "*";
@@ -210,6 +211,11 @@ function createSupabaseRestPrismaClient(
     const res = await fetch(`${baseUrl}/${path}`, {
       ...init,
       headers,
+      signal: init.signal ?? (
+        !init.method || init.method === "GET"
+          ? AbortSignal.timeout(SUPABASE_READ_TIMEOUT_MS)
+          : undefined
+      ),
     });
 
     if (!res.ok) {

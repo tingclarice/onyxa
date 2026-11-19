@@ -1,4 +1,6 @@
 import { SettingsSection } from "@/components/settings-section";
+import { Suspense } from "react";
+import { requireUser } from "@/features/auth/server";
 import { AccountProfilePhoto } from "@/features/auth/ui/account-profile-photo";
 import {
   getActiveBusinessSettings,
@@ -13,48 +15,61 @@ import {
 import { MemberList } from "@/features/business-management/ui/member-list";
 import { PendingInvitationList } from "@/features/business-management/ui/pending-invitation-list";
 
-// Workspace identity and membership must resolve before this page is shown.
-export const instant = false;
+export const instant = true;
 
 /** /pengaturan — account photo and settings for the active business. */
-export default async function PengaturanPage() {
-  const workspace = await getBusinessWorkspace();
-  const businessSettings = workspace.active ? await getActiveBusinessSettings() : null;
-
+export default function PengaturanPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-8">
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Pengaturan</h1>
-        {businessSettings && (
-          <p className="text-sm text-muted-foreground">
-            {businessSettings.membership.business.name} · {businessSettings.canManage ? "Pemilik" : "Staf"}
-          </p>
-        )}
       </header>
 
       <SettingsSection
         id="account-photo-heading"
         title="Foto profil akun"
         description="Foto ini tampil di halaman utama saat Anda masuk."
-        last={!businessSettings}
       >
-        <div className="rounded-2xl bg-muted/50 p-5">
-          <AccountProfilePhoto
-            key={workspace.actor.id}
-            name={workspace.actor.name}
-            imageUrl={workspace.actor.profileImageUrl}
-          />
-        </div>
+        <Suspense fallback={<div aria-busy="true" aria-label="Foto profil akun" className="h-24 rounded-2xl bg-muted/50" />}>
+          <AccountPhotoSettings />
+        </Suspense>
       </SettingsSection>
 
-      {businessSettings && (
-        <BusinessSettings
-          settings={businessSettings}
-          memberships={workspace.memberships}
-        />
-      )}
+      <Suspense fallback={<section aria-busy="true" className="space-y-4">
+        <h2 className="text-lg font-semibold">Pengaturan usaha</h2>
+        <div aria-hidden="true" className="h-24 rounded-2xl bg-muted/50" />
+      </section>}>
+        <ActiveBusinessSettings />
+      </Suspense>
     </div>
   );
+}
+
+async function AccountPhotoSettings() {
+  const user = await requireUser();
+  return (
+    <div className="rounded-2xl bg-muted/50 p-5">
+      <AccountProfilePhoto key={user.id} name={user.name} imageUrl={user.profileImageUrl} />
+    </div>
+  );
+}
+
+async function ActiveBusinessSettings() {
+  const workspace = await getBusinessWorkspace();
+  if (!workspace.active) return null;
+
+  let settings: Awaited<ReturnType<typeof getActiveBusinessSettings>>;
+  try {
+    settings = await getActiveBusinessSettings();
+  } catch {
+    console.error("[business] settings could not be loaded");
+    return (
+      <p role="alert" className="rounded-xl border p-4 text-sm">
+        Pengaturan usaha belum bisa dimuat. Muat ulang halaman untuk mencoba lagi.
+      </p>
+    );
+  }
+  return <BusinessSettings settings={settings} memberships={workspace.memberships} />;
 }
 
 function BusinessSettings({
@@ -69,6 +84,9 @@ function BusinessSettings({
 
   return (
     <>
+      <p className="text-sm text-muted-foreground">
+        {business.name} · {canManage ? "Pemilik" : "Staf"}
+      </p>
       <BusinessSwitcher
         memberships={memberships}
         activeBusinessId={membership.businessId}
