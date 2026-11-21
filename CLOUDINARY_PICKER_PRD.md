@@ -9,6 +9,7 @@ Di halaman scan, paragraf awal mengulang petunjuk memilih nota. Saat pengguna me
 - Header scan menampilkan judul dan penjelasan pembacaan otomatis. Paragraf yang dimulai dengan “Foto nota atau pilih gambar dari HP” dihapus.
 - Tombol galeri di scan, pengganti foto di review nota, foto profil akun, dan foto usaha membuka Cloudinary Upload Widget terlebih dahulu.
 - Scan mendukung beberapa nota. Tiap hasil unggahan masuk ke antrean OCR sekali. Review dan foto profil menerima satu foto per pemilihan.
+- Di halaman scan, daftar foto muncul sejak foto pertama masuk antrean dan hilang setelah foto terakhir dihapus. Header “Daftar nota”, tombol duplikat “Tambah nota”, dan pesan antrean kosong dihilangkan.
 - Membatalkan pemilihan mempertahankan foto atau draf sebelumnya. Pengguna dapat mencoba kembali sesudah gagal.
 - Saat scan gagal, pengguna melihat tahap, alasan yang diketahui, dan langkah berikutnya. Kegagalan pemrosesan di server menyertakan referensi yang sama dengan log server. Periksa jalur kamera dan galeri dengan simulasi kegagalan provider serta respons nota yang tidak valid. Log hanya memuat informasi diagnostik yang aman.
 - Log server mengaitkan waktu transfer Cloudinary dan tiap percobaan model Gemini dengan referensi scan. Saat model gagal, catat status HTTP jika tersedia, durasi, alasan, dan keputusan untuk mencoba model berikutnya.

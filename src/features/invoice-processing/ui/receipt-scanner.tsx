@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
-  FileImage,
   LoaderCircle,
   Plus,
   RefreshCw,
@@ -274,125 +273,90 @@ export function ReceiptScanner() {
         </div>
       </section>
 
-      <section aria-labelledby="queue-title" className="mt-8 space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="queue-title" className="text-lg font-semibold">
-            Daftar nota
-            {queue.length > 0 && (
-              <span className="ml-2 text-base font-normal text-muted-foreground">
-                ({queue.length})
-              </span>
-            )}
-          </h2>
-          {queue.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={picker.open}
-              onClick={picker.pickImages}
-            >
-              <Plus aria-hidden="true" />
-              Tambah nota
-            </Button>
-          )}
-        </div>
+      {queue.length > 0 && (
+        <ul aria-label="Foto nota" className="mt-8 space-y-3">
+          {queue.map((item) => {
+            const statusLabel = getStatusLabel(item.status);
+            const errorMessage = item.errorCode
+              ? (item.errorMessage ?? getErrorMessage(item.errorCode))
+              : undefined;
 
-        {queue.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-5 py-10 text-center">
-            <FileImage
-              aria-hidden="true"
-              className="size-8 text-muted-foreground"
-            />
-            <p className="text-base font-medium">Belum ada foto nota</p>
-            <p className="text-base text-muted-foreground">
-              Foto nota akan muncul di sini setelah ditambahkan.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {queue.map((item) => {
-              const statusLabel = getStatusLabel(item.status);
-              const errorMessage = item.errorCode
-                ? (item.errorMessage ?? getErrorMessage(item.errorCode))
-                : undefined;
-
-              return (
-                <li
-                  key={item.id}
-                  className="grid min-w-0 grid-cols-[64px_minmax(0,1fr)_auto] items-start gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[80px_minmax(0,1fr)_auto]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.previewUrl}
-                    alt={`Foto nota ${item.name}`}
-                    className="size-16 rounded-lg border object-cover sm:size-20"
-                  />
-                  <div className="min-w-0 space-y-1">
-                    <p className="truncate text-base font-medium">
-                      {item.name}
-                    </p>
-                    <p
-                      aria-live="polite"
-                      className={`flex items-center gap-1.5 text-sm font-medium ${
-                        item.status === "failed"
-                          ? "text-status-error"
-                          : item.status === "done"
-                            ? "text-status-success"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {item.status === "scanning" ? (
-                        <LoaderCircle
-                          aria-hidden="true"
-                          className="size-4 animate-spin"
-                        />
-                      ) : item.status === "done" ? (
-                        <CheckCircle2 aria-hidden="true" className="size-4" />
-                      ) : item.status === "failed" ? (
-                        <AlertCircle aria-hidden="true" className="size-4" />
-                      ) : null}
-                      {statusLabel}
-                    </p>
-                    {errorMessage && (
-                      <p role="alert" className="text-sm leading-5 text-foreground">
-                        {errorMessage}
-                      </p>
-                    )}
-                    {item.status === "failed" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="mt-2"
-                        onClick={() => retryItem(item)}
-                      >
-                        Coba lagi
-                      </Button>
-                    )}
-                    {item.status === "done" && item.reviewUrl && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="mt-2 w-fit"
-                      >
-                        <Link href={item.reviewUrl}>Cek hasil</Link>
-                      </Button>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    aria-label={`Hapus ${item.name}`}
-                    onClick={() => removeItem(item)}
-                    className="size-12 p-0 text-muted-foreground hover:text-destructive"
+            return (
+              <li
+                key={item.id}
+                className="grid min-w-0 grid-cols-[64px_minmax(0,1fr)_auto] items-start gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[80px_minmax(0,1fr)_auto]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.previewUrl}
+                  alt={`Foto nota ${item.name}`}
+                  className="size-16 rounded-lg border object-cover sm:size-20"
+                />
+                <div className="min-w-0 space-y-1">
+                  <p className="truncate text-base font-medium">
+                    {item.name}
+                  </p>
+                  <p
+                    aria-live="polite"
+                    className={`flex items-center gap-1.5 text-sm font-medium ${
+                      item.status === "failed"
+                        ? "text-status-error"
+                        : item.status === "done"
+                          ? "text-status-success"
+                          : "text-muted-foreground"
+                    }`}
                   >
-                    <Trash2 aria-hidden="true" />
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+                    {item.status === "scanning" ? (
+                      <LoaderCircle
+                        aria-hidden="true"
+                        className="size-4 animate-spin"
+                      />
+                    ) : item.status === "done" ? (
+                      <CheckCircle2 aria-hidden="true" className="size-4" />
+                    ) : item.status === "failed" ? (
+                      <AlertCircle aria-hidden="true" className="size-4" />
+                    ) : null}
+                    {statusLabel}
+                  </p>
+                  {errorMessage && (
+                    <p role="alert" className="text-sm leading-5 text-foreground">
+                      {errorMessage}
+                    </p>
+                  )}
+                  {item.status === "failed" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => retryItem(item)}
+                    >
+                      Coba lagi
+                    </Button>
+                  )}
+                  {item.status === "done" && item.reviewUrl && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="mt-2 w-fit"
+                    >
+                      <Link href={item.reviewUrl}>Cek hasil</Link>
+                    </Button>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={`Hapus ${item.name}`}
+                  onClick={() => removeItem(item)}
+                  className="size-12 p-0 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {isCameraOpen && (
         <LiveCameraModal
