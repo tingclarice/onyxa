@@ -61,7 +61,8 @@ type GeminiRequest = (
   ref?: string,
 ) => Promise<string | undefined>;
 
-const GEMINI_TIMEOUT_MS = 25_000;
+const PRIMARY_MODEL_TIMEOUT_MS = 25_000;
+const FALLBACK_MODEL_TIMEOUT_MS = 45_000;
 
 async function requestGemini(
   apiKey: string,
@@ -79,9 +80,10 @@ async function requestGemini(
   let lastError: unknown;
   for (const [index, modelName] of candidateModels.entries()) {
     const model = /^gemini-[a-z0-9.-]{1,64}$/.test(modelName) ? modelName : "model konfigurasi";
-    const attempt = { ref, stage: "gemini.attempt", model, attempt: index + 1, timeoutMs: GEMINI_TIMEOUT_MS };
+    const timeoutMs = index === 0 ? PRIMARY_MODEL_TIMEOUT_MS : FALLBACK_MODEL_TIMEOUT_MS;
+    const attempt = { ref, stage: "gemini.attempt", model, attempt: index + 1, timeoutMs };
     const start = performance.now();
-    const deadline = AbortSignal.timeout(GEMINI_TIMEOUT_MS);
+    const deadline = AbortSignal.timeout(timeoutMs);
     let httpStatus: number | null = null;
     console.info("[receipt-scan]", { ...attempt, outcome: "started" });
     try {

@@ -39,6 +39,7 @@ test("gallery scan correlates the download, failed model and fallback timeout", 
     ["gemini.attempt", "started", "test-ref"], ["gemini.attempt", "failed", "test-ref"],
   ]);
   const failures = logs.filter((log) => log.outcome === "failed");
+  assert.deepEqual(failures.map((log) => log.timeoutMs), [25_000, 45_000]);
   assert.deepEqual(failures.map((log) => [log.model, log.attempt, log.httpStatus, log.willRetry]), [
     ["gemini-3.5-flash", 1, 503, true], ["gemini-3.8-flash", 2, null, false],
   ]);
