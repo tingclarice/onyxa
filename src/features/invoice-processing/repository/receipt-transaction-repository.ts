@@ -65,7 +65,7 @@ export async function findTransactionForBusiness(
         quantity: line.quantity.toNumber(),
         unit: line.unit,
         unitPrice: line.unitPrice.toNumber(),
-        discount: line.discount.toNumber(),
+        discount: Number(line.discount),
         lineTotal: line.lineTotal.toNumber(),
       });
     }
@@ -74,7 +74,7 @@ export async function findTransactionForBusiness(
   return {
     supplierName: row.supplierName,
     date: row.receiptDate.toISOString().slice(0, 10),
-    discount: row.discount.toNumber(),
+    discount: Number(row.discount),
     total: row.total.toNumber(),
     subtotal: lines.reduce((sum, line) => sum + Math.round(line.lineTotal * 100), 0) / 100,
     imageUrl: row.imageUrl,

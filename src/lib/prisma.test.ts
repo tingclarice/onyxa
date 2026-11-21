@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { getPrisma } from "@/lib/prisma";
 import { findTransactionForBusiness } from "@/features/invoice-processing/repository/receipt-transaction-repository";
+import { Prisma } from "@/generated/prisma/client";
 
 afterEach(async () => {
   await globalThis.onyxaPrismaV3?.$disconnect?.();
@@ -55,6 +56,30 @@ test("transaction details hydrate both discounts and scope every request to the 
   assert.equal(receipt?.discount, 3000);
   assert.equal(receipt?.total, 27000);
   assert.equal(await findTransactionForBusiness("other", "nota"), null);
+});
+
+test("a cached client can return raw discounts on both the receipt and its lines", async (context) => {
+  process.env.SUPABASE_URL = "https://example.invalid";
+  const oldSecret = process.env.SUPABASE_SECRET_KEY;
+  process.env.SUPABASE_SECRET_KEY = "test-key";
+  context.after(() => {
+    if (oldSecret === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = oldSecret;
+  });
+  const db = getPrisma();
+  const decimal = (value: number) => new Prisma.Decimal(value);
+  context.mock.method(db.receipt, "findUnique", async () => ({
+    supplierName: "Pasar", receiptDate: new Date("2026-11-21"), imageUrl: null,
+    discount: "3000.50", total: decimal(14999.5),
+  }));
+  context.mock.method(db.receiptLine, "findMany", async () => [{
+    position: 1, rawName: "Susu", unit: "pcs", quantity: decimal(2),
+    unitPrice: decimal(10000), discount: 2000, lineTotal: decimal(18000),
+  }]);
+  const detail = await findTransactionForBusiness("active", "nota", db);
+  assert.equal(detail?.discount, 3000.5);
+  assert.equal(detail?.lines[0].discount, 2000);
+  assert.equal(detail?.total, 14999.5);
 });
 
 test("Supabase transaction reads carry tenant scope, pagination, and stable order", async (context) => {
