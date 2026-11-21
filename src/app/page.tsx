@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import {
   ArrowRight,
+  LayoutDashboard,
   Users,
   Camera,
   Check,
@@ -22,75 +23,65 @@ import "./landing-entrances.css";
 export const metadata: Metadata = {
   title: "Onyxa | Manajemen Kantin Sekolah",
   description:
-    "Catat belanja stok kantin sekolah dan pantau pola restock tanpa mencatat setiap penjualan saat istirahat. Kenali rencana rekap setoran tunai dan QRIS.",
+    "Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada perubahan.",
 };
 
 const painPoints = [
   {
     icon: Users,
-    title: "Antrean saat istirahat",
-    description: "Jam istirahat hanya 15–30 menit. Saat siswa datang bersamaan, mencatat tiap barang di kasir memperpanjang antrean.",
+    title: "Antrean saat jam ramai",
+    description: "Saat siswa datang bersamaan, kasir harus memilih antara memasukkan setiap barang ke POS dan segera melayani pembeli berikutnya.",
   },
   {
     icon: Wallet,
-    title: "Setoran sulit ditelusuri",
-    description: "Total tunai dan QRIS statis menunjukkan uang yang masuk. Saat ada selisih, pengelola sulit melacak asalnya tanpa rincian barang terjual.",
+    title: "Arus kas sulit dicatat",
+    description: "Setoran tunai, mutasi QRIS, dan nota belanja tersimpan terpisah. Pengelola harus mencocokkan ketiganya untuk melihat uang yang masuk dan keluar.",
   },
   {
-    icon: ReceiptText,
-    title: "Nota kulakan tercecer",
-    description: "Jika nota tersimpan di tempat berbeda, pengelola harus menjumlahkannya kembali untuk mengetahui belanja sebulan dan membandingkannya dengan pemasukan.",
-  },
-  {
-    icon: PackageSearch,
-    title: "Perputaran stok sulit dibaca",
-    description: "Barang mana yang sering dibeli ulang? Berapa rupiah yang sudah dibelanjakan untuk tiap barang? Keduanya sulit dijawab dari ingatan saja.",
+    icon: ClipboardCheck,
+    title: "Transaksi pegawai sulit dipantau",
+    description: "Tanpa catatan POS per giliran kerja, pengelola sulit memeriksa transaksi yang ditangani pegawai ketika ada selisih setoran.",
   },
 ];
 
 const steps = [
   {
     icon: Camera,
-    title: "Saat stok datang",
-    description: "Foto nota atau masukkan belanja secara manual. Periksa nama barang, jumlah, dan harga beli sebelum menyimpan.",
-  },
-  {
-    icon: Users,
-    title: "Saat bel berbunyi",
-    description: "Layani siswa seperti biasa. Pencatatan barang masuk sudah dilakukan saat kulakan.",
-  },
-  {
-    icon: Wallet,
-    title: "Saat kantin tutup",
-    description: "Hitung tunai bersih dan lihat total penerimaan QRIS hari itu. Fitur untuk menyimpan rekap harian ini sedang direncanakan.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Sebelum kulakan lagi",
-    description: "Periksa jeda antarbelanja dan jumlah yang biasa dibeli. Gunakan pola itu untuk menentukan barang yang perlu dicek di rak.",
-  },
-];
-
-const features = [
-  {
-    icon: ReceiptText,
-    title: "Riwayat barang masuk",
-    description: "Telusuri pemasok, jumlah barang, dan harga beli dari nota yang disimpan. Pencatatan harga jual direncanakan untuk memperkirakan nilai stok jika seluruhnya terjual.",
-  },
-  {
-    icon: Wallet,
-    title: "Setoran tunai dan QRIS",
-    description: "Rencana fitur ini menyandingkan setoran aktual dengan potensi pendapatan. Jika ada selisih, periksa stok yang masih tersisa sebelum menelusuri kemungkinan kehilangan.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Ringkasan bulanan",
-    description: "Ringkasan yang direncanakan akan menjumlahkan setoran dan belanja stok selama sebulan. Selisihnya menunjukkan sisa pemasukan setelah kulakan. Laba bersih juga memperhitungkan stok tersisa dan biaya lain.",
+    title: "Foto nota",
+    description: "Ambil foto nota belanja, periksa nama barang, jumlah, dan harga belinya, lalu simpan.",
   },
   {
     icon: PackageSearch,
-    title: "Pola restock per barang",
-    description: "Jumlah dan jeda antarrestock memberi petunjuk seberapa cepat barang bergerak. Onyxa menandai barang yang melambat. Peringkat pergerakan dan total belanja per barang termasuk rencana pengembangan.",
+    title: "Lacak pergerakan barang",
+    description: "Dari jumlah dan jarak waktu antarbelanja, Onyxa mengenali barang yang sering dibeli ulang dan menandai barang yang pergerakannya mulai melambat.",
+  },
+  {
+    icon: LayoutDashboard,
+    title: "Lihat kondisi toko",
+    description: "Buka dashboard untuk melihat belanja terbaru, perubahan harga pemasok, dan barang yang perlu diperiksa sebelum kulakan lagi.",
+  },
+];
+
+const dashboardMetrics = [
+  {
+    icon: ReceiptText,
+    title: "Total pengeluaran bulanan",
+    description: "Berapa rupiah yang dikeluarkan bulan ini? Lihat total belanja stok dan pengeluaran lain dari nota yang tercatat.",
+  },
+  {
+    icon: Wallet,
+    title: "Actual gross profit",
+    description: "Laba kotor aktual dihitung dari pendapatan penjualan dikurangi harga pokok barang yang terjual pada periode yang sama.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Expected revenue vs actual cash",
+    description: "Bandingkan perkiraan pendapatan penjualan dengan penerimaan yang tercatat dari tunai dan QRIS. Selisihnya membantu menentukan setoran mana yang perlu diperiksa.",
+  },
+  {
+    icon: PackageSearch,
+    title: "Inventory velocity",
+    description: "Lihat perkiraan kecepatan pergerakan tiap barang dari jumlah dan frekuensi pembelian ulang. Bandingkan juga jeda restock dan total belanja per barang.",
   },
 ];
 
@@ -141,11 +132,10 @@ export default function HomePage() {
         <div className="landing-hero-content mx-auto grid w-full max-w-7xl content-center items-center gap-6 px-4 py-5 sm:px-6 sm:py-8 lg:grid-cols-2 lg:gap-16 lg:px-8">
           <div className="max-w-2xl">
             <h1 id="landing-title" data-landing-enter="0" className="text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
-              Kelola kantin dari restock
+              Foto nota. Onyxa yang catat.
             </h1>
             <p data-landing-enter="65" className="mt-4 max-w-xl text-lg leading-8 text-zinc-700 sm:mt-6 dark:text-zinc-300">
-              Catat stok yang masuk ke kantin sekolah dan pantau pola belanjanya.
-              Saat jam istirahat, layani siswa tanpa mencatat penjualan satu per satu.
+              Catat belanja usaha dari foto nota dan tahu lebih cepat saat ada perubahan.
             </p>
             <div data-landing-enter="125" className="mt-5 min-h-12 sm:mt-8">
               <Suspense>
@@ -163,10 +153,10 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Tantangan kantin sekolah
+              Kelemahan aplikasi POS di kantin
             </h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
+          <div className="grid gap-4 md:grid-cols-3 md:gap-6">
             {painPoints.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
@@ -190,22 +180,22 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-10 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Pencatatan di luar jam ramai
+              Cara kerja Onyxa
             </h2>
           </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
+          <ol className="grid gap-8 md:grid-cols-3 md:gap-6">
             {steps.map(({ icon: Icon, title, description }, index) => (
-              <article key={title} data-landing-enter={index * 60}>
+              <li key={title} data-landing-enter={index * 60}>
                 <div className="flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
                   <Icon aria-hidden="true" className="size-6" />
                 </div>
-                <h3 className="mt-5 text-xl font-bold">{title}</h3>
+                <h3 className="mt-5 text-xl font-bold">{index + 1}. {title}</h3>
                 <p className="mt-2 text-base leading-7 text-emerald-100">
                   {description}
                 </p>
-              </article>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
@@ -213,11 +203,11 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-              Dari belanja ke keputusan
+              Metrik yang akan hadir di dashboard
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map(({ icon: Icon, title, description }, index) => (
+            {dashboardMetrics.map(({ icon: Icon, title, description }, index) => (
               <article
                 key={title}
                 data-landing-enter={index * 60}

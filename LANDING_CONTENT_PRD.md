@@ -3,6 +3,17 @@
 Tanggal: 20 November 2026
 Status: Disetujui Felix dan diterapkan pada landing page.
 
+## Revisi konten 21 November 2026
+
+Arahan terbaru Felix menggantikan draf hero dan tiga bagian setelahnya.
+Hero kembali memakai “Foto nota. Onyxa yang catat.” dan deskripsi aslinya.
+Bagian kendala POS membahas volume penjualan, dokumentasi arus kas, dan
+pemantauan transaksi pegawai. Cara kerja mengikuti tiga langkah dari foto
+nota, pelacakan pola pergerakan barang, hingga dashboard situasi toko.
+Bagian berikutnya memperkenalkan rencana metrik pengeluaran bulanan,
+actual gross profit, expected revenue vs actual cash, inventory velocity,
+dan informasi tambahan untuk keputusan belanja.
+
 ## 1. Problem
 
 Landing page `/` saat ini memperkenalkan Onyxa sebagai pencatat nota untuk
