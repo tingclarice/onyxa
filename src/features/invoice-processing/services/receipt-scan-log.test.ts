@@ -6,7 +6,8 @@ mock.module("@google/genai", {
   namedExports: {
     GoogleGenAI: class {
       models = {
-        async generateContent({ model }: { model: string }) {
+        async generateContent({ model, config }: { model: string; config: { abortSignal: AbortSignal } }) {
+          config.abortSignal.throwIfAborted();
           if (model === "gemini-3.5-flash") {
             throw Object.assign(new Error("private provider message"), { status: 503 });
           }
@@ -47,4 +48,21 @@ test("gallery scan correlates the download, failed model and fallback timeout", 
     assert.ok(typeof log.durationMs === "number" && log.durationMs >= 0);
   }
   assert.doesNotMatch(JSON.stringify(logs), /private-test-key|private-file|private provider message/);
+});
+
+test("a local primary deadline without HTTP status starts one fresh fallback attempt", async (context) => {
+  delete process.env.GEMINI_RECEIPT_MODEL;
+  const deadlines: number[] = [];
+  context.mock.method(AbortSignal, "timeout", (ms: number) => {
+    deadlines.push(ms);
+    if (ms === 25_000) return AbortSignal.abort(new DOMException("deadline", "TimeoutError"));
+    return new AbortController().signal;
+  });
+  const { createGeminiReceiptExtractor } = await import("../repository/gemini");
+  const extractor = createGeminiReceiptExtractor(() => "private-test-key");
+  await assert.rejects(
+    extractor.extract({ bytes: Uint8Array.of(1), mimeType: "image/jpeg" }, "local-timeout-test"),
+    /gemini-3\.8-flash/,
+  );
+  assert.deepEqual(deadlines, [25_000, 45_000]);
 });

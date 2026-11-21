@@ -140,7 +140,9 @@ async function requestGemini(
     } catch (error) {
       const failure = error instanceof ScanReceiptError ? error : getSafeGeminiError(error);
       const status = getGeminiErrorStatus(error);
-      const willRetry = (status === 404 || status === 503) && index + 1 < candidateModels.length;
+      const localTimeout = deadline.aborted && status === undefined;
+      const canTryNextModel = localTimeout || status === 404 || status === 503;
+      const willRetry = canTryNextModel && index + 1 < candidateModels.length;
       console.warn("[receipt-scan]", { ...attempt, outcome: "failed", httpStatus: status ?? httpStatus,
         durationMs: Math.round(performance.now() - start), deadlineExpired: deadline.aborted,
         code: failure.code, reason: failure.message, willRetry });
@@ -169,7 +171,7 @@ function getSafeGeminiError(error: unknown): ScanReceiptError {
   if (error instanceof Error && (
     error.name === "TimeoutError" || error.name === "AbortError" || /timed? ?out|deadline exceeded/i.test(detail)
   )) {
-    return new ScanReceiptError("Pembacaan Gemini melewati batas waktu. Coba lagi dengan foto yang lebih kecil.", "gemini_request_failed");
+    return new ScanReceiptError("Pembacaan Gemini melewati batas waktu sebelum hasil nota diterima. Coba scan lagi.", "gemini_request_failed");
   }
   if (/API_KEY_INVALID|API key not valid|API key expired/i.test(detail)) {
     return new ScanReceiptError("Google menolak API key. Periksa GEMINI_API_KEY yang dipakai server.", "gemini_invalid_key");
