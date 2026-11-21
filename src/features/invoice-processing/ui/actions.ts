@@ -35,15 +35,7 @@ export async function scanReceiptAction(
     const result = await scanReceipt(imageUrl);
     return { ok: true, result };
   } catch (error) {
-    if (error instanceof ScanReceiptError) {
-      return {
-        ok: false,
-        code: error.code,
-        message: error.message,
-      };
-    }
-
-    throw error;
+    return reportScanFailure("galeri", error);
   }
 }
 
@@ -70,15 +62,18 @@ export async function uploadAndScanReceiptAction(
     const result = await uploadAndScanReceipt(file);
     return { ok: true, result };
   } catch (error) {
-    if (error instanceof ScanReceiptError) {
-      return {
-        ok: false,
-        code: error.code,
-        message: error.message,
-      };
-    }
-    throw error;
+    return reportScanFailure("kamera", error);
   }
+}
+
+function reportScanFailure(source: "kamera" | "galeri", error: unknown): ScanReceiptActionResult {
+  const ref = crypto.randomUUID();
+  const failure = error instanceof ScanReceiptError ? error : new ScanReceiptError(
+    "Server gagal menyelesaikan pemrosesan nota. Gunakan referensi ini untuk memeriksa log server.",
+    "scan_failed",
+  );
+  console.error("[receipt-scan]", { ref, source, code: failure.code, reason: failure.message });
+  return { ok: false, code: failure.code, message: `${failure.message} [${failure.code} · Ref ${ref}]` };
 }
 
 /** The "Simpan" button on the review screen. */

@@ -26,8 +26,10 @@ export async function extractReceipt(
   const result = ScanReceiptSchema.safeParse(candidate);
 
   if (!result.success) {
+    const issue = result.error.issues[0];
+    const field = issue.path.join(".") || "nota";
     throw new ScanReceiptError(
-      "Hasil pembacaan nota belum sesuai format. Coba unggah ulang foto.",
+      `JSON dari Gemini tidak sesuai format nota pada kolom ${field} (${issue.code}). Ulangi scan atau catat manual.`,
       "invalid_model_output",
     );
   }

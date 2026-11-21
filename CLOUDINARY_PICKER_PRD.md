@@ -10,6 +10,7 @@ Di halaman scan, paragraf awal mengulang petunjuk memilih nota. Saat pengguna me
 - Tombol galeri di scan, pengganti foto di review nota, foto profil akun, dan foto usaha membuka Cloudinary Upload Widget terlebih dahulu.
 - Scan mendukung beberapa nota. Tiap hasil unggahan masuk ke antrean OCR sekali. Review dan foto profil menerima satu foto per pemilihan.
 - Membatalkan pemilihan mempertahankan foto atau draf sebelumnya. Pengguna dapat mencoba kembali sesudah gagal.
+- Saat scan gagal, pengguna melihat tahap, alasan yang diketahui, dan langkah berikutnya. Kegagalan pemrosesan di server menyertakan referensi yang sama dengan log server. Periksa jalur kamera dan galeri dengan simulasi kegagalan provider serta respons nota yang tidak valid. Log hanya memuat informasi diagnostik yang aman.
 
 ## Lingkup
 

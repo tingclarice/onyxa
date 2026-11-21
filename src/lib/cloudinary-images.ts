@@ -2,6 +2,7 @@ import "server-only";
 
 import { getCloudinaryUploadSettings } from "./cloudinary-settings";
 import { z } from "zod";
+import { describeCloudinaryUploadError } from "./cloudinary-upload-error";
 
 // Stores images in Cloudinary. Settings come from the server
 // environment: CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.
@@ -61,8 +62,9 @@ async function writeImageToCloudinary(file: File): Promise<string> {
   }
 
   if (!response.ok) {
+    const failure: unknown = await response.json().catch(() => null);
     throw new CloudinaryUploadError(
-      "Cloudinary belum menerima foto. Periksa upload preset lalu coba lagi.",
+      describeCloudinaryUploadError(failure, response.status),
       "cloudinary_upload_failed",
     );
   }

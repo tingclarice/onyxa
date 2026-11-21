@@ -102,12 +102,34 @@ async function requestGemini(
         },
       });
 
-      return response.text;
+      if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        throw new ScanReceiptError(
+          "Gemini berhenti saat batas token keluaran tercapai (MAX_TOKENS). Periksa batas keluaran model atau scan nota per bagian.",
+          "invalid_model_output",
+        );
+      }
+      const output = response.text;
+      if (!output?.trim()) {
+        const reason = response.candidates?.[0]?.finishReason ?? response.promptFeedback?.blockReason;
+        const knownReason = ["SAFETY", "PROHIBITED_CONTENT", "RECITATION", "BLOCKLIST"].find(
+          (value) => value === reason,
+        );
+        throw new ScanReceiptError(
+          knownReason
+            ? `Gemini mengakhiri pembacaan tanpa teks (${knownReason}). Periksa hasil pemrosesan di server.`
+            : "Gemini selesai memproses permintaan tetapi tidak mengembalikan teks nota.",
+          "invalid_model_output",
+        );
+      }
+      return output;
     } catch (error) {
-      lastError = error;
+      const failure = error instanceof ScanReceiptError ? error : getSafeGeminiError(error);
       const status = getGeminiErrorStatus(error);
+      const model = /^gemini-[a-z0-9.-]{1,64}$/.test(modelName) ? modelName : "model konfigurasi";
+      const context = status ? `${model}, HTTP ${status}` : model;
+      lastError = new ScanReceiptError(`${failure.message} (${context})`, failure.code);
       if (status !== 404 && status !== 503) {
-        throw error;
+        throw lastError;
       }
     }
   }
@@ -125,6 +147,24 @@ function getGeminiErrorStatus(error: unknown): number | undefined {
 }
 
 function getSafeGeminiError(error: unknown): ScanReceiptError {
+  const detail = error instanceof Error ? error.message : "";
+  if (error instanceof Error && (
+    error.name === "TimeoutError" || error.name === "AbortError" || /timed? ?out|deadline exceeded/i.test(detail)
+  )) {
+    return new ScanReceiptError("Pembacaan Gemini melewati batas waktu. Coba lagi dengan foto yang lebih kecil.", "gemini_request_failed");
+  }
+  if (/API_KEY_INVALID|API key not valid|API key expired/i.test(detail)) {
+    return new ScanReceiptError("Google menolak API key. Periksa GEMINI_API_KEY yang dipakai server.", "gemini_invalid_key");
+  }
+  if (getGeminiErrorStatus(error) === 400 && /thinking.?budget|thinking.?config/i.test(detail)) {
+    return new ScanReceiptError("Gemini menolak konfigurasi thinking untuk model ini. Periksa thinkingConfig pada permintaan scan.", "gemini_request_rejected");
+  }
+  if (getGeminiErrorStatus(error) === 400 && /response.?schema|response.?json.?schema/i.test(detail)) {
+    return new ScanReceiptError("Gemini menolak skema JSON untuk hasil nota. Periksa responseJsonSchema pada permintaan scan.", "gemini_request_rejected");
+  }
+  if (/fetch failed|ENOTFOUND|ECONNRESET|ECONNREFUSED/i.test(detail)) {
+    return new ScanReceiptError("Server tidak berhasil terhubung ke Gemini. Periksa koneksi keluar dan DNS server.", "gemini_request_failed");
+  }
   switch (getGeminiErrorStatus(error)) {
     case 400:
       return new ScanReceiptError(
@@ -182,6 +222,7 @@ export function createGeminiReceiptExtractor(
       try {
         output = await generate(apiKey, image);
       } catch (error) {
+        if (error instanceof ScanReceiptError) throw error;
         throw getSafeGeminiError(error);
       }
 
@@ -197,7 +238,7 @@ export function createGeminiReceiptExtractor(
         return parsedOutput;
       } catch {
         throw new ScanReceiptError(
-          "Hasil pembacaan nota tidak dapat diproses. Coba unggah ulang foto.",
+          "Gemini mengembalikan teks yang bukan JSON valid. Ulangi scan untuk meminta hasil baru.",
           "invalid_model_output",
         );
       }

@@ -82,6 +82,8 @@ export type ScanReceiptErrorCode =
   | "unreadable_image"
   | "duplicate_receipt"
   | "upload_failed"
+  | "scan_failed"
+  | "review_storage_failed"
   | "cloudinary_not_configured"
   | "cloudinary_upload_failed"
   | "cloudinary_image_invalid"

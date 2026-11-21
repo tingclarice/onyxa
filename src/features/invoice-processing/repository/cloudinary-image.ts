@@ -160,7 +160,10 @@ export async function fetchCloudinaryReceiptImage(
 
   if (!response.ok) {
     throw new ScanReceiptError(
-      "Foto di Cloudinary tidak dapat diakses. Coba unggah ulang nota.",
+      `Gagal mengambil foto dari Cloudinary (HTTP ${response.status}). ` +
+        (response.status === 404 ? "Foto tidak ditemukan. Pilih kembali foto dari galeri."
+          : response.status === 401 || response.status === 403 ? "Cloudinary menolak akses baca. Periksa izin pengiriman gambar."
+          : "Periksa akses gambar di Cloudinary lalu ulangi scan."),
       "cloudinary_image_unavailable",
     );
   }

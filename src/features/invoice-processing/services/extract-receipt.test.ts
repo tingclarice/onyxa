@@ -303,3 +303,19 @@ test("Gemini API status codes map to safe actionable errors", async () => {
     );
   }
 });
+
+test("Gemini reports the reason for a rejected request without echoing provider text", async () => {
+  const { createGeminiReceiptExtractor } = await geminiModule;
+  for (const [detail, reason] of [
+    ["API_KEY_INVALID", "API key"],
+    ["thinkingBudget is unsupported", "thinkingConfig"],
+    ["responseJsonSchema is invalid", "skema JSON"],
+  ]) {
+    const provider = createGeminiReceiptExtractor(() => "test", async () => {
+      throw Object.assign(new Error(detail + " private-marker"), { status: 400 });
+    });
+    await assert.rejects(provider.extract(image), (error: unknown) =>
+      error instanceof ScanReceiptError && error.message.includes(reason) && !error.message.includes("private-marker"),
+    );
+  }
+});

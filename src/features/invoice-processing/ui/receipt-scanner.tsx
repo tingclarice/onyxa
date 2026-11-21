@@ -49,8 +49,8 @@ function getErrorDetails(error: unknown): {
   }
 
   return {
-    code: "upload_failed",
-    message: "Foto belum berhasil dikirim. Periksa koneksi lalu coba lagi.",
+    code: "scan_failed",
+    message: "Aplikasi tidak menerima hasil scan yang valid dari server. Periksa koneksi dan log server saat permintaan dikirim.",
   };
 }
 
@@ -69,6 +69,10 @@ function getStatusLabel(status: QueueStatus): string {
 
 function getErrorMessage(code: ScanReceiptErrorCode): string {
   switch (code) {
+    case "scan_failed":
+      return "Server belum memberikan hasil scan. Periksa log pemrosesan nota.";
+    case "review_storage_failed":
+      return "Browser gagal menyimpan draf nota untuk ditinjau.";
     case "unreadable_image":
       return "Format foto belum didukung. Gunakan JPG, PNG, WebP, atau HEIC.";
     case "duplicate_receipt":
@@ -168,10 +172,14 @@ export function ReceiptScanner() {
   ): string {
     if (typeof window !== "undefined") {
       const validatedResult = ScanReceiptResultSchema.parse(result);
-      window.sessionStorage.setItem(
-        `${reviewStoragePrefix}${id}`,
-        JSON.stringify(validatedResult),
-      );
+      try {
+        window.sessionStorage.setItem(`${reviewStoragePrefix}${id}`, JSON.stringify(validatedResult));
+      } catch {
+        throw new ScanReceiptError(
+          "Nota sudah dibaca. Browser gagal menyimpan draf untuk ditinjau. Periksa izin dan ruang penyimpanan situs.",
+          "review_storage_failed",
+        );
+      }
     }
     return `/scan/review?receiptId=${encodeURIComponent(id)}`;
   }

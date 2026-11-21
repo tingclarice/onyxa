@@ -2,6 +2,7 @@
 
 import { createContext, createElement, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { z } from "zod";
+import { describeCloudinaryUploadError } from "@/lib/cloudinary-upload-error";
 
 type Settings = {
   cloudName?: string;
@@ -110,8 +111,8 @@ export function useCloudinaryPicker(options: {
         maxFileSize: 8 * 1024 * 1024,
       }, (failure, result) => {
         if (!active.current) return;
-        if (failure) {
-          setError("Unggahan Cloudinary gagal. Silakan coba lagi.");
+        if (failure || result?.event === "error") {
+          setError(describeCloudinaryUploadError(failure || result?.info));
         }
         if (result?.event === "success") {
           const image = uploadedImage.safeParse(result.info);
