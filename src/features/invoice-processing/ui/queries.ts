@@ -1,7 +1,12 @@
 import "server-only";
 
 import { requireActiveBusiness } from "@/features/business-management/server";
-import { getBusinessTransactions } from "../services/transaction-service";
+import { getBusinessTransaction, getBusinessTransactions } from "../services/transaction-service";
+
+export async function getActiveBusinessTransaction(id: string) {
+  const { membership } = await requireActiveBusiness();
+  return getBusinessTransaction(membership.businessId, id);
+}
 
 export async function getActiveBusinessTransactions() {
   const { membership } = await requireActiveBusiness();

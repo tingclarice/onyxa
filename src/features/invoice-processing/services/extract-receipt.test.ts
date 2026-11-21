@@ -77,6 +77,21 @@ test("valid receipt image is extracted and validated against the receipt contrac
   assert.equal(requestCount, 1);
 });
 
+test("normalizes printed net and gross lines to the same editable gross amount", async () => {
+  const { extractReceipt } = await extractionServiceModule;
+  for (const isNet of [true, false]) {
+    const item = { ...validReceipt.items[0], discount: 2000, line_total: isNet ? 28000 : 30000,
+      line_total_is_net: isNet };
+    const receipt = await extractReceipt(image, {
+      async extract() { return { ...validReceipt, items: [item], discount: 3000, total: 25000 }; },
+    });
+    assert.equal(receipt.items[0].line_total, 30000);
+    assert.equal(receipt.items[0].discount, 2000);
+    assert.equal(receipt.discount, 3000);
+    assert.equal(receipt.total, 25000);
+  }
+});
+
 test("malformed Gemini JSON returns a safe invalid-output error", async () => {
   const { createGeminiReceiptExtractor } = await geminiModule;
   const { extractReceiptFromImageUrl } = await extractionServiceModule;

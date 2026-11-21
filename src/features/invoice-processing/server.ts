@@ -1,3 +1,3 @@
 import "server-only";
 
-export { getActiveBusinessTransactions } from "./ui/queries";
+export { getActiveBusinessTransaction, getActiveBusinessTransactions } from "./ui/queries";

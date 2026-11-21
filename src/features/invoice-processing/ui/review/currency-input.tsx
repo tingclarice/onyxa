@@ -30,7 +30,7 @@ function CurrencyInput({
 }: CurrencyInputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
-  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
   const formattedValue = Number.isFinite(value) ? formatRupiah(value) : "";
   const needsCheck = isLowConfidence(confidence);
 
@@ -53,12 +53,14 @@ function CurrencyInput({
           error && "border-destructive focus-visible:ring-destructive/30",
           className,
         )}
-        value={isEditing ? (value === 0 ? "" : String(value)) : formattedValue}
-        onFocus={() => setIsEditing(true)}
-        onBlur={() => setIsEditing(false)}
+        value={draft ?? formattedValue}
+        onFocus={() => setDraft(value === 0 ? "" : String(value))}
+        onBlur={() => setDraft(null)}
         onChange={(event) => {
           const digits = event.currentTarget.value.replace(/\D/g, "");
-          onValueChange(digits === "" ? 0 : Number(digits));
+          const sign = event.currentTarget.value.trimStart().startsWith("-") ? "-" : "";
+          setDraft(sign + digits);
+          onValueChange(digits === "" ? 0 : Number(sign + digits));
         }}
       />
       {needsCheck && (

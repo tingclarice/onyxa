@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { getPrisma } from "@/lib/prisma";
+import { findTransactionForBusiness } from "@/features/invoice-processing/repository/receipt-transaction-repository";
 
 afterEach(async () => {
   await globalThis.onyxaPrismaV3?.$disconnect?.();
@@ -19,6 +20,41 @@ test("client construction is lazy and reuses the process connection pool", () =>
   process.env.SUPABASE_URL = "postgresql://test:test@127.0.0.1:1/test";
   const first = getPrisma();
   assert.equal(getPrisma(), first);
+});
+
+test("transaction details hydrate both discounts and scope every request to the active business", async (context) => {
+  process.env.SUPABASE_URL = "https://example.invalid";
+  context.mock.method(globalThis, "fetch", async (input: RequestInfo | URL) => {
+    const url = new URL(String(input));
+    const params = url.searchParams;
+    if (url.pathname.endsWith("/Receipt")) {
+      assert.equal(params.get("id"), "eq.nota");
+      if (params.get("businessId") === "eq.other") return Response.json([]);
+      assert.equal(params.get("businessId"), "eq.active");
+      return Response.json([{ supplierName: "Pasar", receiptDate: "2026-11-21",
+        discount: "3000", total: "27000", imageUrl: null }]);
+    }
+    assert.equal(url.pathname, "/rest/v1/ReceiptLine");
+    assert.equal(params.get("businessId"), "eq.active");
+    assert.equal(params.get("receiptId"), "eq.nota");
+    assert.equal(params.get("order"), "position.asc");
+    return Response.json([
+      { position: 1, rawName: "Susu", quantity: 2, unit: "pcs", unitPrice: 10000, discount: 2000, lineTotal: 18000 },
+      { position: 2, rawName: "Roti", quantity: 1, unit: "pcs", unitPrice: 12000, discount: 0, lineTotal: 12000 },
+    ]);
+  });
+  const oldSecret = process.env.SUPABASE_SECRET_KEY;
+  process.env.SUPABASE_SECRET_KEY = "test-key";
+  context.after(() => {
+    if (oldSecret === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = oldSecret;
+  });
+  const receipt = await findTransactionForBusiness("active", "nota");
+  assert.equal(receipt?.lines[0].discount, 2000);
+  assert.equal(receipt?.subtotal, 30000);
+  assert.equal(receipt?.discount, 3000);
+  assert.equal(receipt?.total, 27000);
+  assert.equal(await findTransactionForBusiness("other", "nota"), null);
 });
 
 test("Supabase transaction reads carry tenant scope, pagination, and stable order", async (context) => {

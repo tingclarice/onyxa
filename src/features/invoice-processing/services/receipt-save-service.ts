@@ -1,5 +1,6 @@
 import {
   ScanReceiptError,
+  ReceiptDiscountError,
   SaveReceiptInputSchema,
   type CatalogItem,
   type ReceiptLineToSave,
@@ -17,6 +18,15 @@ import {
   quantityInItemUnit,
   shouldSaveAlias,
 } from "../core/receipt-line-rules";
+
+import {
+  calculateNetLineTotal,
+  calculateReceiptTotal,
+  getLineDiscountError,
+  getReceiptDiscountError,
+  hasDiscount,
+  sumLineTotals,
+} from "../core/receipt-review-rules";
 
 /** Who is saving, and for which business (from the trusted session). */
 export interface ReceiptSaver {
@@ -41,6 +51,12 @@ export async function saveReviewedReceipt(
 ): Promise<{ receiptId: string; itemCount: number }> {
   // 1. Validate what the browser sent.
   const { receipt, imageUrl } = SaveReceiptInputSchema.parse(input);
+  for (const item of receipt.items) {
+    const error = getLineDiscountError(item);
+    if (error) throw new ReceiptDiscountError(error);
+  }
+  const error = getReceiptDiscountError(sumLineTotals(receipt.items), receipt.discount);
+  if (error) throw new ReceiptDiscountError(error);
   if (imageUrl && !dependencies.imageUrlValidator.isValid(imageUrl)) {
     throw new ScanReceiptError(
       "Alamat foto Cloudinary tidak valid.",
@@ -77,7 +93,8 @@ export async function saveReviewedReceipt(
           quantity: line.qty,
           unit: line.unit,
           unitPrice: line.unit_price,
-          lineTotal: line.line_total,
+          lineTotal: calculateNetLineTotal(line),
+          discount: line.discount ?? 0,
           confidence: line.confidence,
           baseQuantity,
           baseUnit: baseQuantity === null ? null : item.baseUnit,
@@ -90,7 +107,8 @@ export async function saveReviewedReceipt(
         supplierId,
         supplierName,
         receiptDate: receipt.date,
-        total: receipt.total,
+        total: hasDiscount(receipt) ? calculateReceiptTotal(receipt.items, receipt.discount) : receipt.total,
+        discount: receipt.discount ?? 0,
         overallConfidence: receipt.overall_confidence,
         imageUrl: imageUrl ?? null,
         confirmedAt: now,

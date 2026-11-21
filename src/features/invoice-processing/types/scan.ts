@@ -11,7 +11,11 @@ export const SUPPORTED_RECEIPT_IMAGE_TYPES = [
 export type ReceiptImageMimeType =
   (typeof SUPPORTED_RECEIPT_IMAGE_TYPES)[number];
 
+const discountAmount = z.number().nonnegative("Potongan tidak boleh negatif.")
+  .multipleOf(0.01, "Gunakan maksimal dua angka desimal.").optional();
+
 export const ScanReceiptItemSchema = z.object({
+  discount: discountAmount,
   raw_name: z.string({ error: "Nama barang harus diisi." }).min(1, {
     error: "Nama barang harus diisi.",
   }),
@@ -35,6 +39,7 @@ export const ScanReceiptItemSchema = z.object({
 });
 
 export const ScanReceiptSchema = z.object({
+  discount: discountAmount,
   supplier_name: z
     .string({ error: "Nama pemasok harus diisi." })
     .min(1, { error: "Nama pemasok harus diisi." }),
@@ -66,6 +71,10 @@ const ReviewedReceiptSchema = ScanReceiptSchema.extend({
       error: "Daftar barang belum benar.",
     })
     .min(1, { error: "Tambahkan setidaknya satu barang." }),
+});
+
+export const ExtractedReceiptSchema = ScanReceiptSchema.extend({
+  items: ScanReceiptItemSchema.extend({ line_total_is_net: z.boolean().optional() }).array().min(1),
 });
 
 export type ScanReceiptItem = z.infer<typeof ScanReceiptItemSchema>;
@@ -120,6 +129,8 @@ export type ScanReceiptActionResult =
     };
 
 
+export class ReceiptDiscountError extends Error {}
+
 export class ScanReceiptError extends Error {
   constructor(
     message: string,
@@ -155,6 +166,7 @@ export interface ReceiptLineToSave {
   unit: string;
   unitPrice: number;
   lineTotal: number;
+  discount: number;
   confidence: number;
   /** null when the unit cannot be converted to the item's base unit. */
   baseQuantity: number | null;

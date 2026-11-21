@@ -22,6 +22,8 @@ const receiptJsonSchema = {
           unit: { type: "string" },
           unit_price: { type: "number" },
           line_total: { type: "number" },
+          discount: { type: "number" },
+          line_total_is_net: { type: "boolean" },
           confidence: { type: "number" },
           matched_item: { type: ["string", "null"] },
         },
@@ -31,6 +33,8 @@ const receiptJsonSchema = {
           "unit",
           "unit_price",
           "line_total",
+          "discount",
+          "line_total_is_net",
           "confidence",
           "matched_item",
         ],
@@ -38,6 +42,7 @@ const receiptJsonSchema = {
       },
     },
     total: { type: "number" },
+    discount: { type: "number" },
     overall_confidence: { type: "number" },
   },
   required: [
@@ -45,12 +50,14 @@ const receiptJsonSchema = {
     "date",
     "items",
     "total",
+    "discount",
     "overall_confidence",
   ],
   additionalProperties: false,
 };
 
 const extractionInstructions = `Extract the visible contents of this Indonesian supplier receipt.
+For each item copy the pre-discount unit price and gross line amount when printed. If the printed line total already includes its discount, copy it and set line_total_is_net to true; otherwise use false. Copy its positive monetary discount for the entire line into item.discount. At receipt level copy only an additional order-wide discount into discount, excluding summaries of discounts already assigned to items. Use 0 for an absent or unclear discount. Never treat a percentage as a monetary amount or a discount as a separate purchase. Copy the final amount payable into total.
 Return exactly the fields in the supplied JSON schema. Copy only values that are visible; do not infer, calculate, or fill missing receipt values from context. Never calculate an item quantity, unit price, line total, or receipt total from other fields.
 Use YYYY-MM-DD for a clearly readable date, otherwise use an empty string. Use "Tidak terbaca" for an unreadable supplier or item name. Use 0 for an unknown quantity, unit price, line total, or receipt total; use "Tidak diketahui" for an unknown unit; use null for matched_item because no inventory catalogue is available. If no item can be read, return one placeholder item with raw_name "Tidak terbaca", qty 0, unit "Tidak diketahui", unit_price 0, line_total 0, confidence 0, and matched_item null.
 Confidence is a rough review heuristic, not a calibrated probability. Use low confidence when text or values are unclear or replaced by placeholders. Never mark an unknown value as highly confident.`;

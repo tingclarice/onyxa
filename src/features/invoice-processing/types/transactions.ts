@@ -7,3 +7,21 @@ export interface ReceiptTransaction {
   status: TransactionStatus;
   total: number;
 }
+
+export interface TransactionDetail {
+  supplierName: string;
+  date: string;
+  discount: number;
+  total: number;
+  subtotal: number;
+  imageUrl: string | null;
+  lines: {
+    position: number;
+    name: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    discount: number;
+    lineTotal: number;
+  }[];
+}

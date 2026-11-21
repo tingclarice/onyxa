@@ -3,6 +3,7 @@ import { beforeEach, test } from "node:test";
 import { saveReviewedReceipt } from "./receipt-save-service";
 import type {
   ReceiptSaveRepository,
+  SavedReceiptRecord,
   ReceiptSaveTransaction,
 } from "../types/ports";
 
@@ -16,9 +17,7 @@ interface FakeItem {
 let items: FakeItem[] = [];
 let aliases: { itemId: string; nameKey: string }[] = [];
 let suppliers: string[] = [];
-let savedReceipts: {
-  lines: { itemId: string; baseQuantity: number | null }[];
-}[] = [];
+let savedReceipts: SavedReceiptRecord[] = [];
 let failReceiptWrite = false;
 let transactionBusinessIds: string[] = [];
 
@@ -75,7 +74,7 @@ function createRepository(): ReceiptSaveRepository {
           assert.ok(receipt.createdByMemberId);
           assert.ok(receipt.supplierId);
           if (failReceiptWrite) throw new Error("database down");
-          savedReceipts.push({ lines: receipt.lines });
+          savedReceipts.push(receipt);
           return `receipt-${savedReceipts.length}`;
         },
       };
@@ -214,6 +213,31 @@ test("invalid inputs and foreign image URLs are rejected before persistence", as
     { code: "cloudinary_image_invalid" },
   );
   assert.deepEqual(transactionBusinessIds, []);
+});
+
+test("saves each line net and applies the receipt discount once, even with a stale browser total", async () => {
+  const first = { ...line("Susu", 2, "pcs"), unit_price: 10000, line_total: 20000, discount: 2000 };
+  const second = { ...line("Roti", 1, "pcs"), unit_price: 12000, line_total: 12000 };
+  const { receipt } = receiptWith([first, second]);
+  await saveReviewedReceipt(saver, { receipt: { ...receipt, discount: 3000 } }, dependencies);
+  assert.deepEqual(savedReceipts[0].lines.map(({ discount, lineTotal }) => [discount, lineTotal]),
+    [[2000, 18000], [0, 12000]]);
+  assert.equal(savedReceipts[0].discount, 3000);
+  assert.equal(savedReceipts[0].total, 27000);
+});
+
+test("full discounts are allowed and excessive or negative discounts never reach persistence", async () => {
+  const original = line("Roti", 1, "pcs");
+  for (const [itemDiscount, discount] of [[-1, 0], [1001, 0], [500, 501], [0, -1]]) {
+    const { receipt } = receiptWith([{ ...original }]);
+    await assert.rejects(saveReviewedReceipt(saver, {
+      receipt: { ...receipt, discount, items: [{ ...original, discount: itemDiscount }] },
+    }, dependencies), /[Pp]otongan/);
+  }
+  assert.equal(transactionBusinessIds.length, 0);
+  const { receipt } = receiptWith([original]);
+  await saveReviewedReceipt(saver, { receipt: { ...receipt, discount: 1000 } }, dependencies);
+  assert.equal(savedReceipts[0].total, 0);
 });
 
 test("failed writes roll back all changes in the business transaction", async () => {

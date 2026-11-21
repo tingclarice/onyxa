@@ -39,6 +39,7 @@ const DECIMAL_FIELDS = new Set([
   "quantity",
   "unitPrice",
   "lineTotal",
+  "discount",
   "confidence",
   "baseQuantity",
 ]);

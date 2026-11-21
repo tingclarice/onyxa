@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE "Receipt" ADD COLUMN "discount" DECIMAL(18,2) NOT NULL DEFAULT 0 CHECK ("discount" >= 0);
+ALTER TABLE "ReceiptLine" ADD COLUMN "discount" DECIMAL(18,2) NOT NULL DEFAULT 0 CHECK ("discount" >= 0);
+COMMIT;

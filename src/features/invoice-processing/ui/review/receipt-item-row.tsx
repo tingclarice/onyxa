@@ -4,6 +4,8 @@ import { useId } from "react";
 import { Input } from "@/components/ui/input";
 import { ConfidenceField } from "./confidence-field";
 import { CurrencyInput } from "./currency-input";
+import { calculateNetLineTotal } from "../../core/receipt-review-rules";
+import { formatRupiah } from "@/lib/utils/format";
 import type { ScanReceiptItem } from "../../types/scan";
 
 type ReceiptItemRowProps = {
@@ -15,6 +17,7 @@ type ReceiptItemRowProps = {
     unit?: string;
     unit_price?: string;
     line_total?: string;
+    discount?: string;
   };
 };
 
@@ -103,11 +106,21 @@ function ReceiptItemRow({
         />
         <CurrencyInput
           id={`${rowId}-line-total`}
-          label="Jumlah harga"
+          label="Jumlah sebelum potongan"
           value={item.line_total}
           error={errors?.line_total}
           onValueChange={(line_total) => onChange({ ...item, line_total })}
         />
+        <CurrencyInput
+          label="Potongan barang"
+          value={item.discount ?? 0}
+          error={errors?.discount}
+          onValueChange={(discount) => onChange({ ...item, discount })}
+        />
+        <div className="flex justify-between gap-3 text-sm font-medium">
+          <span>Jumlah setelah potongan</span>
+          <span className="tabular-nums">{errors?.discount ? "—" : formatRupiah(calculateNetLineTotal(item))}</span>
+        </div>
       </div>
     </section>
   );

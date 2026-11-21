@@ -112,6 +112,7 @@ export async function createSavedReceipt(
     supplierName: string;
     receiptDate: string;
     total: number;
+    discount: number;
     overallConfidence: number;
     imageUrl: string | null;
     confirmedAt: Date;
@@ -129,6 +130,7 @@ export async function createSavedReceipt(
       receiptDate: new Date(`${receipt.receiptDate}T00:00:00.000Z`),
       status: "SAVED",
       total: receipt.total,
+      discount: receipt.discount,
       overallConfidence: receipt.overallConfidence,
       imageUrl: receipt.imageUrl,
       confirmedAt: receipt.confirmedAt,
@@ -147,6 +149,7 @@ export async function createSavedReceipt(
       unit: line.unit,
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,
+      discount: line.discount,
       confidence: line.confidence,
       baseQuantity: line.baseQuantity,
       baseUnit: line.baseUnit,

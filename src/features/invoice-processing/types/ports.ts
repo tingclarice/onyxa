@@ -14,6 +14,7 @@ export interface SavedReceiptRecord {
   supplierName: string;
   receiptDate: string;
   total: number;
+  discount: number;
   overallConfidence: number;
   imageUrl: string | null;
   confirmedAt: Date;

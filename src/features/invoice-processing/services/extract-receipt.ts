@@ -1,11 +1,13 @@
 import {
   ScanReceiptError,
-  ScanReceiptSchema,
+  ExtractedReceiptSchema,
   type ReceiptExtractionProvider,
   type ReceiptImage,
   type ReceiptImageSource,
   type ScanReceipt,
 } from "@/features/invoice-processing/types/scan";
+
+import { buildReviewItem } from "../core/receipt-review-rules";
 
 export async function extractReceiptFromImageUrl(
   imageUrl: string,
@@ -35,7 +37,7 @@ export async function extractReceipt(
   ref?: string,
 ): Promise<ScanReceipt> {
   const candidate = await extractor.extract(image, ref);
-  const result = ScanReceiptSchema.safeParse(candidate);
+  const result = ExtractedReceiptSchema.safeParse(candidate);
 
   if (!result.success) {
     const issue = result.error.issues[0];
@@ -46,5 +48,8 @@ export async function extractReceipt(
     );
   }
 
-  return result.data;
+  return {
+    ...result.data,
+    items: result.data.items.map(buildReviewItem),
+  };
 }

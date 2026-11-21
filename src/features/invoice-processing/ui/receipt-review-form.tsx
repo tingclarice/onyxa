@@ -22,7 +22,12 @@ import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import { readUploadedReceipt } from "./use-scan-receipt";
 import { saveReceiptAction } from "./actions";
 import {
+  calculateReceiptTotal,
   countFieldsNeedingReview,
+  deriveUnitPrice,
+  getLineDiscountError,
+  getReceiptDiscountError,
+  hasDiscount,
   hasTotalMismatch,
   isReceiptComplete,
   sumLineTotals,
@@ -91,10 +96,14 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
   // Instant on-screen checks, recalculated on every keystroke (rules live in core/).
   const receiptForChecks = { ...receipt, items };
   const itemsTotal = sumLineTotals(items);
+  const discounted = hasDiscount(receiptForChecks);
+  const calculatedTotal = calculateReceiptTotal(items, receipt.discount);
+  const discountError = getReceiptDiscountError(itemsTotal, receipt.discount);
+  const invalidDiscount = Boolean(discountError || items.some(getLineDiscountError));
   const totalMismatch = hasTotalMismatch(receiptForChecks);
   const flaggedCount = countFieldsNeedingReview(receiptForChecks);
   const receiptComplete = isReceiptComplete(receiptForChecks);
-  const hasValidationErrors = Object.keys(errors).length > 0;
+  const hasValidationErrors = invalidDiscount || Object.keys(errors).length > 0;
   const showReceiptPreview = !manual || Boolean(previewUrl);
 
   useEffect(() => {
@@ -155,34 +164,12 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
 
   function updateItem(index: number, item: ScanReceiptItem) {
     const previous = items[index];
-    const previousItemsTotal = sumLineTotals(items);
     let nextItem = item;
-    if (previous) {
-      const qtyChanged = previous.qty !== item.qty;
-      const lineTotalChanged = previous.line_total !== item.line_total;
-      const unitPriceChanged = previous.unit_price !== item.unit_price;
-
-      if (unitPriceChanged && !lineTotalChanged && item.qty > 0 && item.unit_price > 0) {
-        nextItem = {
-          ...item,
-          line_total: Math.round(item.qty * item.unit_price * 100) / 100,
-        };
-      } else if (
-        ((qtyChanged || lineTotalChanged) && !unitPriceChanged) ||
-        item.unit_price === 0
-      ) {
-        if (item.line_total > 0 && item.qty > 0) {
-          nextItem = {
-            ...item,
-            unit_price: Math.round((item.line_total / item.qty) * 100) / 100,
-          };
-        } else if (qtyChanged && item.unit_price > 0 && item.qty > 0) {
-          nextItem = {
-            ...item,
-            line_total: Math.round(item.qty * item.unit_price * 100) / 100,
-          };
-        }
-      }
+    const needsUnitPrice = previous && item.qty !== previous.qty && item.unit_price === 0 && item.line_total > 0;
+    if (previous && (item.line_total !== previous.line_total || needsUnitPrice)) {
+      nextItem = { ...item, unit_price: deriveUnitPrice(item.line_total, item.qty) };
+    } else if (previous && (item.qty !== previous.qty || item.unit_price !== previous.unit_price)) {
+      nextItem = { ...item, line_total: Math.round(item.qty * item.unit_price * 100) / 100 };
     }
 
     setValue(`items.${index}`, nextItem, {
@@ -191,18 +178,20 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
       shouldValidate: true,
     });
 
-    const currentTotal = getValues("total");
-    if (currentTotal === 0 || currentTotal === previousItemsTotal) {
-      const nextItems = items.map((it, idx) => (idx === index ? nextItem : it));
-      setValue("total", sumLineTotals(nextItems), {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+    const nextItems = items.map((entry, i) => i === index ? nextItem : entry);
+    updatePayableTotal(nextItems, receipt.discount);
+  }
+
+  function updatePayableTotal(nextItems: ScanReceiptItem[], discount = 0) {
+    const nextTotal = calculateReceiptTotal(nextItems, discount);
+    if (discounted || discount || nextItems.some((item) => item.discount) ||
+        receipt.total === 0 || receipt.total === calculatedTotal) {
+      setValue("total", Math.max(0, nextTotal), { shouldDirty: true, shouldValidate: true });
     }
   }
 
   async function saveReceipt(reviewed: ScanReceipt) {
-    if (uploadPending) return;
+    if (uploadPending || invalidDiscount) return;
     const result = await saveReceiptAction({
       receipt: reviewed,
       imageUrl: previewUrl,
@@ -357,33 +346,6 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
                 error={errors.date?.message}
                 {...register("date")}
               />
-              <Controller
-                control={control}
-                name="total"
-                render={({ field }) => (
-                  <CurrencyInput
-                    label="Total nota"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    confidence={receipt.overall_confidence}
-                    error={errors.total?.message}
-                  />
-                )}
-              />
-              {totalMismatch && (
-                <p
-                  role="status"
-                  className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-base text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
-                >
-                  <span aria-hidden="true" className="font-bold">
-                    !
-                  </span>
-                  <span>
-                    Total item {formatRupiah(itemsTotal)} tidak sama dengan
-                    total nota {formatRupiah(receipt.total)}
-                  </span>
-                </p>
-              )}
             </section>
 
             <section aria-labelledby="items-title" className="space-y-4">
@@ -425,13 +387,17 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
                         unit: itemErrors?.unit?.message,
                         unit_price: itemErrors?.unit_price?.message,
                         line_total: itemErrors?.line_total?.message,
+                        discount: getLineDiscountError(item) ?? itemErrors?.discount?.message,
                       }}
                     />
                     <Button
                       type="button"
                       variant="destructive"
                       className="w-full sm:w-auto"
-                      onClick={() => remove(index)}
+                      onClick={() => {
+                        updatePayableTotal(items.filter((_, i) => i !== index), receipt.discount);
+                        remove(index);
+                      }}
                     >
                       <Trash2 aria-hidden="true" />
                       Hapus barang
@@ -443,6 +409,42 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
               {items.length === 0 && (
                 <p className="rounded-xl border border-dashed p-5 text-center text-base text-muted-foreground">
                   Belum ada barang di nota.
+                </p>
+              )}
+            </section>
+
+            <section aria-label="Ringkasan nota" className="space-y-4 border-t pt-5">
+              <div className="flex justify-between gap-3">
+                <span>Subtotal barang</span>
+                <span className="tabular-nums">{formatRupiah(itemsTotal)}</span>
+              </div>
+              <CurrencyInput
+                label="Potongan seluruh nota"
+                value={receipt.discount ?? 0}
+                error={discountError ?? errors.discount?.message}
+                onValueChange={(discount) => {
+                  setValue("discount", discount, { shouldDirty: true, shouldValidate: true });
+                  updatePayableTotal(items, discount);
+                }}
+              />
+              {discounted ? (
+                <div className="flex justify-between gap-3 text-lg font-semibold" aria-live="polite">
+                  <span>Total bayar</span>
+                  <span className="tabular-nums">{invalidDiscount ? "—" : formatRupiah(calculatedTotal)}</span>
+                </div>
+              ) : (
+                <Controller
+                  control={control}
+                  name="total"
+                  render={({ field }) => (
+                    <CurrencyInput label="Total bayar" value={field.value} onValueChange={field.onChange}
+                      confidence={receipt.overall_confidence} error={errors.total?.message} />
+                  )}
+                />
+              )}
+              {totalMismatch && !invalidDiscount && (
+                <p role="status" className="text-sm text-amber-800 dark:text-amber-200">
+                  Total dari rincian barang {formatRupiah(calculatedTotal)} berbeda dengan total nota {formatRupiah(receipt.total)}.
                 </p>
               )}
             </section>
@@ -465,7 +467,7 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
               <Button
                 type="submit"
                 className="flex-1 sm:flex-initial sm:min-w-40"
-                disabled={uploadPending || isSubmitting || (isSaved && !isDirty)}
+                disabled={uploadPending || isSubmitting || invalidDiscount || (isSaved && !isDirty)}
               >
                 {isSubmitting ? (
                   <>

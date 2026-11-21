@@ -25,6 +25,17 @@ export function deriveUnitPrice(lineTotal: number, qty: number): number {
   return Math.round((lineTotal / qty) * 100) / 100;
 }
 
+/** Normalize the provider's printed amount to the gross amount used by review. */
+export function buildReviewItem({ line_total_is_net, ...item }: ScanReceiptItem & { line_total_is_net?: boolean }): ScanReceiptItem {
+  if (line_total_is_net) {
+    return { ...item, line_total: (Math.round(item.line_total * 100) + Math.round((item.discount ?? 0) * 100)) / 100 };
+  }
+  if (!item.line_total && item.qty > 0 && item.unit_price > 0) {
+    return { ...item, line_total: Math.round(item.qty * item.unit_price * 100) / 100 };
+  }
+  return item;
+}
+
 /** Fills missing unit_price (0) on scanned receipt items using line_total / qty. */
 export function fillMissingUnitPrices(receipt: ScanReceipt): ScanReceipt {
   return {
@@ -37,28 +48,52 @@ export function fillMissingUnitPrices(receipt: ScanReceipt): ScanReceipt {
   };
 }
 
-/** Sum of all line totals. Empty or invalid numbers count as 0. */
+/** The review form uses gross line amounts. Saved lineTotal is net of the line discount. */
+export function calculateNetLineTotal(item: ScanReceiptItem): number {
+  return (Math.round(item.line_total * 100) - Math.round((item.discount ?? 0) * 100)) / 100;
+}
+
+export function getLineDiscountError(item: ScanReceiptItem): string | undefined {
+  if ((item.discount ?? 0) < 0) return "Potongan barang tidak boleh negatif.";
+  if (calculateNetLineTotal(item) < 0) return "Potongan barang melebihi jumlah harga baris ini.";
+}
+
+export function getReceiptDiscountError(subtotal: number, discount = 0): string | undefined {
+  if (discount < 0) return "Potongan nota tidak boleh negatif.";
+  if (discount > Math.max(0, subtotal)) return "Potongan nota melebihi subtotal barang.";
+}
+
+export function hasDiscount(receipt: ScanReceipt): boolean {
+  return Boolean(receipt.discount || receipt.items.some((item) => item.discount));
+}
+
+export function calculateReceiptTotal(items: ScanReceiptItem[], discount = 0): number {
+  return (Math.round(sumLineTotals(items) * 100) - Math.round(discount * 100)) / 100;
+}
+
+/** Subtotal after line discounts, before the whole-receipt discount. */
 export function sumLineTotals(items: ScanReceiptItem[]): number {
   let total = 0;
   for (const item of items) {
-    if (Number.isFinite(item.line_total)) total += item.line_total;
+    if (Number.isFinite(item.line_total)) total += Math.round(calculateNetLineTotal(item) * 100);
   }
-  return total;
+  return total / 100;
 }
 
 /** True when the lines do not add up to the total printed on the receipt. */
 export function hasTotalMismatch(receipt: ScanReceipt): boolean {
-  return sumLineTotals(receipt.items) !== receipt.total;
+  return calculateReceiptTotal(receipt.items, receipt.discount) !== receipt.total;
 }
 
 /** True when all required header and item fields are filled with valid values. */
 export function isReceiptComplete(receipt: ScanReceipt): boolean {
-  if (!receipt.supplier_name?.trim() || !receipt.date?.trim() || receipt.total <= 0) {
+  if (!receipt.supplier_name?.trim() || !receipt.date?.trim() || receipt.total < 0) {
     return false;
   }
   if (!Array.isArray(receipt.items) || receipt.items.length === 0) {
     return false;
   }
+  if (receipt.total === 0 && !hasDiscount(receipt)) return false;
   return receipt.items.every(
     (item) =>
       Boolean(item.raw_name?.trim()) &&

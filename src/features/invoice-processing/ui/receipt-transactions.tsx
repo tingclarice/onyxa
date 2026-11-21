@@ -16,7 +16,6 @@ const statusOptions: {
 }[] = [
     { value: "all", label: "Semua status" },
     { value: "needs-check", label: "Perlu dicek" },
-    { value: "saved", label: "Tersimpan" },
   ];
 const noTransactions: ReceiptTransaction[] = [];
 
@@ -202,31 +201,36 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
           <p aria-live="polite" className="text-sm text-muted-foreground">
             {filteredTransactions.length} nota
           </p>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {filteredTransactions.map((transaction) => (
-              <li
-                key={transaction.id}
-                className="rounded-2xl border bg-card p-4 transition-colors hover:bg-muted/40 sm:p-5"
-              >
-                <article className="flex h-full flex-col justify-between gap-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="break-words text-lg font-semibold">
+          <div className="overflow-x-auto rounded-xl border">
+            <table className="w-full border-collapse text-left text-sm sm:text-base">
+              <caption className="sr-only">Nota pembelian untuk bisnis aktif</caption>
+              <thead className="border-b bg-muted/50 text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-3 py-3 font-medium sm:px-5">Tanggal</th>
+                  <th scope="col" className="px-3 py-3 font-medium sm:px-5">Pemasok</th>
+                  <th scope="col" className="px-3 py-3 text-right font-medium sm:px-5">Total bayar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredTransactions.map((transaction) => (
+                  <tr key={transaction.id} className="relative hover:bg-muted/40 focus-within:bg-muted/40">
+                    <td className="px-3 py-4 text-muted-foreground sm:px-5">{formatDate(transaction.date)}</td>
+                    <td className="break-words px-3 py-4 sm:px-5">
+                      <Link href={`/transaksi/${transaction.id}`}
+                        className="font-medium underline-offset-4 after:absolute after:inset-0 hover:underline focus-visible:underline">
                         {transaction.supplierName}
-                      </h2>
-                      <p className="mt-1 text-base text-muted-foreground">
-                        {formatDate(transaction.date)}
-                      </p>
-                    </div>
-                    <StatusBadge status={transaction.status} />
-                  </div>
-                  <p className="text-xl font-bold tabular-nums">
-                    {formatRupiah(transaction.total)}
-                  </p>
-                </article>
-              </li>
-            ))}
-          </ul>
+                        <span className="sr-only">, {formatDate(transaction.date)}, {formatRupiah(transaction.total)}</span>
+                      </Link>
+                      {transaction.status === "needs-check" && <div className="mt-1"><StatusBadge status="needs-check" /></div>}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-right font-semibold tabular-nums sm:px-5">
+                      {formatRupiah(transaction.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </>

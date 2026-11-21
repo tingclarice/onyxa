@@ -8,7 +8,7 @@ import type {
   SaveReceiptResult,
   ScanReceiptActionResult,
 } from "../types/scan";
-import { ScanReceiptError } from "../types/scan";
+import { ReceiptDiscountError, ScanReceiptError } from "../types/scan";
 import {
   scanReceipt,
   uploadAndScanReceipt,
@@ -108,7 +108,7 @@ export async function saveReceiptAction(
         ok: false,
         message: error.issues[0]?.message ?? "Periksa data nota.",
       };
-    if (error instanceof ScanReceiptError)
+    if (error instanceof ScanReceiptError || error instanceof ReceiptDiscountError)
       return { ok: false, message: error.message };
     console.error("[receipt] save failed");
     return {
