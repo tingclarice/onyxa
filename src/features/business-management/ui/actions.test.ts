@@ -115,7 +115,7 @@ test("invalid forms never reach the database or refresh the page", async () => {
   assert.equal(revalidations, 0);
 });
 
-test("an owner can upload a photo and save its returned URL to the active business", async (context) => {
+test("an owner can save a verified widget photo to the active business", async (context) => {
   actor = { id: ownerMembership.userId, email: ownerMembership.email };
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const preset = process.env.CLOUDINARY_UPLOAD_PRESET;
@@ -129,28 +129,23 @@ test("an owner can upload a photo and save its returned URL to the active busine
   });
   const imageUrl = "https://res.cloudinary.com/onyxa/image/upload/business.jpg";
   const cloudinary = context.mock.method(globalThis, "fetch", async () =>
-    Response.json({ resource_type: "image", secure_url: imageUrl }),
+    new Response(null, { headers: { "content-type": "image/jpeg", "content-length": "1024" } }),
   );
+  const { updateProfileAction } = await actions;
   const form = new FormData();
   form.set("businessId", businessId);
-  form.set("file", new File(["photo"], "business.jpg", { type: "image/jpeg" }));
-
-  const { uploadBusinessProfileImageAction, updateProfileAction } = await actions;
-  form.set("businessId", invitationId);
-  assert.equal((await uploadBusinessProfileImageAction(form)).ok, false);
-  assert.equal(cloudinary.mock.callCount(), 0);
-
-  form.set("businessId", businessId);
-  assert.deepEqual(await uploadBusinessProfileImageAction(form), { ok: true, imageUrl });
-  assert.equal(database.businesses[0]?.profileImageUrl, null);
-
   form.set("name", "Warung Sari");
   form.set("businessType", "STORE");
   form.set("profileImageUrl", "https://res.cloudinary.com/other/image/upload/business.jpg");
   assert.equal((await updateProfileAction(null, form)).status, "error");
   assert.equal(database.businesses[0]?.profileImageUrl, null);
 
+  assert.equal(cloudinary.mock.callCount(), 0);
   form.set("profileImageUrl", imageUrl);
+  cloudinary.mock.mockImplementationOnce(async () => new Response(null, {
+    headers: { "content-type": "image/svg+xml", "content-length": "256" },
+  }));
+  assert.equal((await updateProfileAction(null, form)).status, "error");
   assert.equal((await updateProfileAction(null, form)).status, "success");
   assert.equal(database.businesses[0]?.profileImageUrl, imageUrl);
 });

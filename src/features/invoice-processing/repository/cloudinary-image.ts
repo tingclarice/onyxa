@@ -1,4 +1,5 @@
 import "server-only";
+import { getCloudinaryUploadSettings } from "@/lib/cloudinary-settings";
 
 import {
   MAX_RECEIPT_IMAGE_BYTES,
@@ -14,7 +15,7 @@ function isSupportedMimeType(value: string): value is ReceiptImageMimeType {
 }
 
 function getCloudinaryCloudName(): string {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const { cloudName } = getCloudinaryUploadSettings();
   if (!cloudName || !/^[a-z0-9-]+$/i.test(cloudName)) {
     throw new ScanReceiptError(
       "Penyimpanan Cloudinary belum disiapkan. Minta pengelola aplikasi memeriksa pengaturannya.",

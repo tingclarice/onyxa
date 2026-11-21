@@ -48,11 +48,7 @@ export interface AuthUser {
   profileImageUrl: string | null;
 }
 
-export const accountPhotoSchema = z
-  .file()
-  .min(1)
-  .max(8 * 1024 * 1024)
-  .mime(["image/jpeg", "image/png", "image/webp"]);
+export const accountPhotoSchema = z.url().max(2048);
 export interface LoginState {
   failedLoginAttempts: number;
   lockedUntil: Date | null;

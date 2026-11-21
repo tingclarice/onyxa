@@ -1,6 +1,3 @@
 import "server-only";
 
-export {
-  isOurCloudinaryImageUrl,
-  uploadImageToCloudinary,
-} from "@/lib/cloudinary-images";
+export { isValidCloudinaryProfilePhoto } from "@/lib/cloudinary-images";

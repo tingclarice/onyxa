@@ -23,7 +23,6 @@ import {
   createBusiness,
   updateAlertPreferences,
   updateBusinessProfile,
-  uploadBusinessProfileImage,
 } from "../services/business-service";
 import { getMembershipInBusiness } from "../services/workspace-service";
 import {
@@ -181,27 +180,6 @@ export async function updateProfileAction(
   return { status: "success", message: "Profil usaha tersimpan." };
 }
 
-export async function uploadBusinessProfileImageAction(formData: FormData) {
-  const { actor, membership } = await requireActiveBusiness();
-  const photo = z.file().min(1).max(8 * 1024 * 1024).mime([
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]).safeParse(formData.get("file"));
-
-  if (formData.get("businessId") !== membership.businessId) {
-    return { ok: false, message: "Usaha aktif telah berubah. Buka ulang pengaturan." } as const;
-  }
-  if (!photo.success) {
-    return { ok: false, message: "Pilih foto JPG, PNG, atau WebP berukuran maksimal 8 MB." } as const;
-  }
-
-  try {
-    return await uploadBusinessProfileImage(actor, membership.businessId, photo.data);
-  } catch (error) {
-    return { ok: false, message: toErrorResult(error).message } as const;
-  }
-}
 export async function updateAlertsAction(
   _previous: ActionResult | null,
   formData: FormData,

@@ -1,4 +1,6 @@
 import { Suspense, type ReactNode } from "react";
+import { getCloudinaryUploadSettings } from "@/lib/cloudinary-settings";
+import { CloudinarySettings } from "@/components/cloudinary-picker";
 import { AppNavigation } from "@/components/app-navigation";
 import { requireUser } from "@/features/auth/server";
 import { SignOutButton } from "@/features/auth/ui/sign-out-button";
@@ -100,7 +102,9 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
           </header>
           <main>
             <BusinessWorkspace businessReady={Boolean(workspace.active)}>
-              {children}
+              <CloudinarySettings value={getCloudinaryUploadSettings()}>
+                {children}
+              </CloudinarySettings>
             </BusinessWorkspace>
           </main>
         </div>

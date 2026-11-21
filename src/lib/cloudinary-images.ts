@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getCloudinaryUploadSettings } from "./cloudinary-settings";
 import { z } from "zod";
 
 // Stores images in Cloudinary. Settings come from the server
@@ -26,8 +27,7 @@ export class CloudinaryUploadError extends Error {
 
 /** Uploads the photo and returns its https://res.cloudinary.com/... address. */
 async function writeImageToCloudinary(file: File): Promise<string> {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+  const { cloudName, uploadPreset } = getCloudinaryUploadSettings();
 
   if (!cloudName || !uploadPreset) {
     throw new CloudinaryUploadError(
@@ -120,7 +120,7 @@ export async function uploadImageToCloudinary(
 
 /** True only for image addresses in OUR Cloudinary account (never trust a URL from the browser). */
 export function isOurCloudinaryImageUrl(imageUrl: string): boolean {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const { cloudName } = getCloudinaryUploadSettings();
   if (!cloudName) return false;
 
   try {
@@ -128,10 +128,26 @@ export function isOurCloudinaryImageUrl(imageUrl: string): boolean {
     return (
       url.protocol === "https:" &&
       url.hostname === "res.cloudinary.com" &&
-      url.pathname.split("/")[1] === cloudName &&
-      url.pathname.includes("/image/upload/")
+      !url.username && !url.password && !url.port && !url.search && !url.hash &&
+      url.pathname.startsWith(`/${cloudName}/image/upload/`) &&
+      url.pathname.split("/").slice(4).every(Boolean)
     );
   } catch {
     return false;
   }
+}
+
+/** Verify the provider's metadata before persisting an uploaded profile photo. */
+export async function isValidCloudinaryProfilePhoto(imageUrl: string): Promise<boolean> {
+  if (!isOurCloudinaryImageUrl(imageUrl)) return false;
+  const response = await fetch(imageUrl, {
+    method: "HEAD",
+    redirect: "error",
+    cache: "no-store",
+    signal: AbortSignal.timeout(10000),
+  });
+  const bytes = Number(response.headers.get("content-length"));
+  const mime = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+  return response.ok && Number.isSafeInteger(bytes) && bytes > 0 && bytes <= 8 * 1024 * 1024
+    && (mime === "image/jpeg" || mime === "image/png" || mime === "image/webp");
 }

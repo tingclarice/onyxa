@@ -19,7 +19,7 @@ import { ReceiptItemRow } from "./review/receipt-item-row";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ImageUploadButton } from "@/components/ui/image-upload-button";
-import { uploadAndReadReceipt } from "./use-scan-receipt";
+import { readUploadedReceipt } from "./use-scan-receipt";
 import { saveReceiptAction } from "./actions";
 import {
   countFieldsNeedingReview,
@@ -300,12 +300,12 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
                 <h2 className="text-lg font-semibold">Foto nota</h2>
                 <ImageUploadButton
                   label="Pilih foto"
-                  accept="image/*"
+                  receipt
                   disabled={isSubmitting}
                   onPendingChange={setUploadPending}
-                  upload={async (file) => {
+                  processImage={async (uploadedUrl) => {
                     try {
-                      const { receipt, imageUrl } = await uploadAndReadReceipt(file);
+                      const { receipt, imageUrl } = await readUploadedReceipt(uploadedUrl);
                       if (imageUrl) return { ok: true, image: { receipt, imageUrl } };
                     } catch (error) {
                       if (error instanceof ScanReceiptError) {

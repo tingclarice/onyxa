@@ -7,7 +7,7 @@ import { requireUser } from "./session";
 
 export async function updateAccountProfilePhotoAction(formData: FormData) {
   const user = await requireUser();
-  const image = accountPhotoSchema.safeParse(formData.get("file"));
+  const image = accountPhotoSchema.safeParse(formData.get("imageUrl"));
 
   if (!image.success) {
     return {

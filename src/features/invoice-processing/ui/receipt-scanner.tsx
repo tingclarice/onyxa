@@ -16,7 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useScanReceipt } from "./use-scan-receipt";
+import { useCloudinaryPicker, type PickedImage } from "@/components/cloudinary-picker";
+import { uploadAndReadReceipt, readUploadedReceipt } from "./use-scan-receipt";
 import {
   ScanReceiptError,
   ScanReceiptResultSchema,
@@ -28,7 +29,8 @@ type QueueStatus = "queued" | "scanning" | "done" | "failed";
 
 type ScanQueueItem = {
   id: string;
-  file: File;
+  cameraFile?: File;
+  name: string;
   previewUrl: string;
   status: QueueStatus;
   errorCode?: ScanReceiptErrorCode;
@@ -107,20 +109,16 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
  * one, then open each result for review. The page title lives in app/scan/page.tsx.
  */
 export function ReceiptScanner() {
-  const scanMutation = useScanReceipt();
   const [queue, setQueue] = useState<ScanQueueItem[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const queueRef = useRef(queue);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    queueRef.current = queue;
-  }, [queue]);
+  const picker = useCloudinaryPicker({ multiple: true, receipt: true, onImage: queueUploadedPhoto });
 
   useEffect(
     () => () => {
-      queueRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      queueRef.current.forEach((item) => {
+        if (item.cameraFile) URL.revokeObjectURL(item.previewUrl);
+      });
     },
     [],
   );
@@ -136,16 +134,6 @@ export function ReceiptScanner() {
     setQueue(updatedQueue);
   }
 
-  function isDuplicateFile(file: File, currentId?: string): boolean {
-    return queueRef.current.some(
-      (item) =>
-        item.id !== currentId &&
-        item.file.name === file.name &&
-        item.file.size === file.size &&
-        item.file.lastModified === file.lastModified,
-    );
-  }
-
   async function processFile(item: ScanQueueItem) {
     updateQueueItem(item.id, {
       status: "scanning",
@@ -153,24 +141,10 @@ export function ReceiptScanner() {
       errorMessage: undefined,
     });
 
-    if (isDuplicateFile(item.file, item.id)) {
-      updateQueueItem(item.id, {
-        status: "failed",
-        errorCode: "duplicate_receipt",
-      });
-      return;
-    }
-
-    if (!item.file.type.startsWith("image/") || item.file.size === 0) {
-      updateQueueItem(item.id, {
-        status: "failed",
-        errorCode: "unreadable_image",
-      });
-      return;
-    }
-
     try {
-      const result = await scanMutation.mutateAsync(item.file);
+      const result = item.cameraFile
+        ? await uploadAndReadReceipt(item.cameraFile)
+        : await readUploadedReceipt(item.previewUrl);
       const reviewUrl = storeReceiptForReview(item.id, result);
       updateQueueItem(item.id, {
         status: "done",
@@ -202,24 +176,15 @@ export function ReceiptScanner() {
     return `/scan/review?receiptId=${encodeURIComponent(id)}`;
   }
 
-  function handleFilesList(files: File[]) {
-    if (!files.length) return;
-    const newItems = files.map((file): ScanQueueItem => ({
-      id: crypto.randomUUID(),
-      file,
-      previewUrl: URL.createObjectURL(file),
-      status: "queued",
-    }));
-
-    const updatedQueue = [...queueRef.current, ...newItems];
-    queueRef.current = updatedQueue;
-    setQueue(updatedQueue);
-    newItems.forEach((item) => void processFile(item));
+  function enqueue(item: ScanQueueItem) {
+    queueRef.current = [...queueRef.current, item];
+    setQueue(queueRef.current);
+    void processFile(item);
   }
 
-  function handleFilesSelected(fileList: FileList | null) {
-    if (!fileList?.length) return;
-    handleFilesList(Array.from(fileList));
+  function queueUploadedPhoto({ imageUrl, name }: PickedImage) {
+    if (queueRef.current.some((item) => item.previewUrl === imageUrl)) return;
+    enqueue({ id: crypto.randomUUID(), previewUrl: imageUrl, name, status: "queued" });
   }
 
   function handleOpenCamera() {
@@ -230,12 +195,12 @@ export function ReceiptScanner() {
     ) {
       setIsCameraOpen(true);
     } else {
-      cameraInputRef.current?.click();
+      void picker.pickImages();
     }
   }
 
   function removeItem(item: ScanQueueItem) {
-    URL.revokeObjectURL(item.previewUrl);
+    if (item.cameraFile) URL.revokeObjectURL(item.previewUrl);
     const updatedQueue = queueRef.current.filter(
       (queueItem) => queueItem.id !== item.id,
     );
@@ -279,7 +244,8 @@ export function ReceiptScanner() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => galleryInputRef.current?.click()}
+              disabled={picker.open}
+              onClick={picker.pickImages}
               className="w-full"
             >
               <Upload aria-hidden="true" />
@@ -296,28 +262,7 @@ export function ReceiptScanner() {
               </Link>
             </Button>
           </div>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={(event) => {
-              handleFilesSelected(event.currentTarget.files);
-              event.currentTarget.value = "";
-            }}
-          />
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            onChange={(event) => {
-              handleFilesSelected(event.currentTarget.files);
-              event.currentTarget.value = "";
-            }}
-          />
+          {picker.error && <p role="alert" className="text-sm text-destructive">{picker.error}</p>}
         </div>
       </section>
 
@@ -335,7 +280,8 @@ export function ReceiptScanner() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => galleryInputRef.current?.click()}
+              disabled={picker.open}
+              onClick={picker.pickImages}
             >
               <Plus aria-hidden="true" />
               Tambah nota
@@ -370,12 +316,12 @@ export function ReceiptScanner() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={item.previewUrl}
-                    alt={`Foto nota ${item.file.name}`}
+                    alt={`Foto nota ${item.name}`}
                     className="size-16 rounded-lg border object-cover sm:size-20"
                   />
                   <div className="min-w-0 space-y-1">
                     <p className="truncate text-base font-medium">
-                      {item.file.name}
+                      {item.name}
                     </p>
                     <p
                       aria-live="polite"
@@ -427,7 +373,7 @@ export function ReceiptScanner() {
                   <Button
                     type="button"
                     variant="ghost"
-                    aria-label={`Hapus ${item.file.name}`}
+                    aria-label={`Hapus ${item.name}`}
                     onClick={() => removeItem(item)}
                     className="size-12 p-0 text-muted-foreground hover:text-destructive"
                   >
@@ -445,11 +391,12 @@ export function ReceiptScanner() {
           onClose={() => setIsCameraOpen(false)}
           onCapture={(file) => {
             setIsCameraOpen(false);
-            handleFilesList([file]);
+            enqueue({ id: crypto.randomUUID(), cameraFile: file, name: file.name,
+              previewUrl: URL.createObjectURL(file), status: "queued" });
           }}
-          onFallbackToFileInput={() => {
+          onChooseFromGallery={() => {
             setIsCameraOpen(false);
-            cameraInputRef.current?.click();
+            void picker.pickImages();
           }}
         />
       )}
@@ -460,11 +407,11 @@ export function ReceiptScanner() {
 function LiveCameraModal({
   onClose,
   onCapture,
-  onFallbackToFileInput,
+  onChooseFromGallery,
 }: {
   onClose: () => void;
   onCapture: (file: File) => void;
-  onFallbackToFileInput: () => void;
+  onChooseFromGallery: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -581,7 +528,7 @@ function LiveCameraModal({
               <Button
                 type="button"
                 variant="outline"
-                onClick={onFallbackToFileInput}
+                onClick={onChooseFromGallery}
                 className="text-foreground"
               >
                 Pilih file foto

@@ -8,10 +8,6 @@ export default function ScanPage() {
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           Scan nota belanja
         </h1>
-        <p className="text-base text-muted-foreground">
-          Foto nota atau pilih gambar dari HP. Anda bisa menambahkan beberapa
-          nota sekaligus.
-        </p>
         <p className="text-sm text-muted-foreground">
           Onyxa akan membaca isi foto nota secara otomatis agar Anda tinggal
           memeriksa dan menyimpannya.

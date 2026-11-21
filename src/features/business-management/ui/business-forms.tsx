@@ -16,7 +16,6 @@ import {
   revokeInvitationAction,
   updateAlertsAction,
   updateProfileAction,
-  uploadBusinessProfileImageAction,
 } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,16 +126,9 @@ export function BusinessProfileForm({
         {owner && (
           <ImageUploadButton
             label="Pilih foto usaha"
-            accept="image/jpeg,image/png,image/webp"
             disabled={pending}
             onPendingChange={setUploadPending}
-            upload={async (file) => {
-              const data = new FormData();
-              data.set("businessId", business.id);
-              data.set("file", file);
-              const uploaded = await uploadBusinessProfileImageAction(data);
-              return uploaded.ok ? { ok: true, image: uploaded } : uploaded;
-            }}
+            processImage={async (imageUrl) => ({ ok: true, image: { imageUrl } })}
             onUploaded={({ imageUrl }) => setSelectedImage(imageUrl)}
           />
         )}

@@ -84,8 +84,8 @@ mock.module(
   pathToFileURL(resolve("src/features/auth/services/account-photo-service.ts")).href,
   {
     namedExports: {
-      async updateAccountProfilePhoto(userId: string, file: File) {
-        assert.equal(file.type, "image/png");
+      async updateAccountProfilePhoto(userId: string, imageUrl: string) {
+        assert.equal(imageUrl, profileImageUrl);
         photoWrites.push(userId);
         return { ok: true, imageUrl: profileImageUrl };
       },
@@ -120,7 +120,7 @@ test("trusted session ID resolves fresh identity from the account service", asyn
   assert.deepEqual(await (await queries).requireUser(), user);
 });
 
-test("profile uploads require a session, reject invalid files, and use the trusted account ID", async () => {
+test("profile uploads require a session, reject missing URLs, and use the trusted account ID", async () => {
   const { updateAccountProfilePhotoAction } = await import("./account-photo-actions");
   const form = new FormData();
   form.set("userId", "another-account");
@@ -132,7 +132,7 @@ test("profile uploads require a session, reject invalid files, and use the trust
   assert.deepEqual(photoWrites, []);
   assert.deepEqual(invalidations, []);
 
-  form.set("file", new File(["test image"], "avatar.png", { type: "image/png" }));
+  form.set("imageUrl", profileImageUrl);
   assert.deepEqual(await updateAccountProfilePhotoAction(form), { ok: true, imageUrl: profileImageUrl });
   assert.deepEqual(photoWrites, [id]);
   assert.deepEqual(invalidations, ["/", "/pengaturan"]);

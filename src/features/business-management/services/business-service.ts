@@ -28,20 +28,7 @@ import {
 } from "../repository/membership-repository";
 import { listUnansweredInvitationsOfBusiness } from "../repository/invitation-repository";
 import { getMembershipInBusiness } from "./workspace-service";
-import {
-  isOurCloudinaryImageUrl,
-  uploadImageToCloudinary,
-} from "../repository/business-image-storage";
-
-export async function uploadBusinessProfileImage(
-  actor: Actor,
-  businessId: string,
-  file: File,
-) {
-  const membership = await getMembershipInBusiness(actor, businessId);
-  checkIsOwner(membership, actor, businessId);
-  return uploadImageToCloudinary(file);
-}
+import { isValidCloudinaryProfilePhoto } from "../repository/business-image-storage";
 
 /** Creates a new business. The creator becomes its OWNER. */
 export async function createBusiness(
@@ -86,13 +73,17 @@ export async function updateBusinessProfile(
   input: BusinessProfileUpdate,
 ): Promise<void> {
   const profile = businessProfileUpdateSchema.parse(input);
+  if (profile.profileImageUrl) {
+    const membership = await getMembershipInBusiness(actor, businessId);
+    checkIsOwner(membership, actor, businessId);
+    if (!(await isValidCloudinaryProfilePhoto(profile.profileImageUrl))) {
+      throw new BusinessError("invalid_profile_image");
+    }
+  }
 
   await runInTransaction(async (db) => {
     const membership = await findMembership(businessId, actor.id, db);
     checkIsOwner(membership, actor, businessId);
-    if (profile.profileImageUrl && !isOurCloudinaryImageUrl(profile.profileImageUrl)) {
-      throw new BusinessError("invalid_profile_image");
-    }
 
     await saveBusinessProfile(businessId, profile, db);
   });

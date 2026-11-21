@@ -1,13 +1,12 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import {
   ScanReceiptError,
   ScanReceiptResultSchema,
   type ScanReceiptResult,
 } from "../types/scan";
 import { getReceiptImageProblem } from "../core/receipt-image-rules";
-import { uploadAndScanReceiptAction } from "./actions";
+import { scanReceiptAction, uploadAndScanReceiptAction } from "./actions";
 
 const MAX_VISION_DIMENSION = 2048;
 const JPEG_HIGH_QUALITY = 0.92;
@@ -88,6 +87,8 @@ export async function uploadAndReadReceipt(file: File): Promise<ScanReceiptResul
   return ScanReceiptResultSchema.parse(result.result);
 }
 
-export function useScanReceipt() {
-  return useMutation({ mutationFn: uploadAndReadReceipt });
+export async function readUploadedReceipt(imageUrl: string): Promise<ScanReceiptResult> {
+  const result = await scanReceiptAction(imageUrl);
+  if (!result.ok) throw new ScanReceiptError(result.message, result.code);
+  return ScanReceiptResultSchema.parse(result.result);
 }

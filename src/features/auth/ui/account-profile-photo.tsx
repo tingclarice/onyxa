@@ -20,10 +20,9 @@ export function AccountProfilePhoto({
       <div className="space-y-2">
         <ImageUploadButton
           label="Unggah foto profil"
-          accept="image/jpeg,image/png,image/webp"
-          upload={async (file) => {
+          processImage={async (imageUrl) => {
             const data = new FormData();
-            data.set("file", file);
+            data.set("imageUrl", imageUrl);
             const result = await updateAccountProfilePhotoAction(data);
             return result.ok ? { ok: true, image: result } : result;
           }}
