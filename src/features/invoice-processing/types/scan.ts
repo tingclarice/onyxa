@@ -108,7 +108,7 @@ export interface ReceiptImageSource {
 }
 
 export interface ReceiptExtractionProvider {
-  extract(image: ReceiptImage): Promise<unknown>;
+  extract(image: ReceiptImage, ref?: string): Promise<unknown>;
 }
 
 export type ScanReceiptActionResult =

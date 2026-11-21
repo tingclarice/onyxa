@@ -23,19 +23,19 @@ export async function scanReceiptAction(
   await requireUser();
   await requireActiveBusiness();
 
+  const trace = startScanLog("galeri");
   if (typeof imageUrl !== "string" || !imageUrl) {
-    return {
-      ok: false,
-      code: "cloudinary_image_invalid",
-      message: "Alamat foto nota tidak valid. Pilih foto nota dari Cloudinary.",
-    };
+    return reportScanFailure(trace, new ScanReceiptError(
+      "Alamat foto nota tidak valid. Pilih foto nota dari Cloudinary.", "cloudinary_image_invalid",
+    ));
   }
 
   try {
-    const result = await scanReceipt(imageUrl);
+    const result = await scanReceipt(imageUrl, trace.ref);
+    reportScanSuccess(trace);
     return { ok: true, result };
   } catch (error) {
-    return reportScanFailure("galeri", error);
+    return reportScanFailure(trace, error);
   }
 }
 
@@ -49,30 +49,39 @@ export async function uploadAndScanReceiptAction(
   await requireUser();
   await requireActiveBusiness();
 
+  const trace = startScanLog("kamera");
   const file = formData.get("file");
   if (!(file instanceof File)) {
-    return {
-      ok: false,
-      code: "unreadable_image",
-      message: "Pilih foto nota terlebih dahulu.",
-    };
+    return reportScanFailure(trace, new ScanReceiptError("Pilih foto nota terlebih dahulu.", "unreadable_image"));
   }
 
   try {
-    const result = await uploadAndScanReceipt(file);
+    const result = await uploadAndScanReceipt(file, trace.ref);
+    reportScanSuccess(trace);
     return { ok: true, result };
   } catch (error) {
-    return reportScanFailure("kamera", error);
+    return reportScanFailure(trace, error);
   }
 }
 
-function reportScanFailure(source: "kamera" | "galeri", error: unknown): ScanReceiptActionResult {
+function startScanLog(source: "kamera" | "galeri") {
   const ref = crypto.randomUUID();
+  console.info("[receipt-scan]", { ref, source, stage: "scan", outcome: "started" });
+  return { ref, source, start: performance.now() };
+}
+
+function reportScanSuccess({ ref, source, start }: ReturnType<typeof startScanLog>) {
+  console.info("[receipt-scan]", { ref, source, stage: "scan", outcome: "ok",
+    durationMs: Math.round(performance.now() - start) });
+}
+
+function reportScanFailure({ ref, source, start }: ReturnType<typeof startScanLog>, error: unknown): ScanReceiptActionResult {
   const failure = error instanceof ScanReceiptError ? error : new ScanReceiptError(
     "Server gagal menyelesaikan pemrosesan nota. Gunakan referensi ini untuk memeriksa log server.",
     "scan_failed",
   );
-  console.error("[receipt-scan]", { ref, source, code: failure.code, reason: failure.message });
+  console.error("[receipt-scan]", { ref, source, stage: "scan", outcome: "failed",
+    durationMs: Math.round(performance.now() - start), code: failure.code, reason: failure.message });
   return { ok: false, code: failure.code, message: `${failure.message} [${failure.code} · Ref ${ref}]` };
 }
 

@@ -11,6 +11,7 @@ Di halaman scan, paragraf awal mengulang petunjuk memilih nota. Saat pengguna me
 - Scan mendukung beberapa nota. Tiap hasil unggahan masuk ke antrean OCR sekali. Review dan foto profil menerima satu foto per pemilihan.
 - Membatalkan pemilihan mempertahankan foto atau draf sebelumnya. Pengguna dapat mencoba kembali sesudah gagal.
 - Saat scan gagal, pengguna melihat tahap, alasan yang diketahui, dan langkah berikutnya. Kegagalan pemrosesan di server menyertakan referensi yang sama dengan log server. Periksa jalur kamera dan galeri dengan simulasi kegagalan provider serta respons nota yang tidak valid. Log hanya memuat informasi diagnostik yang aman.
+- Log server mengaitkan waktu transfer Cloudinary dan tiap percobaan model Gemini dengan referensi scan. Saat model gagal, catat status HTTP jika tersedia, durasi, alasan, dan keputusan untuk mencoba model berikutnya.
 
 ## Lingkup
 

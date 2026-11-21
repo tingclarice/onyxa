@@ -58,11 +58,15 @@ Confidence is a rough review heuristic, not a calibrated probability. Use low co
 type GeminiRequest = (
   apiKey: string,
   image: ReceiptImage,
+  ref?: string,
 ) => Promise<string | undefined>;
+
+const GEMINI_TIMEOUT_MS = 25_000;
 
 async function requestGemini(
   apiKey: string,
   image: ReceiptImage,
+  ref: string = crypto.randomUUID(),
 ): Promise<string | undefined> {
   const configuredModel = process.env.GEMINI_RECEIPT_MODEL;
   const candidateModels = configuredModel
@@ -73,7 +77,13 @@ async function requestGemini(
   const base64Image = Buffer.from(image.bytes).toString("base64");
 
   let lastError: unknown;
-  for (const modelName of candidateModels) {
+  for (const [index, modelName] of candidateModels.entries()) {
+    const model = /^gemini-[a-z0-9.-]{1,64}$/.test(modelName) ? modelName : "model konfigurasi";
+    const attempt = { ref, stage: "gemini.attempt", model, attempt: index + 1, timeoutMs: GEMINI_TIMEOUT_MS };
+    const start = performance.now();
+    const deadline = AbortSignal.timeout(GEMINI_TIMEOUT_MS);
+    let httpStatus: number | null = null;
+    console.info("[receipt-scan]", { ...attempt, outcome: "started" });
     try {
       const response = await client.models.generateContent({
         model: modelName,
@@ -98,10 +108,11 @@ async function requestGemini(
           thinkingConfig: {
             thinkingBudget: 512,
           },
-          abortSignal: AbortSignal.timeout(25_000),
+          abortSignal: deadline,
         },
       });
 
+      httpStatus = response.sdkHttpResponse?.responseInternal?.status ?? null;
       if (response.candidates?.[0]?.finishReason === "MAX_TOKENS") {
         throw new ScanReceiptError(
           "Gemini berhenti saat batas token keluaran tercapai (MAX_TOKENS). Periksa batas keluaran model atau scan nota per bagian.",
@@ -121,14 +132,19 @@ async function requestGemini(
           "invalid_model_output",
         );
       }
+      console.info("[receipt-scan]", { ...attempt, outcome: "ok", httpStatus,
+        durationMs: Math.round(performance.now() - start) });
       return output;
     } catch (error) {
       const failure = error instanceof ScanReceiptError ? error : getSafeGeminiError(error);
       const status = getGeminiErrorStatus(error);
-      const model = /^gemini-[a-z0-9.-]{1,64}$/.test(modelName) ? modelName : "model konfigurasi";
+      const willRetry = (status === 404 || status === 503) && index + 1 < candidateModels.length;
+      console.warn("[receipt-scan]", { ...attempt, outcome: "failed", httpStatus: status ?? httpStatus,
+        durationMs: Math.round(performance.now() - start), deadlineExpired: deadline.aborted,
+        code: failure.code, reason: failure.message, willRetry });
       const context = status ? `${model}, HTTP ${status}` : model;
       lastError = new ScanReceiptError(`${failure.message} (${context})`, failure.code);
-      if (status !== 404 && status !== 503) {
+      if (!willRetry) {
         throw lastError;
       }
     }
@@ -209,7 +225,7 @@ export function createGeminiReceiptExtractor(
   generate: GeminiRequest = requestGemini,
 ): ReceiptExtractionProvider {
   return {
-    async extract(image) {
+    async extract(image, ref) {
       const apiKey = getApiKey()?.trim();
       if (!apiKey) {
         throw new ScanReceiptError(
@@ -220,7 +236,7 @@ export function createGeminiReceiptExtractor(
 
       let output: string | undefined;
       try {
-        output = await generate(apiKey, image);
+        output = await generate(apiKey, image, ref);
       } catch (error) {
         if (error instanceof ScanReceiptError) throw error;
         throw getSafeGeminiError(error);
