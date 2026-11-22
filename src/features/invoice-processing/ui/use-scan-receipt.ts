@@ -2,8 +2,8 @@
 
 import {
   ScanReceiptError,
-  ScanReceiptResultSchema,
-  type ScanReceiptResult,
+  StoredReceiptDraftSchema,
+  type StoredReceiptDraft,
 } from "../types/scan";
 import { getReceiptImageProblem } from "../core/receipt-image-rules";
 import { scanReceiptAction, uploadAndScanReceiptAction } from "./actions";
@@ -74,7 +74,7 @@ async function optimizeImageIfOversized(file: File): Promise<File> {
 }
 
 /** Browser hook: check the photo → upload & scan in parallel. */
-export async function uploadAndReadReceipt(file: File): Promise<ScanReceiptResult> {
+export async function uploadAndReadReceipt(file: File): Promise<StoredReceiptDraft> {
   const problem = getReceiptImageProblem(file);
   if (problem) throw new ScanReceiptError(problem.message, problem.code);
 
@@ -84,11 +84,11 @@ export async function uploadAndReadReceipt(file: File): Promise<ScanReceiptResul
 
   const result = await uploadAndScanReceiptAction(formData);
   if (!result.ok) throw new ScanReceiptError(result.message, result.code);
-  return ScanReceiptResultSchema.parse(result.result);
+  return StoredReceiptDraftSchema.parse(result.result);
 }
 
-export async function readUploadedReceipt(imageUrl: string): Promise<ScanReceiptResult> {
-  const result = await scanReceiptAction(imageUrl);
+export async function readUploadedReceipt(imageUrl: string, replaceId?: string): Promise<StoredReceiptDraft> {
+  const result = await scanReceiptAction(imageUrl, replaceId);
   if (!result.ok) throw new ScanReceiptError(result.message, result.code);
-  return ScanReceiptResultSchema.parse(result.result);
+  return StoredReceiptDraftSchema.parse(result.result);
 }

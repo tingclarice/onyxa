@@ -1,6 +1,6 @@
 import "server-only";
 
-import { runInTransaction } from "@/lib/database-transaction";
+import { runInTransaction, type DatabaseClient } from "@/lib/database-transaction";
 import {
   createItem,
   createSavedReceipt,
@@ -18,22 +18,16 @@ export const receiptSaveRepository: ReceiptSaveRepository = {
     businessId: string,
     operation: (transaction: ReceiptSaveTransaction) => Promise<T>,
   ): Promise<T> {
-    return runInTransaction((db) =>
-      operation({
-        findOrCreateSupplier: (name, nameKey) =>
-          findOrCreateSupplier(businessId, name, nameKey, db),
-        findItemByNameKey: (nameKey) =>
-          findItemByNameKey(businessId, nameKey, db),
-        createItem: (name, nameKey, baseUnit) =>
-          createItem(businessId, name, nameKey, baseUnit, db),
-        saveItemAliasIfFree: (itemId, name, nameKey) =>
-          saveItemAliasIfFree(businessId, itemId, name, nameKey, db),
-        createSavedReceipt: (receipt) =>
-          createSavedReceipt(
-            { ...receipt, businessId },
-            db,
-          ),
-      }),
-    );
+    return runInTransaction((db) => operation(bindReceiptTransaction(businessId, db)));
   },
 };
+
+export function bindReceiptTransaction(businessId: string, db: DatabaseClient, receiptId?: string): ReceiptSaveTransaction {
+  return {
+    findOrCreateSupplier: (name, nameKey) => findOrCreateSupplier(businessId, name, nameKey, db),
+    findItemByNameKey: (nameKey) => findItemByNameKey(businessId, nameKey, db),
+    createItem: (name, nameKey, baseUnit) => createItem(businessId, name, nameKey, baseUnit, db),
+    saveItemAliasIfFree: (itemId, name, nameKey) => saveItemAliasIfFree(businessId, itemId, name, nameKey, db),
+    createSavedReceipt: (receipt) => createSavedReceipt({ ...receipt, businessId, id: receiptId }, db),
+  };
+}

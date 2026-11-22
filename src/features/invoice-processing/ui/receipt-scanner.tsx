@@ -15,12 +15,13 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { discardDraftAction } from "./actions";
 import { useCloudinaryPicker, type PickedImage } from "@/components/cloudinary-picker";
 import { uploadAndReadReceipt, readUploadedReceipt } from "./use-scan-receipt";
 import {
   ScanReceiptError,
-  ScanReceiptResultSchema,
-  type ScanReceiptResult,
+  type ReceiptDraftSummary,
   type ScanReceiptErrorCode,
 } from "../types/scan";
 
@@ -34,10 +35,9 @@ type ScanQueueItem = {
   status: QueueStatus;
   errorCode?: ScanReceiptErrorCode;
   errorMessage?: string;
-  reviewUrl?: string;
+  draftId?: string;
 };
 
-const reviewStoragePrefix = "onyxa:scan-review:";
 
 function getErrorDetails(error: unknown): {
   code: ScanReceiptErrorCode;
@@ -60,7 +60,7 @@ function getStatusLabel(status: QueueStatus): string {
     case "scanning":
       return "Mengunggah dan membaca nota...";
     case "done":
-      return "Siap dicek";
+      return "Draf siap dicek";
     case "failed":
       return "Gagal";
   }
@@ -71,7 +71,7 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
     case "scan_failed":
       return "Server belum memberikan hasil scan. Periksa log pemrosesan nota.";
     case "review_storage_failed":
-      return "Browser gagal menyimpan draf nota untuk ditinjau.";
+      return "Draf hasil scan belum berhasil disimpan ke database.";
     case "unreadable_image":
       return "Format foto belum didukung. Gunakan JPG, PNG, WebP, atau HEIC.";
     case "duplicate_receipt":
@@ -111,11 +111,17 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
  * The interactive part of /scan: pick photos, upload and scan them one by
  * one, then open each result for review. The page title lives in app/scan/page.tsx.
  */
-export function ReceiptScanner() {
+export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
   const [queue, setQueue] = useState<ScanQueueItem[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const queueRef = useRef(queue);
   const picker = useCloudinaryPicker({ multiple: true, receipt: true, onImage: queueUploadedPhoto });
+  const persisted: ScanQueueItem[] = drafts.map((draft) => ({
+    id: draft.id, draftId: draft.id, name: draft.name, previewUrl: draft.imageUrl, status: "done",
+  }));
+  const visibleQueue = [...queue, ...persisted.filter((draft) =>
+    !queue.some((item) => item.draftId === draft.id || item.previewUrl === draft.previewUrl)
+  )];
 
   useEffect(
     () => () => {
@@ -148,10 +154,9 @@ export function ReceiptScanner() {
       const result = item.cameraFile
         ? await uploadAndReadReceipt(item.cameraFile)
         : await readUploadedReceipt(item.previewUrl);
-      const reviewUrl = storeReceiptForReview(item.id, result);
       updateQueueItem(item.id, {
         status: "done",
-        reviewUrl,
+        draftId: result.draftId,
         errorCode: undefined,
         errorMessage: undefined,
       });
@@ -165,23 +170,6 @@ export function ReceiptScanner() {
     }
   }
 
-  function storeReceiptForReview(
-    id: string,
-    result: ScanReceiptResult,
-  ): string {
-    if (typeof window !== "undefined") {
-      const validatedResult = ScanReceiptResultSchema.parse(result);
-      try {
-        window.sessionStorage.setItem(`${reviewStoragePrefix}${id}`, JSON.stringify(validatedResult));
-      } catch {
-        throw new ScanReceiptError(
-          "Nota sudah dibaca. Browser gagal menyimpan draf untuk ditinjau. Periksa izin dan ruang penyimpanan situs.",
-          "review_storage_failed",
-        );
-      }
-    }
-    return `/scan/review?receiptId=${encodeURIComponent(id)}`;
-  }
 
   function enqueue(item: ScanQueueItem) {
     queueRef.current = [...queueRef.current, item];
@@ -190,7 +178,7 @@ export function ReceiptScanner() {
   }
 
   function queueUploadedPhoto({ imageUrl, name }: PickedImage) {
-    if (queueRef.current.some((item) => item.previewUrl === imageUrl)) return;
+    if (visibleQueue.some((item) => item.previewUrl === imageUrl)) return;
     enqueue({ id: crypto.randomUUID(), previewUrl: imageUrl, name, status: "queued" });
   }
 
@@ -206,7 +194,19 @@ export function ReceiptScanner() {
     }
   }
 
-  function removeItem(item: ScanQueueItem) {
+  async function removeItem(item: ScanQueueItem) {
+    if (item.draftId) {
+      try {
+        const result = await discardDraftAction(item.draftId);
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+      } catch {
+        toast.error("Draf belum berhasil dihapus. Coba lagi.");
+        return;
+      }
+    }
     if (item.cameraFile) URL.revokeObjectURL(item.previewUrl);
     const updatedQueue = queueRef.current.filter(
       (queueItem) => queueItem.id !== item.id,
@@ -273,9 +273,9 @@ export function ReceiptScanner() {
         </div>
       </section>
 
-      {queue.length > 0 && (
+      {visibleQueue.length > 0 && (
         <ul aria-label="Foto nota" className="mt-8 space-y-3">
-          {queue.map((item) => {
+          {visibleQueue.map((item) => {
             const statusLabel = getStatusLabel(item.status);
             const errorMessage = item.errorCode
               ? (item.errorMessage ?? getErrorMessage(item.errorCode))
@@ -333,13 +333,13 @@ export function ReceiptScanner() {
                       Coba lagi
                     </Button>
                   )}
-                  {item.status === "done" && item.reviewUrl && (
+                  {item.status === "done" && item.draftId && (
                     <Button
                       asChild
                       variant="outline"
                       className="mt-2 w-fit"
                     >
-                      <Link href={item.reviewUrl}>Cek hasil</Link>
+                      <Link href={`/scan/review?receiptId=${item.draftId}`}>Cek draf</Link>
                     </Button>
                   )}
                 </div>
@@ -347,7 +347,8 @@ export function ReceiptScanner() {
                   type="button"
                   variant="ghost"
                   aria-label={`Hapus ${item.name}`}
-                  onClick={() => removeItem(item)}
+                  disabled={item.status === "scanning" || item.status === "queued"}
+                  onClick={() => void removeItem(item)}
                   className="size-12 p-0 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 aria-hidden="true" />

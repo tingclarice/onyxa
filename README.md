@@ -43,7 +43,7 @@ Google Gen AI SDK
 1. **Integrasi Database Cloud Supabase via HTTPS ([`src/lib/prisma.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/lib/prisma.ts))**
    - Menghubungkan aplikasi langsung ke Supabase (`SUPABASE_URL` + `SUPABASE_SECRET_KEY`) lewat REST API PostgREST tanpa butuh koneksi TCP/password DB manual.
    - Mengaktifkan `AUTH_SECRET` di [`.env`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/.env) sehingga registrasi (`/daftar`), login (`/masuk`), buat usaha, dan simpan nota langsung masuk ke tabel Supabase.
-   - Gunakan `DATABASE_URL` untuk menjalankan migrasi Prisma ke PostgreSQL Supabase.
+   - Gunakan `DATABASE_URL` di server untuk migrasi Prisma, penyimpanan draf scan privat, dan persetujuan draf dalam satu transaksi PostgreSQL.
 
 2. **Integrasi Cloudinary, Live Camera & Gemini AI OCR (`/scan` & `/scan/review`)**
    - Menggunakan **`gemini-3.5-flash`** sebagai model utama (dengan auto-fallback ke `gemini-3.8-flash` & timeout 25 detik) di [`gemini.ts`](file:///c:/Users/Asus/CODE/UC/Sem%205/Cloud%20Computing/onyxa/src/features/invoice-processing/repository/gemini.ts) untuk ekstraksi JSON terstruktur yang cepat dan akurat.

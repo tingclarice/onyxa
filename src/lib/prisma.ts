@@ -5,6 +5,23 @@ import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 declare global {
   var onyxaPrismaV3: PrismaClient | undefined;
+  var onyxaPostgres: PrismaClient | undefined;
+}
+
+/** Direct SQL connection for operations that require an actual database transaction. */
+export function getPostgres(): PrismaClient {
+  if (!globalThis.onyxaPostgres) {
+    const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_URL;
+    if (!connectionString || !/^postgres(?:ql)?:\/\//.test(connectionString)) {
+      throw new Error("DATABASE_URL must contain a PostgreSQL connection for receipt drafts.");
+    }
+    globalThis.onyxaPostgres = new PrismaClient({
+      adapter: new PrismaPg({ connectionString }),
+      // Approval can match many receipt lines over a remote PostgreSQL connection.
+      transactionOptions: { timeout: 120_000 },
+    });
+  }
+  return globalThis.onyxaPostgres;
 }
 
 const MODEL_TO_TABLE: Record<string, string> = {

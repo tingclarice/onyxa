@@ -107,6 +107,7 @@ export async function saveItemAliasIfFree(
 export async function createSavedReceipt(
   receipt: {
     businessId: string;
+    id?: string;
     createdByMemberId: string;
     supplierId: string;
     supplierName: string;
@@ -123,6 +124,7 @@ export async function createSavedReceipt(
   const { id: receiptId } = await db.receipt.create({
     data: {
       businessId: receipt.businessId,
+      id: receipt.id,
       createdByMemberId: receipt.createdByMemberId,
       supplierId: receipt.supplierId,
       supplierName: receipt.supplierName,

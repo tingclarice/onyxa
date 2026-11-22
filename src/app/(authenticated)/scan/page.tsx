@@ -1,7 +1,10 @@
 import { ReceiptScanner } from "@/features/invoice-processing/ui/receipt-scanner";
 
-/** /scan — upload receipt photos and scan them. */
-export default function ScanPage() {
+import { getMyScanDrafts } from "@/features/invoice-processing/server";
+
+export const instant = false;
+export default async function ScanPage() {
+  const { drafts, memberId } = await getMyScanDrafts();
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 md:py-10">
       <header className="mb-6 space-y-2">
@@ -14,7 +17,7 @@ export default function ScanPage() {
         </p>
       </header>
 
-      <ReceiptScanner />
+      <ReceiptScanner key={memberId} drafts={drafts} />
     </div>
   );
 }

@@ -88,6 +88,7 @@ model BusinessMember {
   user        User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   invitations BusinessInvitation[]
   receipts    Receipt[]
+  scanDrafts  ReceiptDraft[]
 
   @@unique([businessId, id])
   @@unique([businessId, userId])
@@ -163,6 +164,22 @@ model ItemAlias {
 
   @@unique([businessId, nameKey])
   @@index([businessId, itemId])
+}
+
+model ReceiptDraft {
+  id         String   @id @default(uuid()) @db.Uuid
+  businessId String   @db.Uuid
+  memberId   String   @db.Uuid
+  sourceKey  String   @db.Char(64)
+  imageUrl   String
+  name       String
+  extraction Json
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  uploader BusinessMember @relation(fields: [businessId, memberId], references: [businessId, id], onDelete: Cascade)
+
+  @@unique([businessId, memberId, sourceKey])
+  @@index([businessId, memberId, createdAt])
 }
 
 model Receipt {

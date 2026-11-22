@@ -8,20 +8,15 @@ import type {
   SaveReceiptResult,
   ScanReceiptActionResult,
 } from "../types/scan";
-import { ReceiptDiscountError, ScanReceiptError } from "../types/scan";
-import {
-  scanReceipt,
-  uploadAndScanReceipt,
-} from "../services/receipt-scan-service";
-import { saveReviewedReceipt } from "../services/receipt-save-service";
-import { isOurCloudinaryImageUrl } from "@/lib/cloudinary-images";
-import { receiptSaveRepository } from "../repository/receipt-save-adapter";
+import { ReceiptDiscountError, ReceiptDraftError, ScanReceiptError } from "../types/scan";
+import { confirmReceipt, deleteScanDraft, extractAndStoreDraft } from "../services/receipt-draft-service";
 
 export async function scanReceiptAction(
   imageUrl?: unknown,
+  replaceId?: string,
 ): Promise<ScanReceiptActionResult> {
   await requireUser();
-  await requireActiveBusiness();
+  const { membership } = await requireActiveBusiness();
 
   const trace = startScanLog("galeri");
   if (typeof imageUrl !== "string" || !imageUrl) {
@@ -31,7 +26,9 @@ export async function scanReceiptAction(
   }
 
   try {
-    const result = await scanReceipt(imageUrl, trace.ref);
+    const id = z.uuid().optional().parse(replaceId);
+    const result = await extractAndStoreDraft({ businessId: membership.businessId, memberId: membership.id }, imageUrl, trace.ref, id);
+    revalidatePath("/scan");
     reportScanSuccess(trace);
     return { ok: true, result };
   } catch (error) {
@@ -47,7 +44,7 @@ export async function uploadAndScanReceiptAction(
   formData: FormData,
 ): Promise<ScanReceiptActionResult> {
   await requireUser();
-  await requireActiveBusiness();
+  const { membership } = await requireActiveBusiness();
 
   const trace = startScanLog("kamera");
   const file = formData.get("file");
@@ -56,7 +53,8 @@ export async function uploadAndScanReceiptAction(
   }
 
   try {
-    const result = await uploadAndScanReceipt(file, trace.ref);
+    const result = await extractAndStoreDraft({ businessId: membership.businessId, memberId: membership.id }, file, trace.ref);
+    revalidatePath("/scan");
     reportScanSuccess(trace);
     return { ok: true, result };
   } catch (error) {
@@ -77,7 +75,7 @@ function reportScanSuccess({ ref, source, start }: ReturnType<typeof startScanLo
 
 function reportScanFailure({ ref, source, start }: ReturnType<typeof startScanLog>, error: unknown): ScanReceiptActionResult {
   const failure = error instanceof ScanReceiptError ? error : new ScanReceiptError(
-    "Server gagal menyelesaikan pemrosesan nota. Gunakan referensi ini untuk memeriksa log server.",
+    error instanceof ReceiptDraftError ? error.message : "Server gagal menyelesaikan pemrosesan nota. Gunakan referensi ini untuk memeriksa log server.",
     "scan_failed",
   );
   console.error("[receipt-scan]", { ref, source, stage: "scan", outcome: "failed",
@@ -94,21 +92,14 @@ export async function saveReceiptAction(
 
   let saved: { receiptId: string; itemCount: number };
   try {
-    saved = await saveReviewedReceipt(
-      { businessId: membership.businessId, memberId: membership.id },
-      input,
-      {
-        repository: receiptSaveRepository,
-        imageUrlValidator: { isValid: isOurCloudinaryImageUrl },
-      },
-    );
+    saved = await confirmReceipt({ businessId: membership.businessId, memberId: membership.id }, input);
   } catch (error) {
     if (error instanceof z.ZodError)
       return {
         ok: false,
         message: error.issues[0]?.message ?? "Periksa data nota.",
       };
-    if (error instanceof ScanReceiptError || error instanceof ReceiptDiscountError)
+    if (error instanceof ScanReceiptError || error instanceof ReceiptDiscountError || error instanceof ReceiptDraftError)
       return { ok: false, message: error.message };
     console.error("[receipt] save failed");
     return {
@@ -118,8 +109,20 @@ export async function saveReceiptAction(
   }
 
   // Items and the home-screen warnings depend on saved receipts.
+  revalidatePath("/scan");
   revalidatePath("/barang");
   revalidatePath("/beranda");
   revalidatePath("/transaksi");
   return { ok: true, ...saved };
+}
+
+export async function discardDraftAction(id: string) {
+  const { membership } = await requireActiveBusiness();
+  try {
+    await deleteScanDraft({ businessId: membership.businessId, memberId: membership.id }, z.uuid().parse(id));
+  } catch {
+    return { ok: false, message: "Draf belum berhasil dihapus. Coba lagi." } as const;
+  }
+  revalidatePath("/scan");
+  return { ok: true } as const;
 }

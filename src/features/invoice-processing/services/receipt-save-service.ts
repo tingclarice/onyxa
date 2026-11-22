@@ -5,6 +5,7 @@ import {
   type CatalogItem,
   type ReceiptLineToSave,
   type ScanReceiptItem,
+  type SaveReceiptInput,
 } from "../types/scan";
 import type {
   ReceiptImageUrlValidator,
@@ -49,75 +50,85 @@ export async function saveReviewedReceipt(
   },
   now: Date = new Date(),
 ): Promise<{ receiptId: string; itemCount: number }> {
-  // 1. Validate what the browser sent.
-  const { receipt, imageUrl } = SaveReceiptInputSchema.parse(input);
+  const reviewed = validateReceiptForSaving(input, dependencies.imageUrlValidator);
+  return dependencies.repository.withBusinessTransaction(saver.businessId, (transaction) =>
+    saveReceiptInTransaction(saver, reviewed, transaction, now),
+  );
+}
+
+export function validateReceiptForSaving(input: unknown, imageUrlValidator: ReceiptImageUrlValidator) {
+  const reviewed = SaveReceiptInputSchema.parse(input);
+  const { receipt, imageUrl } = reviewed;
   for (const item of receipt.items) {
     const error = getLineDiscountError(item);
     if (error) throw new ReceiptDiscountError(error);
   }
   const error = getReceiptDiscountError(sumLineTotals(receipt.items), receipt.discount);
   if (error) throw new ReceiptDiscountError(error);
-  if (imageUrl && !dependencies.imageUrlValidator.isValid(imageUrl)) {
+  if (imageUrl && !imageUrlValidator.isValid(imageUrl)) {
     throw new ScanReceiptError(
       "Alamat foto Cloudinary tidak valid.",
       "cloudinary_image_invalid",
     );
   }
+  return reviewed;
+}
 
-  return dependencies.repository.withBusinessTransaction(
-    saver.businessId,
-    async (transaction) => {
-      // 2. The supplier.
-      const supplierName = receipt.supplier_name.trim();
-      const supplierId = await transaction.findOrCreateSupplier(
-        supplierName,
-        normalizeNameKey(supplierName),
-      );
-
-      // 3. Each line → a catalog item and a quantity in the item's unit.
-      const lines: (ReceiptLineToSave & { itemId: string })[] = [];
-      const itemIds = new Set<string>();
-      for (const [index, line] of receipt.items.entries()) {
-        const item = await findOrCreateItemForLine(line, transaction);
-        const baseQuantity = quantityInItemUnit(
-          line.qty,
-          line.unit,
-          item.baseUnit,
-        );
-        itemIds.add(item.id);
-        lines.push({
-          position: index + 1,
-          rawName: line.raw_name,
-          itemName: item.name,
-          itemId: item.id,
-          quantity: line.qty,
-          unit: line.unit,
-          unitPrice: line.unit_price,
-          lineTotal: calculateNetLineTotal(line),
-          discount: line.discount ?? 0,
-          confidence: line.confidence,
-          baseQuantity,
-          baseUnit: baseQuantity === null ? null : item.baseUnit,
-        });
-      }
-
-      // 4. The receipt itself.
-      const receiptId = await transaction.createSavedReceipt({
-        createdByMemberId: saver.memberId,
-        supplierId,
-        supplierName,
-        receiptDate: receipt.date,
-        total: hasDiscount(receipt) ? calculateReceiptTotal(receipt.items, receipt.discount) : receipt.total,
-        discount: receipt.discount ?? 0,
-        overallConfidence: receipt.overall_confidence,
-        imageUrl: imageUrl ?? null,
-        confirmedAt: now,
-        lines,
-      });
-
-      return { receiptId, itemCount: itemIds.size };
-    },
+export async function saveReceiptInTransaction(
+  saver: ReceiptSaver,
+  { receipt, imageUrl }: SaveReceiptInput,
+  transaction: ReceiptSaveTransaction,
+  now: Date = new Date(),
+) {
+  // 2. The supplier.
+  const supplierName = receipt.supplier_name.trim();
+  const supplierId = await transaction.findOrCreateSupplier(
+    supplierName,
+    normalizeNameKey(supplierName),
   );
+
+  // 3. Each line → a catalog item and a quantity in the item's unit.
+  const lines: (ReceiptLineToSave & { itemId: string })[] = [];
+  const itemIds = new Set<string>();
+  for (const [index, line] of receipt.items.entries()) {
+    const item = await findOrCreateItemForLine(line, transaction);
+    const baseQuantity = quantityInItemUnit(
+      line.qty,
+      line.unit,
+      item.baseUnit,
+    );
+    itemIds.add(item.id);
+    lines.push({
+      position: index + 1,
+      rawName: line.raw_name,
+      itemName: item.name,
+      itemId: item.id,
+      quantity: line.qty,
+      unit: line.unit,
+      unitPrice: line.unit_price,
+      lineTotal: calculateNetLineTotal(line),
+      discount: line.discount ?? 0,
+      confidence: line.confidence,
+      baseQuantity,
+      baseUnit: baseQuantity === null ? null : item.baseUnit,
+    });
+  }
+
+  // 4. The receipt itself.
+  const receiptId = await transaction.createSavedReceipt({
+    createdByMemberId: saver.memberId,
+    supplierId,
+    supplierName,
+    receiptDate: receipt.date,
+    total: hasDiscount(receipt) ? calculateReceiptTotal(receipt.items, receipt.discount) : receipt.total,
+    discount: receipt.discount ?? 0,
+    overallConfidence: receipt.overall_confidence,
+    imageUrl: imageUrl ?? null,
+    confirmedAt: now,
+    lines,
+  });
+
+  return { receiptId, itemCount: itemIds.size };
 }
 
 /**

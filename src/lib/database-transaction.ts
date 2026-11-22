@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
-import { getPrisma } from "@/lib/prisma";
+import { getPostgres, getPrisma } from "@/lib/prisma";
 
 /**
  * The database handle every repository function accepts as its last argument.
@@ -8,6 +8,11 @@ import { getPrisma } from "@/lib/prisma";
  * runInTransaction it is the transaction, so all writes commit together.
  */
 export type DatabaseClient = Prisma.TransactionClient;
+
+/** Use PostgreSQL directly when several writes must commit or roll back together. */
+export function runInPostgresTransaction<T>(work: (db: DatabaseClient) => Promise<T>) {
+  return runInTransaction(work, getPostgres());
+}
 
 const MAX_ATTEMPTS = 3;
 const SERIALIZATION_CONFLICT = "P2034";
@@ -20,10 +25,11 @@ const SERIALIZATION_CONFLICT = "P2034";
  */
 export async function runInTransaction<T>(
   work: (db: DatabaseClient) => Promise<T>,
+  client = getPrisma(),
 ): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await getPrisma().$transaction((db) => work(db), {
+      return await client.$transaction((db) => work(db), {
         isolationLevel: "Serializable",
       });
     } catch (error) {

@@ -87,6 +87,15 @@ export const ScanReceiptResultSchema = z.object({
 
 export type ScanReceiptResult = z.infer<typeof ScanReceiptResultSchema>;
 
+export const StoredReceiptDraftSchema = ScanReceiptResultSchema.extend({
+  draftId: z.uuid(),
+  imageUrl: z.url(),
+});
+export type StoredReceiptDraft = z.infer<typeof StoredReceiptDraftSchema>;
+export interface DraftOwner { businessId: string; memberId: string }
+export interface ReceiptDraftSummary { id: string; name: string; imageUrl: string }
+export class ReceiptDraftError extends Error {}
+
 export type ScanReceiptErrorCode =
   | "unreadable_image"
   | "duplicate_receipt"
@@ -121,7 +130,7 @@ export interface ReceiptExtractionProvider {
 }
 
 export type ScanReceiptActionResult =
-  | { ok: true; result: ScanReceiptResult }
+  | { ok: true; result: StoredReceiptDraft }
   | {
       ok: false;
       code: ScanReceiptErrorCode;
@@ -146,8 +155,10 @@ export class ScanReceiptError extends Error {
 /** What the review screen sends when the user presses "Simpan". */
 export const SaveReceiptInputSchema = z.object({
   receipt: ReviewedReceiptSchema,
+  draftId: z.uuid().optional(),
   imageUrl: z.url().optional(),
 });
+export const ReceiptDraftReferenceSchema = SaveReceiptInputSchema.pick({ draftId: true });
 export type SaveReceiptInput = z.infer<typeof SaveReceiptInputSchema>;
 
 export type SaveReceiptResult =

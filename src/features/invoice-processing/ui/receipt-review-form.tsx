@@ -35,7 +35,7 @@ import {
 import {
   ScanReceiptError,
   ScanReceiptSchema,
-  ScanReceiptResultSchema,
+  type StoredReceiptDraft,
   type ScanReceipt,
   type ScanReceiptItem,
 } from "../types/scan";
@@ -65,13 +65,13 @@ function createEmptyItem(): ScanReceiptItem {
  * The /scan/review screen: loads the scanned receipt, lets the user correct
  * it, and shows live checks (totals, low-confidence fields) from core rules.
  */
-export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftId?: string }) {
+export function ReceiptReviewForm({ manual, draft }: { manual: boolean; draft: StoredReceiptDraft | null }) {
   const router = useRouter();
   const didLoad = useRef(false);
-  const [previewUrl, setPreviewUrl] = useState<string>();
+  const [previewUrl, setPreviewUrl] = useState(draft?.imageUrl);
   const [isSaved, setIsSaved] = useState(false);
-  const [receiptReady, setReceiptReady] = useState(false);
-  const [receiptLoadError, setReceiptLoadError] = useState(false);
+  const [receiptReady, setReceiptReady] = useState(Boolean(draft));
+  const receiptLoadError = !manual && !draft;
   const [uploadPending, setUploadPending] = useState(false);
   const {
     control,
@@ -83,7 +83,7 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ScanReceipt>({
     resolver: zodResolver(ScanReceiptSchema),
-    defaultValues: emptyReceipt,
+    defaultValues: draft?.receipt ?? emptyReceipt,
     mode: "onSubmit",
   });
   const { fields, append, remove } = useFieldArray({
@@ -107,60 +107,26 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
   const showReceiptPreview = !manual || Boolean(previewUrl);
 
   useEffect(() => {
-    if (didLoad.current) return;
+    if (!manual || didLoad.current) return;
     didLoad.current = true;
-    if (manual) {
-      const today = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Jakarta",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-      window.setTimeout(() => {
-        reset({
-          supplier_name: "",
-          date: today,
-          items: [createEmptyItem()],
-          total: 0,
-          overall_confidence: 1,
-        });
-        setPreviewUrl(undefined);
-        setReceiptReady(true);
-      }, 0);
-      return;
-    }
-
-    if (draftId) {
-      const storageKey = `onyxa:scan-review:${draftId}`;
-      const storedReceipt = window.sessionStorage.getItem(storageKey);
-      if (storedReceipt) {
-        window.sessionStorage.removeItem(storageKey);
-        try {
-          const parsedResult = ScanReceiptResultSchema.safeParse(
-            JSON.parse(storedReceipt),
-          );
-          if (parsedResult.success) {
-            window.setTimeout(() => {
-              reset(parsedResult.data.receipt);
-              setPreviewUrl(parsedResult.data.imageUrl);
-              setReceiptReady(true);
-            }, 0);
-            return;
-          }
-        } catch {
-          window.setTimeout(() => {
-            setReceiptLoadError(true);
-          }, 0);
-          return;
-        }
-        window.setTimeout(() => {
-          setReceiptLoadError(true);
-        }, 0);
-        return;
-      }
-    }
-    window.setTimeout(() => setReceiptLoadError(true), 0);
-  }, [draftId, manual, reset]);
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    window.setTimeout(() => {
+      reset({
+        supplier_name: "",
+        date: today,
+        items: [createEmptyItem()],
+        total: 0,
+        overall_confidence: 1,
+      });
+      setPreviewUrl(undefined);
+      setReceiptReady(true);
+    }, 0);
+  }, [manual, reset]);
 
   function updateItem(index: number, item: ScanReceiptItem) {
     const previous = items[index];
@@ -193,6 +159,7 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
   async function saveReceipt(reviewed: ScanReceipt) {
     if (uploadPending || invalidDiscount) return;
     const result = await saveReceiptAction({
+      draftId: draft?.draftId,
       receipt: reviewed,
       imageUrl: previewUrl,
     });
@@ -294,7 +261,7 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
                   onPendingChange={setUploadPending}
                   processImage={async (uploadedUrl) => {
                     try {
-                      const { receipt, imageUrl } = await readUploadedReceipt(uploadedUrl);
+                      const { receipt, imageUrl } = await readUploadedReceipt(uploadedUrl, draft?.draftId);
                       if (imageUrl) return { ok: true, image: { receipt, imageUrl } };
                     } catch (error) {
                       if (error instanceof ScanReceiptError) {
@@ -477,7 +444,7 @@ export function ReceiptReviewForm({ manual, draftId }: { manual: boolean; draftI
                 ) : isSaved && !isDirty ? (
                   "Tersimpan"
                 ) : (
-                  "Simpan"
+                  draft ? "Setujui dan simpan" : "Simpan"
                 )}
               </Button>
             </div>
