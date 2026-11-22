@@ -1,3 +1,3 @@
 # Business finance — core
 
-Monthly cash-flow totals, per-deposit-day averages, allocations and restock intervals are pure functions of the provided data.
+Cash-flow totals, per-deposit-day averages, allocations and restock intervals use the inclusive reporting period. The chart groups longer periods by month or year.

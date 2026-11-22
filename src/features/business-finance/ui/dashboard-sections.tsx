@@ -21,7 +21,7 @@ const number = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 });
 export function MovementRanking({ items }: { items: Ranking[] }) {
   return <section className="min-w-0 self-start rounded-2xl border bg-card">
     <div className="space-y-1 p-5"><h2 className="text-lg font-semibold">Peringkat pergerakan barang</h2>
-      <p className="text-sm text-muted-foreground">Diurutkan dari jeda restock terpendek bulan ini. Cepat jika rata-rata 7 hari atau kurang.</p></div>
+      <p className="text-sm text-muted-foreground">Diurutkan dari jeda restock terpendek dalam periode yang dipilih. Cepat jika rata-rata 7 hari atau kurang.</p></div>
     <div className="overflow-x-auto"><table className="w-full min-w-[35rem] text-left text-sm">
       <thead className="border-y bg-muted/50 text-muted-foreground"><tr>{["Nama barang","Total qty masuk","Total nominal","Rata-rata restock","Status"].map((label) =>
         <th key={label} scope="col" className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
@@ -32,7 +32,7 @@ export function MovementRanking({ items }: { items: Ranking[] }) {
         <td className="px-4 py-3">{item.interval === null ? "—" : number.format(item.interval) + " hari"}</td>
         <td className="px-4 py-3">{item.status}</td>
       </tr>)}
-      {!items.length && <tr><td colSpan={5} className="p-5 text-muted-foreground">Belum ada barang dari nota bulan ini.</td></tr>}</tbody>
+      {!items.length && <tr><td colSpan={5} className="p-5 text-muted-foreground">Belum ada barang dari nota pada periode ini.</td></tr>}</tbody>
     </table></div>
   </section>;
 }

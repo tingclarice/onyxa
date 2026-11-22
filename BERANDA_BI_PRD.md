@@ -8,8 +8,10 @@ Owner melihat empat KPI, perbandingan harian, tabel pergerakan, komposisi Cash/Q
 
 Setelah model Prisma diperbarui pada server pengembangan yang sedang berjalan, Beranda dan riwayat pemasukan harus menggunakan klien yang mendukung model setoran. Panggilan berikutnya memakai kembali klien yang sesuai.
 
+Owner dapat memilih tanggal awal dan akhir secara inklusif. Semua KPI, grafik, dan peringkat memakai periode tersebut. Periode tersimpan di URL dan bisa dikembalikan ke bulan berjalan. Rentang yang tidak valid menampilkan pesan koreksi.
+
 ## Lingkup
-Bulan berjalan sampai hari ini dalam WIB. Belanja berasal dari total nota tersimpan. Selisih kas adalah penerimaan dikurangi belanja. Rata-rata setoran per hari membagi total tunai dan QRIS dengan jumlah tanggal berbeda yang memiliki setoran. Tanpa setoran, rata-rata ditampilkan sebagai tanda pisah. Kategori mengikuti katalog saat ini.
+Periode awal adalah tanggal satu bulan berjalan sampai hari ini dalam WIB. Belanja berasal dari total nota tersimpan. Selisih kas adalah penerimaan dikurangi belanja. Rata-rata setoran per hari membagi total tunai dan QRIS dengan jumlah tanggal berbeda yang memiliki setoran dalam periode. Tanpa setoran, rata-rata ditampilkan sebagai tanda pisah. Kategori mengikuti katalog saat ini.
 
 ## Batasan
 Kategori barang opsional. Pisahkan kuantitas dengan satuan berbeda. Potongan nota dibagi proporsional ke nilai baris untuk komposisi belanja.

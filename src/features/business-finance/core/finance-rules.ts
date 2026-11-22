@@ -1,4 +1,5 @@
-import { SettlementError, type FinanceDashboard, type Purchase, type Ranking, type Settlement } from "../types/finance";
+import { SettlementError, type DashboardPeriod, type FinanceDashboard, type Purchase, type Ranking, type Settlement } from "../types/finance";
+import { buildChartBuckets, chartBucketDate, chooseChartInterval } from "./dashboard-period";
 
 const DAY_MS = 86_400_000;
 const FAST_RESTOCK_DAYS = 7;
@@ -55,35 +56,33 @@ function summarizePurchases(purchases: Purchase[]) {
   return { ranking, categories: Array.from(categories, ([name, cents]) => ({ name, value: cents / 100 })).sort((a, b) => b.value - a.value) };
 }
 
-export function buildMonthlyDashboard(today: string, settlements: Settlement[], purchases: Purchase[]): FinanceDashboard {
-  const month = today.slice(0, 7);
-  const daily = Array.from({ length: Number(today.slice(-2)) }, (_, index) => ({
-    date: month + "-" + String(index + 1).padStart(2, "0"), income: 0, expense: 0,
-  }));
-  const days = new Map(daily.map((day) => [day.date, day]));
+export function buildPeriodDashboard(period: DashboardPeriod, settlements: Settlement[], purchases: Purchase[]): FinanceDashboard {
+  const chartInterval = chooseChartInterval(period);
+  const buckets = buildChartBuckets(period, chartInterval);
+  const inPeriod = (date: string) => date >= period.start && date <= period.end;
   const depositDates = new Set<string>();
   let cashCents = 0;
   let qrisCents = 0;
   let expenseCents = 0;
   for (const entry of settlements) {
-    const day = days.get(entry.date);
-    if (!day) continue;
+    if (!inPeriod(entry.date)) continue;
+    const bucket = buckets.get(chartBucketDate(entry.date, chartInterval));
     const cash = Math.round(entry.cash * 100);
     const qris = Math.round(entry.qris * 100);
     cashCents += cash;
     qrisCents += qris;
-    day.income += (cash + qris) / 100;
+    if (bucket) bucket.income += (cash + qris) / 100;
     depositDates.add(entry.date);
   }
-  const monthPurchases = purchases.filter((entry) => days.has(entry.date));
-  for (const receipt of monthPurchases) {
-    const day = days.get(receipt.date);
-    if (day) day.expense += receipt.total;
+  const periodPurchases = purchases.filter((entry) => inPeriod(entry.date));
+  for (const receipt of periodPurchases) {
+    const bucket = buckets.get(chartBucketDate(receipt.date, chartInterval));
+    if (bucket) bucket.expense += receipt.total;
     expenseCents += Math.round(receipt.total * 100);
   }
   const income = (cashCents + qrisCents) / 100;
-  return { today, daily, income, expense: expenseCents / 100, balance: (cashCents + qrisCents - expenseCents) / 100,
+  return { chartInterval, cashFlow: [...buckets.values()], income, expense: expenseCents / 100, balance: (cashCents + qrisCents - expenseCents) / 100,
     depositDays: depositDates.size, average: depositDates.size ? income / depositDates.size : null,
     channels: [{ name: "Cash", value: cashCents / 100 }, { name: "QRIS", value: qrisCents / 100 }],
-    ...summarizePurchases(monthPurchases) };
+    ...summarizePurchases(periodPurchases) };
 }

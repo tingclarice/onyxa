@@ -20,9 +20,16 @@ export interface Ranking {
   name: string; key: string; quantities: [string, number][]; amount: number;
   interval: number | null; status: "Cepat" | "Lambat" | "Belum cukup data";
 }
+export type DashboardPeriod = { start: string; end: string };
+export type DashboardFilter = { start?: string | string[]; end?: string | string[] };
+const calendarDate = z.iso.date().refine((date) => !date.startsWith("0000"));
+export const dashboardPeriodSchema = z.object({ start: calendarDate, end: calendarDate });
+export type ChartInterval = "day" | "month" | "year";
+
 export interface FinanceDashboard {
-  today: string; income: number; expense: number; balance: number; average: number | null; depositDays: number;
-  daily: { date: string; income: number; expense: number }[];
+  income: number; expense: number; balance: number; average: number | null; depositDays: number;
+  chartInterval: ChartInterval;
+  cashFlow: { date: string; income: number; expense: number }[];
   channels: { name: string; value: number }[];
   categories: { name: string; value: number }[];
   ranking: Ranking[];

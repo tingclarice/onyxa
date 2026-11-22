@@ -7,7 +7,7 @@ const url = process.env.ONYXA_FINANCE_TEST_DATABASE_URL;
 test("owners read monthly BI; members record scoped, retry-safe deposits and list history", { skip: !url }, async () => {
   process.env.DATABASE_URL = url;
   const { getPostgres } = await import("@/lib/prisma");
-  const { getMonthlyDashboard, saveIncomeSettlement, getIncomeHistory } = await import("./finance-service");
+  const { getDashboardReport, saveIncomeSettlement, getIncomeHistory } = await import("./finance-service");
   const db = getPostgres();
   try {
     const business = await db.business.create({ data: { name: "Kantin BI" } });
@@ -27,16 +27,20 @@ test("owners read monthly BI; members record scoped, retry-safe deposits and lis
     await saveIncomeSettlement(business.id, staff.userId, { ...entry, date: "2026-11-21", id: randomUUID() }, now);
     await assert.rejects(saveIncomeSettlement(other.id, staff.userId, entry, now));
     await assert.rejects(saveIncomeSettlement(business.id, staff.userId, { ...entry, date: "2026-11-23" }, now));
-    await assert.rejects(getMonthlyDashboard(business.id, staff.userId, now), /Owner/);
-    await assert.rejects(getMonthlyDashboard(other.id, owner.userId, now));
+    await assert.rejects(getDashboardReport(business.id, staff.userId, {}, now), /Owner/);
+    await assert.rejects(getDashboardReport(other.id, owner.userId, {}, now));
     assert.equal((await getIncomeHistory(business.id, staff.userId, 1, now)).entries.length, 3);
     const item = await db.item.create({ data: { businessId: business.id, name: "Roti", nameKey: "roti", baseUnit: "PCS", category: "Makanan" } });
     const receipt = { businessId: business.id, createdByMemberId: staff.id, supplierName: "Pasar", receiptDate: new Date(entry.date), total: 2500 };
     await db.receipt.create({ data: { ...receipt, status: "NEEDS_REVIEW" } });
     const saved = await db.receipt.create({ data: { ...receipt, status: "SAVED" } });
     await db.receiptLine.create({ data: { businessId: business.id, receiptId: saved.id, itemId: item.id, position: 0, rawName: "ROTI", quantity: 2, unit: "pcs", unitPrice: 1500, lineTotal: 3000 } });
-    const report = await getMonthlyDashboard(business.id, owner.userId, now);
-    assert.deepEqual([report.average, report.depositDays, report.balance], [15000, 2, 27500]);
-    assert.deepEqual(report.categories, [{ name: "Makanan", value: 2500 }]);
+    const report = await getDashboardReport(business.id, owner.userId, {}, now);
+    assert.ok(report.data);
+    const oneDay = await getDashboardReport(business.id, owner.userId, { start: "2026-11-21", end: "2026-11-21" }, now);
+    assert.ok(oneDay.data);
+    assert.deepEqual([oneDay.data.income, oneDay.data.average, oneDay.data.expense, oneDay.data.ranking.length], [10000, 10000, 0, 0]);
+    assert.deepEqual([report.data.average, report.data.depositDays, report.data.balance], [15000, 2, 27500]);
+    assert.deepEqual(report.data.categories, [{ name: "Makanan", value: 2500 }]);
   } finally { await db.$disconnect(); }
 });

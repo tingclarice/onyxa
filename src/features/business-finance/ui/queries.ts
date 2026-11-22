@@ -1,10 +1,11 @@
 import "server-only";
 import { requireActiveBusiness, requireBusinessOwner } from "@/features/business-management/server";
-import { getIncomeHistory, getMonthlyDashboard } from "../services/finance-service";
+import { getIncomeHistory, getDashboardReport } from "../services/finance-service";
+import type { DashboardFilter } from "../types/finance";
 
-export async function getDashboard() {
+export async function getDashboard(filter: DashboardFilter = {}) {
   const { actor, membership } = await requireBusinessOwner();
-  return getMonthlyDashboard(membership.businessId, actor.id);
+  return getDashboardReport(membership.businessId, actor.id, filter);
 }
 
 export async function getSettlementHistory(page: number) {

@@ -1,7 +1,8 @@
 import { runInPostgresTransaction } from "@/lib/database-transaction";
-import { buildMonthlyDashboard, businessDate, checkSettlementDate } from "../core/finance-rules";
+import { buildPeriodDashboard, businessDate, checkSettlementDate } from "../core/finance-rules";
+import { resolveDashboardPeriod } from "../core/dashboard-period";
 import { findFinanceMembership, listPeriodPurchases, listPeriodSettlements, listSettlementHistory, recordSettlement } from "../repository/finance-repository";
-import { SettlementError, settlementSchema, type SettlementInput } from "../types/finance";
+import { SettlementError, settlementSchema, type DashboardFilter, type SettlementInput } from "../types/finance";
 
 export async function saveIncomeSettlement(businessId: string, userId: string, input: SettlementInput, now = new Date()) {
   const entry = settlementSchema.parse(input);
@@ -20,13 +21,14 @@ export async function getIncomeHistory(businessId: string, userId: string, page:
   return { entries: rows.slice(0, size), hasNext: rows.length > size, today: businessDate(now) };
 }
 
-export async function getMonthlyDashboard(businessId: string, userId: string, now = new Date()) {
+export async function getDashboardReport(businessId: string, userId: string, filter: DashboardFilter = {}, now = new Date()) {
   const member = await findFinanceMembership(businessId, userId);
   if (member?.role !== "OWNER") throw new SettlementError("Beranda hanya tersedia untuk Owner.");
-  const last = businessDate(now);
-  const first = last.slice(0, 7) + "-01";
+  const { period, error } = resolveDashboardPeriod(filter, businessDate(now));
+  if (error) return { period, error, data: null };
   const [settlements, purchases] = await Promise.all([
-    listPeriodSettlements(businessId, first, last), listPeriodPurchases(businessId, first, last),
+    listPeriodSettlements(businessId, period.start, period.end),
+    listPeriodPurchases(businessId, period.start, period.end),
   ]);
-  return buildMonthlyDashboard(last, settlements, purchases);
+  return { period, error: null, data: buildPeriodDashboard(period, settlements, purchases) };
 }

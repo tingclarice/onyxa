@@ -23,7 +23,7 @@ test("staff navigation and direct routes enforce dashboard and item restrictions
   assert.ok(!nav.includes('href="/beranda"'));
   assert.ok(nav.includes('href="/pemasukan"') && nav.includes('href="/transaksi"'));
   const home = await import("@/app/(authenticated)/beranda/page");
-  await assert.rejects(home.default(), /redirect:\/scan/);
+  await assert.rejects(home.default({ searchParams: Promise.resolve({ start: "2026-01-01", end: "2026-03-31" }), params: Promise.resolve({}) }), /redirect:\/scan/);
   const params = Promise.resolve({ id: "11111111-1111-4111-8111-111111111111" });
   const item = await import("@/app/(authenticated)/barang/[id]/page");
   await assert.rejects(item.default({ params }), /redirect:\/scan/);
