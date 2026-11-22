@@ -149,7 +149,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-stone-200 dark:bg-stone-900">
+      <section className="landing-band landing-band--queue bg-stone-200 dark:bg-stone-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -176,7 +176,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-emerald-950 text-emerald-50">
+      <section className="landing-band landing-band--workflow bg-emerald-950 text-emerald-50">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-10 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -199,7 +199,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-emerald-100 dark:bg-emerald-900">
+      <section className="landing-band landing-band--metrics bg-emerald-100 dark:bg-emerald-900">
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
           <div className="mb-9 max-w-2xl">
             <h2 data-landing-enter="55" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -226,7 +226,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-zinc-100 dark:bg-zinc-900">
+      <section className="landing-band landing-band--receipt bg-zinc-100 dark:bg-zinc-900">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-start justify-between gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:py-20 lg:px-8">
           <div className="max-w-2xl">
             <h2 data-landing-enter="55" className="text-3xl font-bold tracking-tight sm:text-4xl">

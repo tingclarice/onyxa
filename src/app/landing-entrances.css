@@ -1,3 +1,59 @@
+/* Section drawings sit behind the content and inherit its light/dark ink. */
+.landing-band {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.landing-band::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: var(--drawing-top, -1rem);
+  right: var(--drawing-right, -1.5rem);
+  width: min(60%, 50rem);
+  aspect-ratio: 3 / 1;
+  background: currentColor;
+  opacity: var(--drawing-opacity, 0.24);
+  mask: var(--section-drawing) right center / contain no-repeat;
+}
+
+.landing-band--queue {
+  --section-drawing: url("/landing/queue.svg");
+}
+
+.landing-band--workflow {
+  --section-drawing: url("/landing/workflow.svg");
+  --drawing-top: -2.2rem;
+  --drawing-opacity: 0.3;
+}
+
+.landing-band--metrics {
+  --section-drawing: url("/landing/trends.svg");
+}
+
+.landing-band--receipt {
+  --section-drawing: url("/landing/receipt.svg");
+  --drawing-top: 0;
+  --drawing-right: 4%;
+  --drawing-opacity: 0.2;
+}
+
+@media (max-width: 47.999rem) {
+  .landing-band::before {
+    top: -1rem;
+    right: -2.5rem;
+    width: min(85%, 28rem);
+    opacity: 0.19;
+  }
+
+  .landing-band--receipt::before {
+    inset: auto -1rem 0 auto;
+    width: min(70%, 24rem);
+  }
+}
+
 .landing-hero {
   min-height: 100vh;
   min-height: 100svh;

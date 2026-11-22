@@ -14,6 +14,10 @@ Bagian berikutnya memperkenalkan rencana metrik pengeluaran bulanan,
 actual gross profit, expected revenue vs actual cash, inventory velocity,
 dan informasi tambahan untuk keputusan belanja.
 
+## Arahan visual 22 November 2026
+
+Empat bagian setelah hero memakai latar garis, titik, dan kurva. Motif mengikuti antrean kantin, tiga langkah pencatatan, tren metrik, dan nota kulakan pertama.
+
 ## 1. Problem
 
 Landing page `/` saat ini memperkenalkan Onyxa sebagai pencatat nota untuk
