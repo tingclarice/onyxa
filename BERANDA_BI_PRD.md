@@ -10,6 +10,8 @@ Setelah model Prisma diperbarui pada server pengembangan yang sedang berjalan, B
 
 Owner dapat memilih tanggal awal dan akhir secara inklusif. Semua KPI, grafik, dan peringkat memakai periode tersebut. Periode tersimpan di URL dan bisa dikembalikan ke bulan berjalan. Rentang yang tidak valid menampilkan pesan koreksi.
 
+Filter tanggal awalnya tertutup. Owner dapat membuka dan menutupnya lewat tombol kalender tanpa kehilangan tanggal yang sedang diisi. Jika rentang tidak valid, filter terbuka agar tanggal bisa diperbaiki.
+
 ## Lingkup
 Periode awal adalah tanggal satu bulan berjalan sampai hari ini dalam WIB. Belanja berasal dari total nota tersimpan. Selisih kas adalah penerimaan dikurangi belanja. Rata-rata setoran per hari membagi total tunai dan QRIS dengan jumlah tanggal berbeda yang memiliki setoran dalam periode. Tanpa setoran, rata-rata ditampilkan sebagai tanda pisah. Kategori mengikuti katalog saat ini.
 
