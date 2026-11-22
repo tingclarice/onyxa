@@ -12,9 +12,15 @@ export function DashboardPeriodFilter({ period, error, custom }: {
 }) {
   return (
     <details open={error ? true : undefined}>
-      <summary className={buttonVariants({ variant: "outline", className: "cursor-pointer list-none [&::-webkit-details-marker]:hidden" })}>
+      <summary
+        aria-label="Filter tanggal"
+        className={buttonVariants({
+          variant: "outline",
+          size: "icon-lg",
+          className: "absolute top-0 right-0 cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+        })}
+      >
         <CalendarDays aria-hidden="true" />
-        Filter tanggal
       </summary>
       <Form action="/beranda" aria-label="Filter periode statistik"
         className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4">

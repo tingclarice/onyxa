@@ -19,11 +19,13 @@ export default async function BerandaPage({ searchParams }: PageProps<"/beranda"
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 md:py-10">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Beranda</h1>
-        <p className="text-muted-foreground">{active.business.name}{label && ` · ${label}`}</p>
+      <header className="relative">
+        <div className="space-y-1 pr-14">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Beranda</h1>
+          <p className="text-muted-foreground">{active.business.name}{label && ` · ${label}`}</p>
+        </div>
+        <DashboardPeriodFilter key={`${custom}-${period.start}-${period.end}`} period={period} error={error} custom={custom} />
       </header>
-      <DashboardPeriodFilter key={`${custom}-${period.start}-${period.end}`} period={period} error={error} custom={custom} />
       {data && (
         <>
           <SummaryCards data={data} />

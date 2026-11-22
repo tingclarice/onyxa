@@ -20,8 +20,9 @@ test("the owner can open a filtered dashboard URL, reset it, and correct invalid
   const filter = { start: "2026-08-29", end: "2026-09-05" };
   const html = renderToStaticMarkup(await Page({ params, searchParams: Promise.resolve(filter) }));
   assert.deepEqual(getDashboard.mock.calls[0].arguments, [filter]);
-  assert.match(html, /<details><summary[^>]*>/);
-  assert.match(html, /Filter tanggal<\/summary><form/);
+  const header = html.match(/<header\b[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? "";
+  assert.match(header, /<details><summary[^>]*aria-label="Filter tanggal"[^>]*><svg\b/);
+  assert.match(header, /<\/svg><\/summary><form/);
   for (const text of ['action="/beranda"', 'name="start"', 'name="end"', filter.start, filter.end, 'Terapkan', 'Bulan berjalan', 'Rata-rata setoran per hari']) {
     assert.ok(html.includes(text), text);
   }
