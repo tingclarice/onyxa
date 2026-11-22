@@ -1,5 +1,5 @@
 import { runInPostgresTransaction } from "@/lib/database-transaction";
-import { buildCatalogNames, checkCatalogNameAvailable, checkCatalogUnit } from "../core/catalog-rules";
+import { buildCatalogNames, checkCatalogNameAvailable } from "../core/catalog-rules";
 import {
   findAliasOwner, findCatalogItem, insertCatalogItem, rememberPreviousItemName, updateCatalogItem,
 } from "../repository/catalog-repository";
@@ -21,7 +21,6 @@ export async function saveCatalogItem(businessId: string, itemId: string | null,
       return;
     }
 
-    checkCatalogUnit(item, input.baseUnit);
     if (item.nameKey !== fields.nameKey) {
       await rememberPreviousItemName(businessId, item, db);
     }

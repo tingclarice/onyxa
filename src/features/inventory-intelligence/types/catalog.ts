@@ -11,7 +11,6 @@ export interface CatalogItemRecord extends CatalogItemInput {
   id: string;
   nameKey: string;
   archivedAt: Date | null;
-  hasPurchases: boolean;
 }
 
 export class CatalogItemError extends Error {}

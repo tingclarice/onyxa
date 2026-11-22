@@ -72,7 +72,7 @@ function toPurchaseHistory(row: ItemRow): ItemPurchaseHistory {
       const rawUnit = line.unit.trim();
       const unit =
         !rawUnit || rawUnit.toLocaleLowerCase("id-ID") === "tidak diketahui"
-          ? row.baseUnit.toLowerCase()
+          ? line.baseUnit?.toLowerCase() ?? "Tidak diketahui"
           : rawUnit;
       return {
         date: line.receipt.receiptDate.toISOString().slice(0, 10),

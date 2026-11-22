@@ -68,11 +68,12 @@ export async function findItemPriceHistory(
 
 function toItemPriceHistoryRecord(row: ItemPriceRow): ItemPriceHistoryRecord {
   const lines: ReceiptLinePriceInput[] = row.receiptLines
+    .filter((line) => line.baseUnit === null || line.baseUnit === row.baseUnit)
     .map((line) => {
       const rawUnit = line.unit.trim();
       const unit =
         !rawUnit || rawUnit.toLocaleLowerCase("id-ID") === "tidak diketahui"
-          ? row.baseUnit.toLowerCase()
+          ? line.baseUnit?.toLowerCase() ?? "Tidak diketahui"
           : rawUnit;
       return {
         receiptLineId: line.id,

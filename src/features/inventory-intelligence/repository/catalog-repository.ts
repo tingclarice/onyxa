@@ -14,12 +14,9 @@ export async function findCatalogItem(
     where: { businessId, ...key },
     select: {
       id: true, name: true, nameKey: true, baseUnit: true, archivedAt: true,
-      receiptLines: { take: 1, select: { id: true } },
     },
   });
-  if (!item) return null;
-  const { receiptLines, ...fields } = item;
-  return { ...fields, hasPurchases: receiptLines.length > 0 };
+  return item;
 }
 
 export async function findAliasOwner(

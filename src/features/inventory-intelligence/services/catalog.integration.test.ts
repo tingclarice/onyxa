@@ -39,12 +39,14 @@ test("manual items share identity with receipt lines and stay inside their busin
     });
     assert.equal((await list()).length, 1);
     assert.equal((await list())[0].lastPurchase?.unitPrice, 10000);
-    await assert.rejects(saveCatalogItem(business.id, item.itemId, { ...renamed, baseUnit: "KG" }), /satuan liter/);
+    await saveCatalogItem(business.id, item.itemId, { ...renamed, baseUnit: "KG" });
+    assert.equal((await list())[0].baseUnit, "KG");
     assert.equal(await deleteCatalogItem(business.id, item.itemId), true);
     assert.deepEqual(await list(), []);
     const lines = await db.receiptLine.findMany({ where: { receiptId: saved.receiptId, businessId: business.id } });
     assert.equal(lines[0].itemId, item.itemId);
     assert.equal(lines[0].rawName, "Susu Cokelat");
+    assert.equal(lines[0].baseUnit, "LITER");
     await saveCatalogItem(business.id, null, renamed);
     assert.equal((await list())[0].itemId, item.itemId);
   } finally {

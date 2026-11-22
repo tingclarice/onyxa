@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ItemMovement } from "../types/inventory";
 import { deleteItemAction, saveCatalogItemAction } from "./actions";
-import { unitLabel } from "./movement-format";
 
 type Mode = "add" | "edit" | "delete";
 const menuItemClass = "flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none data-highlighted:bg-muted";
@@ -100,19 +99,12 @@ export function CatalogItemControls({ item, onAdded }: { item?: ItemMovement; on
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
                     Satuan dasar
-                    {item?.lastPurchase ? (
-                      <>
-                        <span>{unitLabel(item.baseUnit)}</span>
-                        <input type="hidden" name="baseUnit" value={item.baseUnit} />
-                      </>
-                    ) : (
-                      <select name="baseUnit" defaultValue={item?.baseUnit ?? "PCS"}
-                        className="h-12 rounded-md border border-input bg-background px-3 text-base">
-                        <option value="PCS">pcs</option>
-                        <option value="KG">kg</option>
-                        <option value="LITER">liter</option>
-                      </select>
-                    )}
+                    <select name="baseUnit" defaultValue={item?.baseUnit ?? "PCS"}
+                      className="h-12 rounded-md border border-input bg-background px-3 text-base">
+                      <option value="PCS">pcs</option>
+                      <option value="KG">kg</option>
+                      <option value="LITER">liter</option>
+                    </select>
                   </label>
                 </>
               )}
