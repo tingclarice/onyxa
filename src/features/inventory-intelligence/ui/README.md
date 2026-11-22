@@ -9,7 +9,8 @@ Building blocks for /barang, /barang/[id] and the home-screen warning card.
 | File | What it has |
 |---|---|
 | `queries.ts` | `getActiveBusinessItemMovements`, `getActiveBusinessItemDetail`, `getActiveBusinessSlowMovingWarnings` (pages import them via `../server.ts`; grace % and the alert switch come from the active business) |
-| `item-movement-list.tsx` | `<ItemMovementList />`: searchable item cards with badge and one-line explanation |
+| `item-movement-list.tsx` | Searchable catalog table with links to item details, movement and price data |
+| `catalog-item-controls.tsx` | Add an item, edit its name or base unit, or confirm removal from the active catalog |
 | `slow-moving-warning-card.tsx` | `<SlowMovingWarningCard />`: slowing items with drop % and delay, or "Semua aman" |
 | `movement-explanation.tsx, purchase-history-list.tsx` | item page pieces |
 | `movement-badge.tsx` | Melambat / Normal / Belum cukup data |

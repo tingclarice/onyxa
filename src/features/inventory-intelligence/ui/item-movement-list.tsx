@@ -1,154 +1,76 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 import type { ItemMovement } from "../types/inventory";
-import type { ItemPriceSummary } from "@/features/procurement-pricing/types/pricing";
-import { PriceVarianceBadge } from "@/features/procurement-pricing/ui/price-variance-badge";
+import { CatalogItemControls } from "./catalog-item-controls";
 import { MovementBadge } from "./movement-badge";
 import { describeMovement, unitLabel } from "./movement-format";
 
-/** Searchable list of items, each with its movement badge and price variance badge. */
-export function ItemMovementList({
-  items,
-  priceSummaries = [],
-}: {
+export function ItemMovementList({ items, priceCells }: {
   items: ItemMovement[];
-  priceSummaries?: ItemPriceSummary[];
+  priceCells: Record<string, ReactNode>;
 }) {
   const [search, setSearch] = useState("");
-  const priceById = useMemo(
-    () => new Map(priceSummaries.map((p) => [p.itemId, p])),
-    [priceSummaries],
-  );
-  const shownItems = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("id-ID");
-    if (!query) return items;
-    return items.filter((item) =>
-      item.name.toLocaleLowerCase("id-ID").includes(query),
-    );
-  }, [items, search]);
-
-  if (items.length === 0)
-    return (
-      <div className="rounded-2xl border border-dashed px-5 py-10 text-center">
-        <p className="text-base text-muted-foreground">
-          Belum ada barang. Barang akan muncul otomatis setelah Anda menyimpan
-          nota.
-        </p>
-      </div>
-    );
+  const query = search.trim().toLocaleLowerCase("id-ID");
+  const visibleItems = items.filter((item) => item.name.toLocaleLowerCase("id-ID").includes(query));
 
   return (
     <>
-      <div className="relative mb-6">
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          aria-label="Cari barang"
-          placeholder="Cari nama barang"
-          value={search}
-          onChange={(event) => setSearch(event.currentTarget.value)}
-          className="pl-10"
-        />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full sm:max-w-sm">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input aria-label="Cari barang" placeholder="Cari nama barang" value={search}
+            onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+        </div>
+        <CatalogItemControls onAdded={() => setSearch("")} />
       </div>
-
-      {shownItems.length === 0 ? (
-        <p className="rounded-2xl border border-dashed px-5 py-10 text-center text-base text-muted-foreground">
-          Barang tidak ditemukan. Coba kata lain.
-        </p>
-      ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {shownItems.map((item) => (
-            <li key={item.itemId}>
-              <ItemMovementCard
-                item={item}
-                priceSummary={priceById.get(item.itemId)}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="overflow-x-auto rounded-2xl border bg-card">
+        <table className="w-full min-w-[42rem] text-left text-sm">
+          <caption className="sr-only">Katalog barang usaha aktif</caption>
+          <thead className="border-b bg-muted/50 text-muted-foreground">
+            <tr>
+              {["Barang", "Pembelian terakhir", "Pergerakan", "Tren harga", "Aksi"].map((label) => (
+                <th key={label} scope="col" className="px-4 py-3 font-medium">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {visibleItems.map((item) => (
+              <tr key={item.itemId} className="relative hover:bg-muted/35 focus-within:bg-muted/35">
+                <th scope="row" className="px-4 py-4 font-semibold">
+                  <Link href={`/barang/${item.itemId}`}
+                    className="after:absolute after:inset-0 hover:underline focus-visible:underline">
+                    {item.name}
+                  </Link>
+                  <div className="mt-1 text-xs font-normal text-muted-foreground">{unitLabel(item.baseUnit)}</div>
+                </th>
+                <td className="px-4 py-3 tabular-nums">
+                  {item.lastPurchase ? (
+                    <>
+                      <span className="whitespace-nowrap">{formatRupiah(item.lastPurchase.unitPrice)} / {item.lastPurchase.unit}</span>
+                      <div className="mt-1 text-xs text-muted-foreground">{formatDate(item.lastPurchase.date)}</div>
+                    </>
+                  ) : <span className="text-muted-foreground">Belum ada pembelian</span>}
+                </td>
+                <td className="px-4 py-3" title={describeMovement(item.status)}>
+                  <MovementBadge status={item.status} />
+                </td>
+                <td className="px-4 py-3">{priceCells[item.itemId] ?? "—"}</td>
+                <td className="px-3 py-3"><div className="relative z-10 w-fit"><CatalogItemControls item={item} /></div></td>
+              </tr>
+            ))}
+            {!visibleItems.length && (
+              <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                {items.length ? "Barang tidak ditemukan. Coba nama lain." : "Belum ada barang. Tambahkan barang atau simpan nota pembelian."}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </>
-  );
-}
-
-function ItemMovementCard({
-  item,
-  priceSummary,
-}: {
-  item: ItemMovement;
-  priceSummary?: ItemPriceSummary;
-}) {
-  const last = item.lastPurchase;
-  return (
-    <Link
-      href={`/barang/${item.itemId}`}
-      className="block h-full rounded-2xl border bg-card p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-5"
-    >
-      <article className="flex h-full flex-col justify-between gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="break-words text-lg font-semibold">{item.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Satuan dasar: {unitLabel(item.baseUnit)}
-            </p>
-          </div>
-          <ArrowUpRight
-            aria-hidden="true"
-            className="size-5 shrink-0 text-muted-foreground"
-          />
-        </div>
-
-        {last && (
-          <div className="space-y-0.5 tabular-nums">
-            <p className="text-base">
-              <span className="font-bold">{formatRupiah(last.unitPrice)}</span>
-              <span className="ml-1 text-sm text-muted-foreground">
-                / {last.unit} · dibeli {formatDate(last.date)}
-              </span>
-            </p>
-            {priceSummary && priceSummary.previousEmaUnitPrice !== null && (
-              <p className="text-xs text-muted-foreground">
-                Baseline EMA: {formatRupiah(priceSummary.previousEmaUnitPrice)}/
-                {priceSummary.normalizedUnit.toLowerCase()}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <MovementBadge status={item.status} />
-            {priceSummary && priceSummary.purchaseCount > 0 && (
-              <PriceVarianceBadge
-                alertLevel={priceSummary.alertLevel}
-                variancePercent={priceSummary.latestVariancePercent}
-                purchaseCount={priceSummary.purchaseCount}
-              />
-            )}
-          </div>
-          <p className="text-sm leading-6 text-muted-foreground">
-            {describeMovement(item.status)}
-          </p>
-          {priceSummary?.cheapestAlternative && (
-            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-              Alternatif lebih murah:{" "}
-              {priceSummary.cheapestAlternative.recommendedSupplierName} (
-              {formatRupiah(
-                priceSummary.cheapestAlternative.recommendedLatestUnitPrice,
-              )}
-              /
-              {priceSummary.cheapestAlternative.normalizedUnit.toLowerCase()})
-            </p>
-          )}
-        </div>
-      </article>
-    </Link>
   );
 }
