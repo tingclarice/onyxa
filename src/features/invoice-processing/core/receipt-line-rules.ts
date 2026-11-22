@@ -27,7 +27,7 @@ export function normalizeNameKey(name: string): string {
 
 /** The catalog item name for a line: the matched name, otherwise the name on the receipt. */
 export function chooseItemName(line: ScanReceiptItem): string {
-  return (line.matched_item ?? line.raw_name).trim() || line.raw_name.trim();
+  return (line.matched_item ?? line.proposed_name ?? line.raw_name).trim() || line.raw_name.trim();
 }
 
 /**

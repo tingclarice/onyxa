@@ -35,6 +35,7 @@ import {
 import {
   ScanReceiptError,
   ScanReceiptSchema,
+  type ReceiptCatalogItem,
   type StoredReceiptDraft,
   type ScanReceipt,
   type ScanReceiptItem,
@@ -65,7 +66,7 @@ function createEmptyItem(): ScanReceiptItem {
  * The /scan/review screen: loads the scanned receipt, lets the user correct
  * it, and shows live checks (totals, low-confidence fields) from core rules.
  */
-export function ReceiptReviewForm({ manual, draft }: { manual: boolean; draft: StoredReceiptDraft | null }) {
+export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean; draft: StoredReceiptDraft | null; catalog: ReceiptCatalogItem[] }) {
   const router = useRouter();
   const didLoad = useRef(false);
   const [previewUrl, setPreviewUrl] = useState(draft?.imageUrl);
@@ -345,11 +346,12 @@ export function ReceiptReviewForm({ manual, draft }: { manual: boolean; draft: S
                   <div key={field.id} className="space-y-2">
                     <ReceiptItemRow
                       item={item}
+                      catalog={catalog}
                       onChange={(updatedItem) =>
                         updateItem(index, updatedItem)
                       }
                       errors={{
-                        raw_name: itemErrors?.raw_name?.message,
+                        raw_name: itemErrors?.proposed_name?.message ?? itemErrors?.raw_name?.message,
                         qty: itemErrors?.qty?.message,
                         unit: itemErrors?.unit?.message,
                         unit_price: itemErrors?.unit_price?.message,

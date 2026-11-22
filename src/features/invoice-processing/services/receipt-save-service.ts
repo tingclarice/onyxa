@@ -1,5 +1,6 @@
 import {
   ScanReceiptError,
+  ReceiptDraftError,
   ReceiptDiscountError,
   SaveReceiptInputSchema,
   type CatalogItem,
@@ -144,7 +145,12 @@ async function findOrCreateItemForLine(
   const itemName = chooseItemName(line);
   const itemKey = normalizeNameKey(itemName);
 
-  let item = await transaction.findItemByNameKey(itemKey);
+  let item = line.catalog_item_id
+    ? await transaction.findActiveItemById(line.catalog_item_id)
+    : await transaction.findItemByNameKey(itemKey);
+  if (line.catalog_item_id && !item) {
+    throw new ReceiptDraftError("Barang pilihan sudah tidak tersedia di katalog usaha ini. Pilih ulang barang pada nota.");
+  }
   if (!item) {
     const { baseUnit } = convertToBaseUnit(line.qty, line.unit);
     item = await transaction.createItem(itemName, itemKey, baseUnit);

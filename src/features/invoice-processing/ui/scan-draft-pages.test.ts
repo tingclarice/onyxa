@@ -21,6 +21,7 @@ let drafts = Promise.resolve<ReceiptDraftSummary[] | null>([
   { id: draft.draftId, name: "Pasar", imageUrl: draft.imageUrl },
 ]);
 mock.module("@/features/invoice-processing/server", { namedExports: {
+  getActiveReceiptCatalog: async () => [],
   getMyScanDrafts: async () => ({ memberId: "uploader", drafts }),
   getMyScanDraft: async (id: string) => id === draft.draftId ? draft : null,
 } });
@@ -38,6 +39,8 @@ test("both scan pages render a persisted extraction on successive requests", asy
       searchParams: Promise.resolve({ receiptId: draft.draftId }), params: Promise.resolve({}),
     }));
     assert.match(review, /Beras/);
+    assert.match(review, /role="combobox"/);
+    assert.match(review, /Barang ini akan ditambahkan saat nota disimpan/);
     assert.match(review, /Setujui dan simpan/);
     assert.ok(review.includes(draft.imageUrl));
   }

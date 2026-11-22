@@ -7,7 +7,7 @@ import type { TransactionDetail } from "../types/transactions";
 const id = "11111111-1111-4111-8111-111111111111";
 const receipt: TransactionDetail = {
   supplierName: "Pasar", date: "2026-11-21", discount: 3000, total: 27000, subtotal: 30000,
-  lines: [{ position: 1, name: "Roti", quantity: 3, unit: "pcs", unitPrice: 11000, discount: 3000, lineTotal: 30000 }],
+  lines: [{ position: 1, name: "Roti", printedName: "RT TWR", quantity: 3, unit: "pcs", unitPrice: 11000, discount: 3000, lineTotal: 30000 }],
   imageUrl: null,
 };
 mock.module("next/navigation", { namedExports: {
@@ -34,6 +34,7 @@ test("detail shows purchased items, discounts, final total and the available rec
   const params = Promise.resolve({ id });
   const manual = renderToStaticMarkup(await Page({ params }));
   assert.match(manual, /Roti/);
+  assert.match(manual, /RT TWR/);
   assert.match(manual, /Potongan seluruh nota/);
   assert.match(manual, /Rp27\.000/);
   assert.doesNotMatch(manual, /Foto nota/);

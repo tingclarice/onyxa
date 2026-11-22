@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { listActiveReceiptCatalog } from "../repository/receipt-catalog-repository";
 import { isOurCloudinaryImageUrl } from "@/lib/cloudinary-images";
 import {
   discardOwnedDraft, findPreviouslyApprovedDraft, findDraftBySource, findOwnedDraft,
@@ -28,7 +29,8 @@ export async function extractAndStoreDraft(owner: DraftOwner, source: string | F
   const previous = replaceId ? await findOwnedDraft(owner, replaceId) : null;
   if (replaceId && !previous) throw new ReceiptDraftError("Draf tidak tersedia untuk akun ini.");
 
-  const result = typeof source === "string" ? await scanReceipt(source, ref) : await uploadAndScanReceipt(source, ref);
+  const catalog = await listActiveReceiptCatalog(owner.businessId);
+  const result = typeof source === "string" ? await scanReceipt(source, ref, catalog) : await uploadAndScanReceipt(source, ref, catalog);
   if (!result.imageUrl) throw new ScanReceiptError("Foto nota belum berhasil disimpan.", "cloudinary_upload_failed");
   try {
     return await storeExtractedDraft(owner, {

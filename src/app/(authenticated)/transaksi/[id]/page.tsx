@@ -39,7 +39,12 @@ export default async function TransactionPage({ params }: { params: Promise<{ id
             <tbody className="divide-y">
               {receipt.lines.map((line) => (
                 <tr key={line.position}>
-                  <th scope="row" className="p-3 font-medium">{line.name}</th>
+                  <th scope="row" className="p-3 font-medium">
+                    {line.name}
+                    {line.printedName && line.printedName !== line.name && (
+                      <div className="mt-1 text-xs font-normal text-muted-foreground">Di nota: {line.printedName}</div>
+                    )}
+                  </th>
                   <td className="whitespace-nowrap p-3">{line.quantity.toLocaleString("id-ID", { maximumFractionDigits: 6 })} {line.unit}</td>
                   <td className="p-3 text-right">{formatRupiah(line.unitPrice)}</td>
                   <td className="p-3 text-right">{formatRupiah(line.discount)}</td>

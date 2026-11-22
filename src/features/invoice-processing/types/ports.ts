@@ -23,6 +23,7 @@ export interface SavedReceiptRecord {
 
 export interface ReceiptSaveTransaction {
   findOrCreateSupplier(name: string, nameKey: string): Promise<string>;
+  findActiveItemById(id: string): Promise<CatalogItem | null>;
   findItemByNameKey(nameKey: string): Promise<CatalogItem | null>;
   createItem(
     name: string,

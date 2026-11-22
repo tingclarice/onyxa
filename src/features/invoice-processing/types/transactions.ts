@@ -18,6 +18,7 @@ export interface TransactionDetail {
   lines: {
     position: number;
     name: string;
+    printedName?: string;
     quantity: number;
     unit: string;
     unitPrice: number;

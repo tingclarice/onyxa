@@ -36,6 +36,8 @@ export const ScanReceiptItemSchema = z.object({
     .min(0, { error: "Nilai keyakinan tidak valid." })
     .max(1, { error: "Nilai keyakinan tidak valid." }),
   matched_item: z.string().nullable(),
+  catalog_item_id: z.uuid().optional(),
+  proposed_name: z.string().trim().min(1, "Isi nama barang katalog.").optional(),
 });
 
 export const ScanReceiptSchema = z.object({
@@ -74,9 +76,16 @@ const ReviewedReceiptSchema = ScanReceiptSchema.extend({
 });
 
 export const ExtractedReceiptSchema = ScanReceiptSchema.extend({
-  items: ScanReceiptItemSchema.extend({ line_total_is_net: z.boolean().optional() }).array().min(1),
+  items: ScanReceiptItemSchema.omit({ catalog_item_id: true, proposed_name: true }).extend({
+    line_total_is_net: z.boolean().optional(),
+    product_name: z.string().optional(),
+    brand: z.string().optional(),
+    package_size: z.number().nonnegative().optional(),
+    package_unit: z.enum(["kg", "g", "liter", "ml", ""]).optional(),
+  }).array().min(1),
 });
 
+export type ExtractedReceiptItem = z.infer<typeof ExtractedReceiptSchema>["items"][number];
 export type ScanReceiptItem = z.infer<typeof ScanReceiptItemSchema>;
 export type ScanReceipt = z.infer<typeof ScanReceiptSchema>;
 
@@ -126,7 +135,7 @@ export interface ReceiptImageSource {
 }
 
 export interface ReceiptExtractionProvider {
-  extract(image: ReceiptImage, ref?: string): Promise<unknown>;
+  extract(image: ReceiptImage, ref?: string, catalog?: ReceiptCatalogItem[]): Promise<unknown>;
 }
 
 export type ScanReceiptActionResult =
@@ -182,6 +191,10 @@ export interface ReceiptLineToSave {
   /** null when the unit cannot be converted to the item's base unit. */
   baseQuantity: number | null;
   baseUnit: BaseUnit | null;
+}
+
+export interface ReceiptCatalogItem extends CatalogItem {
+  aliases: string[];
 }
 
 /** A catalog item as the receipt-saving use case needs it. */

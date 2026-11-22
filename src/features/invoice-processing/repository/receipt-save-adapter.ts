@@ -1,9 +1,10 @@
 import "server-only";
 
-import { runInTransaction, type DatabaseClient } from "@/lib/database-transaction";
+import { runInPostgresTransaction, type DatabaseClient } from "@/lib/database-transaction";
 import {
   createItem,
   createSavedReceipt,
+  findActiveItemById,
   findItemByNameKey,
   findOrCreateSupplier,
   saveItemAliasIfFree,
@@ -18,13 +19,14 @@ export const receiptSaveRepository: ReceiptSaveRepository = {
     businessId: string,
     operation: (transaction: ReceiptSaveTransaction) => Promise<T>,
   ): Promise<T> {
-    return runInTransaction((db) => operation(bindReceiptTransaction(businessId, db)));
+    return runInPostgresTransaction((db) => operation(bindReceiptTransaction(businessId, db)));
   },
 };
 
 export function bindReceiptTransaction(businessId: string, db: DatabaseClient, receiptId?: string): ReceiptSaveTransaction {
   return {
     findOrCreateSupplier: (name, nameKey) => findOrCreateSupplier(businessId, name, nameKey, db),
+    findActiveItemById: (id) => findActiveItemById(businessId, id, db),
     findItemByNameKey: (nameKey) => findItemByNameKey(businessId, nameKey, db),
     createItem: (name, nameKey, baseUnit) => createItem(businessId, name, nameKey, baseUnit, db),
     saveItemAliasIfFree: (itemId, name, nameKey) => saveItemAliasIfFree(businessId, itemId, name, nameKey, db),

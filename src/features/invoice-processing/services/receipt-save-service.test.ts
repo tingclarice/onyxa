@@ -37,6 +37,7 @@ function createRepository(): ReceiptSaveRepository {
           assert.ok(name.trim());
           return `supplier-${nameKey}`;
         },
+        async findActiveItemById(id) { return items.find((item) => item.id === id) ?? null; },
         async findItemByNameKey(nameKey) {
           const item =
             items.find((candidate) => candidate.nameKey === nameKey) ??

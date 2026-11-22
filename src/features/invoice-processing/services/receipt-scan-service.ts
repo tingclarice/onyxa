@@ -4,6 +4,7 @@ import { createGeminiReceiptExtractor } from "../repository/gemini";
 import {
   ScanReceiptError,
   type ScanReceiptResult,
+  type ReceiptCatalogItem,
 } from "../types/scan";
 import { getReceiptImageProblem, isReceiptImageType } from "../core/receipt-image-rules";
 import { fillMissingUnitPrices } from "../core/receipt-review-rules";
@@ -13,16 +14,17 @@ import { extractReceipt, extractReceiptFromImageUrl } from "./extract-receipt";
 export async function scanReceipt(
   imageUrl: string,
   ref: string = crypto.randomUUID(),
+  catalog: ReceiptCatalogItem[] = [],
 ): Promise<ScanReceiptResult> {
   const receipt = await extractReceiptFromImageUrl(imageUrl, {
     imageSource: { load: fetchCloudinaryReceiptImage },
     extractor: createGeminiReceiptExtractor(),
-  }, ref);
+  }, ref, catalog);
   return { receipt: fillMissingUnitPrices(receipt), imageUrl };
 }
 
 /** Store a receipt photo and extract its contents from the same file in parallel. */
-export async function uploadAndScanReceipt(file: File, ref: string = crypto.randomUUID()): Promise<ScanReceiptResult> {
+export async function uploadAndScanReceipt(file: File, ref: string = crypto.randomUUID(), catalog: ReceiptCatalogItem[] = []): Promise<ScanReceiptResult> {
   const problem = getReceiptImageProblem(file);
   if (problem) throw new ScanReceiptError(problem.message, problem.code);
   if (!isReceiptImageType(file.type)) {
@@ -32,7 +34,7 @@ export async function uploadAndScanReceipt(file: File, ref: string = crypto.rand
   const bytes = new Uint8Array(await file.arrayBuffer());
   const [uploaded, receipt] = await Promise.all([
     uploadCameraPhoto(file, ref),
-    extractReceipt({ bytes, mimeType: file.type }, createGeminiReceiptExtractor(), ref),
+    extractReceipt({ bytes, mimeType: file.type }, createGeminiReceiptExtractor(), ref, catalog),
   ]);
   if (!uploaded.ok) throw new ScanReceiptError(uploaded.message, uploaded.code);
   return { receipt: fillMissingUnitPrices(receipt), imageUrl: uploaded.imageUrl };

@@ -2,12 +2,13 @@ import {
   ScanReceiptError,
   ExtractedReceiptSchema,
   type ReceiptExtractionProvider,
+  type ReceiptCatalogItem,
   type ReceiptImage,
   type ReceiptImageSource,
   type ScanReceipt,
 } from "@/features/invoice-processing/types/scan";
 
-import { buildReviewItem } from "../core/receipt-review-rules";
+import { matchExtractedItem } from "../core/receipt-catalog-rules";
 
 export async function extractReceiptFromImageUrl(
   imageUrl: string,
@@ -16,6 +17,7 @@ export async function extractReceiptFromImageUrl(
     readonly extractor: ReceiptExtractionProvider;
   },
   ref: string = crypto.randomUUID(),
+  catalog: ReceiptCatalogItem[] = [],
 ): Promise<ScanReceipt> {
   const start = performance.now();
   let image: ReceiptImage;
@@ -28,15 +30,16 @@ export async function extractReceiptFromImageUrl(
   }
   console.info("[receipt-scan]", { ref, stage: "cloudinary.download", outcome: "ok",
     durationMs: Math.round(performance.now() - start), bytes: image.bytes.byteLength });
-  return extractReceipt(image, dependencies.extractor, ref);
+  return extractReceipt(image, dependencies.extractor, ref, catalog);
 }
 
 export async function extractReceipt(
   image: ReceiptImage,
   extractor: ReceiptExtractionProvider,
   ref?: string,
+  catalog: ReceiptCatalogItem[] = [],
 ): Promise<ScanReceipt> {
-  const candidate = await extractor.extract(image, ref);
+  const candidate = await extractor.extract(image, ref, catalog);
   const result = ExtractedReceiptSchema.safeParse(candidate);
 
   if (!result.success) {
@@ -50,6 +53,6 @@ export async function extractReceipt(
 
   return {
     ...result.data,
-    items: result.data.items.map(buildReviewItem),
+    items: result.data.items.map((item) => matchExtractedItem(item, catalog)),
   };
 }

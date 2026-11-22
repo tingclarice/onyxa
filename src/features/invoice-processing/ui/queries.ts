@@ -1,9 +1,15 @@
 import "server-only";
+import { getReceiptCatalog } from "../services/receipt-catalog-service";
 
 import { requireActiveBusiness } from "@/features/business-management/server";
 import { getBusinessTransaction, getBusinessTransactions } from "../services/transaction-service";
 
 import { getScanDraft, getScanDrafts } from "../services/receipt-draft-service";
+
+export async function getActiveReceiptCatalog() {
+  const { membership } = await requireActiveBusiness();
+  return getReceiptCatalog(membership.businessId);
+}
 
 export async function getMyScanDrafts() {
   const { membership } = await requireActiveBusiness();

@@ -26,6 +26,10 @@ export async function findOrCreateSupplier(
   return supplier.id;
 }
 
+export async function findActiveItemById(businessId: string, id: string, db: DatabaseClient = getPrisma()): Promise<CatalogItem | null> {
+  return db.item.findFirst({ where: { businessId, id, archivedAt: null }, select: { id: true, name: true, baseUnit: true } });
+}
+
 /** Finds a catalog item by its own name or by one of its other names (aliases). */
 export async function findItemByNameKey(
   businessId: string,
@@ -75,8 +79,10 @@ export async function createItem(
   baseUnit: BaseUnit,
   db: DatabaseClient = getPrisma(),
 ): Promise<CatalogItem> {
-  return db.item.create({
-    data: { businessId, name, nameKey, baseUnit },
+  return db.item.upsert({
+    where: { businessId_nameKey: { businessId, nameKey } },
+    create: { businessId, name, nameKey, baseUnit },
+    update: { archivedAt: null },
     select: { id: true, name: true, baseUnit: true },
   });
 }
@@ -89,14 +95,9 @@ export async function saveItemAliasIfFree(
   nameKey: string,
   db: DatabaseClient = getPrisma(),
 ): Promise<void> {
-  const existing = await db.itemAlias.findUnique({
-    where: { businessId_nameKey: { businessId, nameKey } },
-    select: { id: true },
-  });
-  if (existing) return;
-  await db.itemAlias.create({
-    data: { businessId, itemId, name, nameKey },
-    select: { id: true },
+  await db.itemAlias.createMany({
+    data: [{ businessId, itemId, name, nameKey }],
+    skipDuplicates: true,
   });
 }
 

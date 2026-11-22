@@ -54,14 +54,15 @@ export async function findTransactionForBusiness(
       skip,
       take: BATCH_SIZE,
       select: {
-        position: true, rawName: true, quantity: true, unit: true,
+        position: true, rawName: true, item: { select: { name: true } }, quantity: true, unit: true,
         unitPrice: true, discount: true, lineTotal: true,
       },
     });
     for (const line of batch) {
       lines.push({
         position: line.position,
-        name: line.rawName,
+        name: line.item?.name ?? line.rawName,
+        printedName: line.rawName,
         quantity: line.quantity.toNumber(),
         unit: line.unit,
         unitPrice: line.unitPrice.toNumber(),

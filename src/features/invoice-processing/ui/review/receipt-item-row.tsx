@@ -2,14 +2,15 @@
 
 import { useId } from "react";
 import { Input } from "@/components/ui/input";
-import { ConfidenceField } from "./confidence-field";
+import { CatalogItemPicker } from "./catalog-item-picker";
 import { CurrencyInput } from "./currency-input";
 import { calculateNetLineTotal } from "../../core/receipt-review-rules";
 import { formatRupiah } from "@/lib/utils/format";
-import type { ScanReceiptItem } from "../../types/scan";
+import type { ReceiptCatalogItem, ScanReceiptItem } from "../../types/scan";
 
 type ReceiptItemRowProps = {
   item: ScanReceiptItem;
+  catalog: ReceiptCatalogItem[];
   onChange: (item: ScanReceiptItem) => void;
   errors?: {
     raw_name?: string;
@@ -23,6 +24,7 @@ type ReceiptItemRowProps = {
 
 function ReceiptItemRow({
   item,
+  catalog,
   onChange,
   errors,
 }: ReceiptItemRowProps) {
@@ -33,20 +35,7 @@ function ReceiptItemRow({
       aria-label={`Barang: ${item.raw_name}`}
       className="min-w-0 space-y-4 rounded-xl border bg-card p-4"
     >
-      <ConfidenceField
-        id={`${rowId}-name`}
-        label="Nama barang"
-        value={item.raw_name}
-        confidence={item.confidence}
-        error={errors?.raw_name}
-        onChange={(event) =>
-          onChange({
-            ...item,
-            raw_name: event.currentTarget.value,
-            matched_item: null,
-          })
-        }
-      />
+      <CatalogItemPicker id={`${rowId}-name`} item={item} catalog={catalog} error={errors?.raw_name} onChange={onChange} />
 
       <div className="grid min-w-0 grid-cols-2 gap-3">
         <div className="min-w-0 space-y-2">
