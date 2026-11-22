@@ -29,6 +29,12 @@ export async function requireActiveBusiness() {
   return { actor: workspace.actor, membership: workspace.active };
 }
 
+export async function requireBusinessOwner() {
+  const context = await requireActiveBusiness();
+  if (context.membership.role !== "OWNER") redirect("/scan");
+  return context;
+}
+
 /** Settings of the active business: team, open invitations, and whether the user may manage it. */
 export async function getActiveBusinessSettings() {
   const { actor, membership } = await requireActiveBusiness();

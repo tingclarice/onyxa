@@ -98,6 +98,10 @@ export function CatalogItemControls({ item, onAdded }: { item?: ItemMovement; on
                     <Input name="name" required defaultValue={item?.name} placeholder="Contoh: Susu cokelat" />
                   </label>
                   <label className="grid gap-2 text-sm font-medium">
+                    Kategori barang (opsional)
+                    <Input name="category" maxLength={80} defaultValue={item?.category ?? ""} placeholder="Contoh: Minuman" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
                     Satuan dasar
                     <select name="baseUnit" defaultValue={item?.baseUnit ?? "PCS"}
                       className="h-12 rounded-md border border-input bg-background px-3 text-base">

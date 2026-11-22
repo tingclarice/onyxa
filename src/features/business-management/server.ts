@@ -4,4 +4,5 @@ export {
   getActiveBusinessSettings,
   getBusinessWorkspace,
   requireActiveBusiness,
+  requireBusinessOwner,
 } from "./ui/queries";

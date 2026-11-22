@@ -33,14 +33,14 @@ test("the catalog table links manual items to details and offers actions even be
   const html = renderToStaticMarkup(createElement(ItemMovementList, {
     items: [{ name: "Roti", itemId: id, baseUnit: "PCS", lastPurchase: null,
       status: { kind: "not_enough_data", purchaseDays: 0 } }],
-    priceCells: {},
+    priceCells: {}, canOpenDetail: true,
   }));
   assert.match(html, /<table/);
   assert.match(html, /Tambah barang/);
   assert.match(html, /Belum ada pembelian/);
   assert.match(html, /aria-label="Aksi untuk Roti"/);
   assert.ok(html.includes(`href="/barang/${id}"`));
-  const empty = renderToStaticMarkup(createElement(ItemMovementList, { items: [], priceCells: {} }));
+  const empty = renderToStaticMarkup(createElement(ItemMovementList, { items: [], priceCells: {}, canOpenDetail: false }));
   assert.match(empty, /Tambah barang/);
   assert.match(empty, /Belum ada barang/);
 });

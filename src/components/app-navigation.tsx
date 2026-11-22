@@ -8,6 +8,7 @@ import {
   Package,
   ScanLine,
   Settings,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,24 +16,27 @@ const navigationItems = [
   { href: "/beranda", label: "Beranda", icon: LayoutDashboard },
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/transaksi", label: "Transaksi", icon: ClipboardList },
+  { href: "/pemasukan", label: "Pemasukan", icon: Wallet },
   { href: "/barang", label: "Barang", icon: Package },
   { href: "/pengaturan", label: "Pengaturan", icon: Settings },
 ];
 
 export function AppNavigation({
   businessReady = true,
+  isOwner = false,
 }: {
   businessReady?: boolean;
+  isOwner?: boolean;
 }) {
   const pathname = usePathname();
   if (!businessReady) return null;
-  const items = navigationItems;
+  const items = navigationItems.filter((item) => isOwner || item.href !== "/beranda");
 
   return (
     <>
       <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
         <Link
-          href="/beranda"
+          href={isOwner ? "/beranda" : "/scan"}
           className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6 text-xl font-bold tracking-tight"
         >
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -42,7 +46,7 @@ export function AppNavigation({
         </Link>
         <nav aria-label="Navigasi utama" className="flex flex-col gap-1 p-4">
           {items.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
+            const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}
@@ -67,9 +71,9 @@ export function AppNavigation({
         aria-label="Navigasi utama"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        <div className="mx-auto grid h-16 max-w-lg grid-cols-5">
+        <div className="mx-auto grid h-16 max-w-xl grid-flow-col auto-cols-fr">
           {items.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
+            const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}

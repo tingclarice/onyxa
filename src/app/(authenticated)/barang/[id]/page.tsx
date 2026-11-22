@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireBusinessOwner } from "@/features/business-management/server";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
@@ -19,6 +20,7 @@ export default async function ItemDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireBusinessOwner();
   const { id } = await params;
   const itemId = z.uuid().safeParse(id);
   if (!itemId.success) notFound();

@@ -23,6 +23,7 @@ export interface LastPurchaseDetails {
 
 /** Everything known about how an item has been bought. */
 export interface ItemPurchaseHistory {
+  category?: string | null;
   itemId: string;
   name: string;
   baseUnit: BaseUnit;
@@ -56,6 +57,7 @@ export type MovementStatus =
     };
 
 export interface ItemMovement {
+  category?: string | null;
   itemId: string;
   name: string;
   baseUnit: BaseUnit;

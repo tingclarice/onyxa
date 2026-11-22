@@ -78,6 +78,7 @@ function toItemMovement(
   return {
     itemId: history.itemId,
     name: history.name,
+    category: history.category,
     baseUnit: history.baseUnit,
     lastPurchase: history.lastPurchase,
     status: calculateItemMovement(history, today, gracePercent),

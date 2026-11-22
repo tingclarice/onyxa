@@ -10,6 +10,7 @@ import type { ItemPurchaseHistory } from "../types/inventory";
 const itemWithPurchases = {
   id: true,
   name: true,
+  category: true,
   baseUnit: true,
   receiptLines: {
     where: { receipt: { status: "SAVED" } },
@@ -93,6 +94,7 @@ function toPurchaseHistory(row: ItemRow): ItemPurchaseHistory {
   return {
     itemId: row.id,
     name: row.name,
+    category: row.category,
     baseUnit: row.baseUnit,
     purchases: lines.flatMap((line) =>
       line.baseQuantity === null ? [] : [{ date: line.date, quantity: line.baseQuantity }],

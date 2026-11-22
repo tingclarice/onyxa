@@ -6,7 +6,7 @@ import {
 import { CatalogItemError, type CatalogItemInput } from "../types/catalog";
 
 export async function saveCatalogItem(businessId: string, itemId: string | null, input: CatalogItemInput) {
-  const fields = { ...buildCatalogNames(input.name), baseUnit: input.baseUnit };
+  const fields = { ...input, ...buildCatalogNames(input.name) };
   await runInPostgresTransaction(async (db) => {
     const namedItem = await findCatalogItem(businessId, { nameKey: fields.nameKey }, db);
     const aliasOwner = await findAliasOwner(businessId, fields.nameKey, db);

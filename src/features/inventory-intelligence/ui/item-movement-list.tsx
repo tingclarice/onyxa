@@ -10,7 +10,8 @@ import { CatalogItemControls } from "./catalog-item-controls";
 import { MovementBadge } from "./movement-badge";
 import { describeMovement, unitLabel } from "./movement-format";
 
-export function ItemMovementList({ items, priceCells }: {
+export function ItemMovementList({ items, priceCells, canOpenDetail }: {
+  canOpenDetail: boolean;
   items: ItemMovement[];
   priceCells: Record<string, ReactNode>;
 }) {
@@ -42,10 +43,10 @@ export function ItemMovementList({ items, priceCells }: {
             {visibleItems.map((item) => (
               <tr key={item.itemId} className="relative hover:bg-muted/35 focus-within:bg-muted/35">
                 <th scope="row" className="px-4 py-4 font-semibold">
-                  <Link href={`/barang/${item.itemId}`}
+                  {canOpenDetail ? <Link href={`/barang/${item.itemId}`}
                     className="after:absolute after:inset-0 hover:underline focus-visible:underline">
                     {item.name}
-                  </Link>
+                  </Link> : item.name}
                   <div className="mt-1 text-xs font-normal text-muted-foreground">{unitLabel(item.baseUnit)}</div>
                 </th>
                 <td className="px-4 py-3 tabular-nums">

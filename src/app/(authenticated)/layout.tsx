@@ -75,7 +75,7 @@ async function AuthenticatedContent({ children }: { children: ReactNode }) {
               />
             }
           >
-            <AppNavigation />
+            <AppNavigation isOwner={workspace.active.role === "OWNER"} />
           </Suspense>
         )}
         <div

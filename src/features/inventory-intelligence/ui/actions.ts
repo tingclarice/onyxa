@@ -18,6 +18,7 @@ export async function saveCatalogItemAction(itemId: string | null, form: FormDat
   if (!id.success) return { ok: false, message: "ID barang tidak valid." } as const;
   const input = catalogItemSchema.safeParse({
     name: form.get("name"), baseUnit: form.get("baseUnit"),
+    ...(form.has("category") ? { category: String(form.get("category")).trim() || null } : {}),
   });
   if (!input.success) return { ok: false, message: input.error.issues[0].message } as const;
 

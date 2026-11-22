@@ -1,3 +1,4 @@
+import { requireActiveBusiness } from "@/features/business-management/server";
 import { getActiveBusinessItemMovements } from "@/features/inventory-intelligence/server";
 import { ItemMovementList } from "@/features/inventory-intelligence/ui/item-movement-list";
 import { getActiveBusinessItemPrices } from "@/features/procurement-pricing/server";
@@ -8,7 +9,8 @@ import { formatRupiah } from "@/lib/utils/format";
 export const instant = false;
 
 export default async function BarangPage() {
-  const [items, priceSummaries] = await Promise.all([
+  const [{ membership }, items, priceSummaries] = await Promise.all([
+    requireActiveBusiness(),
     getActiveBusinessItemMovements(),
     getActiveBusinessItemPrices(),
   ]);
@@ -39,7 +41,7 @@ export default async function BarangPage() {
         </p>
       </header>
 
-      <ItemMovementList items={items} priceCells={priceCells} />
+      <ItemMovementList items={items} priceCells={priceCells} canOpenDetail={membership.role === "OWNER"} />
     </div>
   );
 }
