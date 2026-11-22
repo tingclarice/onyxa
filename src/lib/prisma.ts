@@ -8,20 +8,27 @@ declare global {
   var onyxaPostgres: PrismaClient | undefined;
 }
 
+// The generated schema can change while Next.js keeps the old process-wide client alive.
+const postgresDelegates = Object.values(Prisma.ModelName).map(
+  (name) => name.charAt(0).toLowerCase() + name.slice(1),
+);
+
 /** Direct SQL connection for operations that require an actual database transaction. */
 export function getPostgres(): PrismaClient {
-  if (!globalThis.onyxaPostgres) {
-    const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_URL;
-    if (!connectionString || !/^postgres(?:ql)?:\/\//.test(connectionString)) {
-      throw new Error("DATABASE_URL must contain a PostgreSQL connection for receipt drafts.");
-    }
-    globalThis.onyxaPostgres = new PrismaClient({
-      adapter: new PrismaPg({ connectionString }),
-      // Approval can match many receipt lines over a remote PostgreSQL connection.
-      transactionOptions: { timeout: 120_000 },
-    });
+  const cached = globalThis.onyxaPostgres;
+  if (cached && postgresDelegates.every((name) => name in cached)) return cached;
+
+  const connectionString = process.env.DATABASE_URL || process.env.SUPABASE_URL;
+  if (!connectionString || !/^postgres(?:ql)?:\/\//.test(connectionString)) {
+    throw new Error("DATABASE_URL must contain a PostgreSQL connection.");
   }
-  return globalThis.onyxaPostgres;
+  const client = new PrismaClient({
+    adapter: new PrismaPg({ connectionString }),
+    // Approval can match many receipt lines over a remote PostgreSQL connection.
+    transactionOptions: { timeout: 120_000 },
+  });
+  globalThis.onyxaPostgres = client;
+  return client;
 }
 
 const MODEL_TO_TABLE: Record<string, string> = {

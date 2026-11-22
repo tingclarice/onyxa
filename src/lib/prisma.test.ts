@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { getPrisma } from "@/lib/prisma";
+import { getPostgres, getPrisma } from "@/lib/prisma";
 import { findTransactionForBusiness } from "@/features/invoice-processing/repository/receipt-transaction-repository";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -21,6 +21,31 @@ test("client construction is lazy and reuses the process connection pool", () =>
   process.env.SUPABASE_URL = "postgresql://test:test@127.0.0.1:1/test";
   const first = getPrisma();
   assert.equal(getPrisma(), first);
+});
+
+test("direct PostgreSQL replaces a cached client missing the settlement delegate after hot reload", async (context) => {
+  const previousUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = "postgresql://test:test@127.0.0.1:1/test";
+  context.after(async () => {
+    await globalThis.onyxaPostgres?.$disconnect();
+    globalThis.onyxaPostgres = undefined;
+    if (previousUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousUrl;
+  });
+  // A server started before IncomeSettlement existed has this older API shape.
+  const original = getPostgres();
+  const stale = new Proxy(original, {
+    has: (target, key) => key !== "incomeSettlement" && Reflect.has(target, key),
+    get(target, key, receiver) {
+      if (key === "incomeSettlement") return undefined;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  globalThis.onyxaPostgres = stale;
+  const refreshed = getPostgres();
+  assert.equal(typeof refreshed.incomeSettlement?.findMany, "function");
+  assert.equal(typeof refreshed.incomeSettlement.createMany, "function");
+  assert.equal(getPostgres(), refreshed);
 });
 
 test("transaction details hydrate both discounts and scope every request to the active business", async (context) => {
