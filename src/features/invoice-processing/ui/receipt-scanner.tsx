@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -111,17 +111,11 @@ function getErrorMessage(code: ScanReceiptErrorCode): string {
  * The interactive part of /scan: pick photos, upload and scan them one by
  * one, then open each result for review. The page title lives in app/scan/page.tsx.
  */
-export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
+export function ReceiptScanner({ drafts }: { drafts: Promise<ReceiptDraftSummary[] | null> }) {
   const [queue, setQueue] = useState<ScanQueueItem[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const queueRef = useRef(queue);
   const picker = useCloudinaryPicker({ multiple: true, receipt: true, onImage: queueUploadedPhoto });
-  const persisted: ScanQueueItem[] = drafts.map((draft) => ({
-    id: draft.id, draftId: draft.id, name: draft.name, previewUrl: draft.imageUrl, status: "done",
-  }));
-  const visibleQueue = [...queue, ...persisted.filter((draft) =>
-    !queue.some((item) => item.draftId === draft.id || item.previewUrl === draft.previewUrl)
-  )];
 
   useEffect(
     () => () => {
@@ -178,7 +172,7 @@ export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
   }
 
   function queueUploadedPhoto({ imageUrl, name }: PickedImage) {
-    if (visibleQueue.some((item) => item.previewUrl === imageUrl)) return;
+    if (queueRef.current.some((item) => item.previewUrl === imageUrl)) return;
     enqueue({ id: crypto.randomUUID(), previewUrl: imageUrl, name, status: "queued" });
   }
 
@@ -215,9 +209,7 @@ export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
     setQueue(updatedQueue);
   }
 
-  function retryItem(item: ScanQueueItem) {
-    void processFile(item);
-  }
+  const queueProps = { queue, removeItem, retryItem: processFile };
 
   return (
     <>
@@ -273,6 +265,44 @@ export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
         </div>
       </section>
 
+      <Suspense fallback={<ReceiptQueue {...queueProps} />}>
+        <ReceiptQueue {...queueProps} drafts={drafts} />
+      </Suspense>
+
+      {isCameraOpen && (
+        <LiveCameraModal
+          onClose={() => setIsCameraOpen(false)}
+          onCapture={(file) => {
+            setIsCameraOpen(false);
+            enqueue({ id: crypto.randomUUID(), cameraFile: file, name: file.name,
+              previewUrl: URL.createObjectURL(file), status: "queued" });
+          }}
+          onChooseFromGallery={() => {
+            setIsCameraOpen(false);
+            void picker.pickImages();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function ReceiptQueue({ drafts, queue, removeItem, retryItem }: {
+  drafts?: Promise<ReceiptDraftSummary[] | null>;
+  queue: ScanQueueItem[];
+  removeItem: (item: ScanQueueItem) => Promise<void>;
+  retryItem: (item: ScanQueueItem) => Promise<void>;
+}) {
+  const saved = drafts ? use(drafts) : [];
+  const persisted: ScanQueueItem[] = (saved ?? []).map((draft) => ({
+    id: draft.id, draftId: draft.id, name: draft.name, previewUrl: draft.imageUrl, status: "done",
+  }));
+  const visibleQueue = [...queue, ...persisted.filter((draft) =>
+    !queue.some((item) => item.draftId === draft.id || item.previewUrl === draft.previewUrl)
+  )];
+  return (
+    <>
+      {saved === null && <p role="status" className="mt-4 text-sm text-muted-foreground">Draf belum bisa dimuat. Muat ulang untuk mencoba lagi.</p>}
       {visibleQueue.length > 0 && (
         <ul aria-label="Foto nota" className="mt-8 space-y-3">
           {visibleQueue.map((item) => {
@@ -357,21 +387,6 @@ export function ReceiptScanner({ drafts }: { drafts: ReceiptDraftSummary[] }) {
             );
           })}
         </ul>
-      )}
-
-      {isCameraOpen && (
-        <LiveCameraModal
-          onClose={() => setIsCameraOpen(false)}
-          onCapture={(file) => {
-            setIsCameraOpen(false);
-            enqueue({ id: crypto.randomUUID(), cameraFile: file, name: file.name,
-              previewUrl: URL.createObjectURL(file), status: "queued" });
-          }}
-          onChooseFromGallery={() => {
-            setIsCameraOpen(false);
-            void picker.pickImages();
-          }}
-        />
       )}
     </>
   );

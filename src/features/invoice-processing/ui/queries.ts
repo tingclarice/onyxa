@@ -7,7 +7,10 @@ import { getScanDraft, getScanDrafts } from "../services/receipt-draft-service";
 
 export async function getMyScanDrafts() {
   const { membership } = await requireActiveBusiness();
-  const drafts = await getScanDrafts({ businessId: membership.businessId, memberId: membership.id });
+  const drafts = getScanDrafts({ businessId: membership.businessId, memberId: membership.id }).catch(() => {
+    console.error("[receipt] scan drafts could not be loaded");
+    return null;
+  });
   return { memberId: membership.id, drafts };
 }
 

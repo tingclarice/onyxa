@@ -6,6 +6,7 @@ Daftar nota di halaman scan berada di memori komponen. Formulir review membaca h
 
 ## Kriteria keberhasilan
 
+- Setelah pengguna masuk ke bisnis aktif, judul, petunjuk foto, dan tombol Ambil foto, Pilih dari galeri, serta Catat manual langsung tampil. Daftar draf dimuat terpisah dan hanya muncul bila ada nota.
 - Setelah ekstraksi kamera atau galeri berhasil divalidasi, server menyimpan hasil lengkap dan referensi foto sebelum mengembalikan status “Siap dicek”.
 - Setelah reload, pengguna menemukan kembali draf di `/scan` dan dapat membuka tautan review yang sama. Membuka atau memuat ulang kedua halaman membaca database tanpa permintaan ke Gemini.
 - Nota yang tanggal atau jumlahnya belum terbaca tetap dapat menjadi draf. Nama barang, nilai keyakinan, dan potongan per barang serta seluruh nota tersedia ketika review dibuka kembali.
