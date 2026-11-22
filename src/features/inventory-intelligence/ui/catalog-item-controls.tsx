@@ -104,7 +104,6 @@ export function CatalogItemControls({ item, onAdded }: { item?: ItemMovement; on
                       <>
                         <span>{unitLabel(item.baseUnit)}</span>
                         <input type="hidden" name="baseUnit" value={item.baseUnit} />
-                        <span className="font-normal text-muted-foreground">Satuan ini sudah dipakai di nota pembelian.</span>
                       </>
                     ) : (
                       <select name="baseUnit" defaultValue={item?.baseUnit ?? "PCS"}
