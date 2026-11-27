@@ -79,11 +79,27 @@ export function useCloudinaryPicker(options: {
   const active = useRef(false);
   const widget = useRef<Widget | null>(null);
 
-  useEffect(() => () => {
-    active.current = false;
-    widget.current?.destroy();
-    widget.current = null;
-  }, []);
+  useEffect(() => {
+    let mounted = true;
+    if (cloudName && uploadPreset) {
+      void loadUploadWidget().catch((failure: unknown) => {
+        if (mounted) {
+          setError(
+            failure instanceof Error
+              ? failure.message
+              : "Widget Cloudinary belum bisa dimuat. Periksa koneksi lalu coba lagi.",
+          );
+        }
+      });
+    }
+
+    return () => {
+      mounted = false;
+      active.current = false;
+      widget.current?.destroy();
+      widget.current = null;
+    };
+  }, [cloudName, uploadPreset]);
 
   async function pickImages() {
     if (active.current) return;
