@@ -60,7 +60,7 @@ export const ScanReceiptSchema = z.object({
     .max(1, { error: "Nilai keyakinan tidak valid." }),
 });
 
-const ReviewedReceiptItemSchema = ScanReceiptItemSchema.extend({
+export const ReviewedReceiptItemSchema = ScanReceiptItemSchema.extend({
   qty: z
     .number({ error: "Jumlah harus berupa angka." })
     .positive({ error: "Jumlah harus lebih dari 0." }),

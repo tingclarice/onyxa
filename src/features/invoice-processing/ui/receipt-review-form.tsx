@@ -11,11 +11,12 @@ import {
 } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, CircleAlert, LoaderCircle, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { ConfidenceField } from "./review/confidence-field";
 import { CurrencyInput } from "./review/currency-input";
 import { ReceiptItemRow } from "./review/receipt-item-row";
+import { ReceiptItemsTable } from "./review/receipt-items-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { ImageUploadButton } from "@/components/ui/image-upload-button";
@@ -24,13 +25,16 @@ import { saveReceiptAction } from "./actions";
 import {
   calculateReceiptTotal,
   countFieldsNeedingReview,
-  deriveUnitPrice,
-  getLineDiscountError,
+  createEmptyReceiptItem,
   getReceiptDiscountError,
   hasDiscount,
   hasTotalMismatch,
+  hasUnsavedItemDraft,
   isReceiptComplete,
   sumLineTotals,
+  syncReceiptItemTotals,
+  validateDraftReceiptItem,
+  type ReceiptItemFieldErrors,
 } from "../core/receipt-review-rules";
 import {
   ScanReceiptError,
@@ -50,30 +54,25 @@ const emptyReceipt: ScanReceipt = {
   overall_confidence: 1,
 };
 
-function createEmptyItem(): ScanReceiptItem {
-  return {
-    raw_name: "",
-    qty: 1,
-    unit: "pcs",
-    unit_price: 0,
-    line_total: 0,
-    confidence: 1,
-    matched_item: null,
-  };
-}
-
 /**
- * The /scan/review screen: loads the scanned receipt, lets the user correct
- * it, and shows live checks (totals, low-confidence fields) from core rules.
+ * The /scan/review screen: loads the scanned receipt (or starts empty in
+ * manual mode), provides one persistent Add/Edit item form, and displays
+ * added items in a table with live checks from core rules.
  */
 export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean; draft: StoredReceiptDraft | null; catalog: ReceiptCatalogItem[] }) {
   const router = useRouter();
   const didLoad = useRef(false);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [previewUrl, setPreviewUrl] = useState(draft?.imageUrl);
   const [isSaved, setIsSaved] = useState(false);
   const [receiptReady, setReceiptReady] = useState(Boolean(draft));
   const receiptLoadError = !manual && !draft;
   const [uploadPending, setUploadPending] = useState(false);
+  const [draftItem, setDraftItem] = useState<ScanReceiptItem>(createEmptyReceiptItem);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editorRevision, setEditorRevision] = useState(0);
+  const [draftErrors, setDraftErrors] = useState<ReceiptItemFieldErrors>({});
+  const [draftReminder, setDraftReminder] = useState("");
   const {
     control,
     register,
@@ -87,7 +86,7 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
     defaultValues: draft?.receipt ?? emptyReceipt,
     mode: "onSubmit",
   });
-  const { fields, append, remove } = useFieldArray({
+  const { append, update, remove } = useFieldArray({
     control,
     name: "items",
   });
@@ -100,12 +99,13 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
   const discounted = hasDiscount(receiptForChecks);
   const calculatedTotal = calculateReceiptTotal(items, receipt.discount);
   const discountError = getReceiptDiscountError(itemsTotal, receipt.discount);
-  const invalidDiscount = Boolean(discountError || items.some(getLineDiscountError));
+  const invalidDiscount = Boolean(discountError || items.some((item) => Boolean(validateDraftReceiptItem(item).discount)));
   const totalMismatch = hasTotalMismatch(receiptForChecks);
   const flaggedCount = countFieldsNeedingReview(receiptForChecks);
   const receiptComplete = isReceiptComplete(receiptForChecks);
   const hasValidationErrors = invalidDiscount || Object.keys(errors).length > 0;
   const showReceiptPreview = !manual || Boolean(previewUrl);
+  const hasDraftInput = hasUnsavedItemDraft(draftItem, editingIndex);
 
   useEffect(() => {
     if (!manual || didLoad.current) return;
@@ -120,7 +120,7 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
       reset({
         supplier_name: "",
         date: today,
-        items: [createEmptyItem()],
+        items: [],
         total: 0,
         overall_confidence: 1,
       });
@@ -129,24 +129,64 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
     }, 0);
   }, [manual, reset]);
 
-  function updateItem(index: number, item: ScanReceiptItem) {
-    const previous = items[index];
-    let nextItem = item;
-    const needsUnitPrice = previous && item.qty !== previous.qty && item.unit_price === 0 && item.line_total > 0;
-    if (previous && (item.line_total !== previous.line_total || needsUnitPrice)) {
-      nextItem = { ...item, unit_price: deriveUnitPrice(item.line_total, item.qty) };
-    } else if (previous && (item.qty !== previous.qty || item.unit_price !== previous.unit_price)) {
-      nextItem = { ...item, line_total: Math.round(item.qty * item.unit_price * 100) / 100 };
+  function resetItemEditor(
+    nextItem: ScanReceiptItem = createEmptyReceiptItem(),
+    nextEditingIndex: number | null = null,
+  ) {
+    setDraftItem(nextItem);
+    setEditingIndex(nextEditingIndex);
+    setDraftErrors({});
+    setDraftReminder("");
+    setEditorRevision((revision) => revision + 1);
+  }
+
+  function handleDraftChange(updated: ScanReceiptItem) {
+    const synced = syncReceiptItemTotals(draftItem, updated);
+    setDraftItem(synced);
+    setDraftReminder("");
+    if (Object.keys(draftErrors).length > 0) {
+      setDraftErrors(validateDraftReceiptItem(synced));
+    }
+  }
+
+  function commitDraftItem() {
+    const validationErrors = validateDraftReceiptItem(draftItem);
+    if (Object.keys(validationErrors).length > 0) {
+      setDraftErrors(validationErrors);
+      return;
     }
 
-    setValue(`items.${index}`, nextItem, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
+    if (editingIndex !== null) {
+      update(editingIndex, draftItem);
+      const nextItems = items.map((entry, index) =>
+        index === editingIndex ? draftItem : entry,
+      );
+      updatePayableTotal(nextItems, receipt.discount);
+    } else {
+      append(draftItem);
+      updatePayableTotal([...items, draftItem], receipt.discount);
+    }
 
-    const nextItems = items.map((entry, i) => i === index ? nextItem : entry);
+    resetItemEditor();
+  }
+
+  function startEditingItem(index: number) {
+    const target = items[index];
+    if (!target) return;
+    resetItemEditor(target, index);
+    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function removeItem(index: number) {
+    const nextItems = items.filter((_, i) => i !== index);
     updatePayableTotal(nextItems, receipt.discount);
+    remove(index);
+
+    if (editingIndex === index) {
+      resetItemEditor();
+    } else if (editingIndex !== null && index < editingIndex) {
+      setEditingIndex(editingIndex - 1);
+    }
   }
 
   function updatePayableTotal(nextItems: ScanReceiptItem[], discount = 0) {
@@ -172,6 +212,21 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
     setIsSaved(true);
     toast.success(`Struk tersimpan. ${result.itemCount} barang diperbarui.`);
     router.push("/scan");
+  }
+
+  async function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (hasUnsavedItemDraft(draftItem, editingIndex)) {
+      const message =
+        editingIndex !== null
+          ? "Simpan perubahan atau batalkan edit barang di form sebelum menyimpan nota."
+          : "Tambahkan barang ke tabel atau bersihkan form sebelum menyimpan nota.";
+      setDraftReminder(message);
+      toast.warning(message);
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    await handleSubmit(saveReceipt)(event);
   }
 
   if (receiptLoadError) {
@@ -205,7 +260,7 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
   return (
     <div
       className={`mx-auto w-full px-4 py-5 sm:px-6 md:py-8 ${
-        showReceiptPreview ? "max-w-7xl" : "max-w-3xl"
+        showReceiptPreview ? "max-w-7xl" : "max-w-4xl"
       }`}
     >
       <header className="mb-5 space-y-3 md:mb-7">
@@ -243,7 +298,7 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
         </p>
       </header>
 
-      <form onSubmit={handleSubmit(saveReceipt)} noValidate>
+      <form onSubmit={handleFormSubmit} noValidate>
         <div
           className={
             showReceiptPreview
@@ -274,6 +329,7 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
                   onUploaded={({ receipt, imageUrl }) => {
                     reset(receipt);
                     setPreviewUrl(imageUrl);
+                    resetItemEditor();
                   }}
                 />
               </div>
@@ -317,18 +373,97 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
             </section>
 
             <section aria-labelledby="items-title" className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 id="items-title" className="text-lg font-semibold">
-                  Barang di nota
+                  Barang di nota ({items.length})
                 </h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => append(createEmptyItem())}
-                >
-                  <Plus aria-hidden="true" />
-                  Tambah barang
-                </Button>
+              </div>
+
+              <div
+                ref={editorRef}
+                aria-label={editingIndex !== null ? `Edit barang ${editingIndex + 1}` : "Form tambah barang"}
+                className={`space-y-4 rounded-xl border bg-card p-4 transition-colors ${
+                  editingIndex !== null ? "border-primary/60 ring-2 ring-primary/15" : ""
+                }`}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.defaultPrevented &&
+                    event.target instanceof HTMLInputElement
+                  ) {
+                    event.preventDefault();
+                    commitDraftItem();
+                  }
+                }}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold">
+                      {editingIndex !== null ? `Edit barang #${editingIndex + 1}` : "Tambah barang"}
+                    </h3>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        editingIndex !== null
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {editingIndex !== null ? "Mode edit" : "Mode tambah"}
+                    </span>
+                  </div>
+                </div>
+
+                {draftReminder && (
+                  <p
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-900 dark:text-amber-200"
+                  >
+                    <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                    <span>{draftReminder}</span>
+                  </p>
+                )}
+
+                <ReceiptItemRow
+                  key={`${editingIndex ?? "add"}-${editorRevision}`}
+                  item={draftItem}
+                  catalog={catalog}
+                  onChange={handleDraftChange}
+                  errors={draftErrors}
+                />
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button type="button" onClick={commitDraftItem}>
+                    {editingIndex !== null ? (
+                      <>
+                        <Check aria-hidden="true" />
+                        Simpan perubahan
+                      </>
+                    ) : (
+                      <>
+                        <Plus aria-hidden="true" />
+                        Tambah ke daftar
+                      </>
+                    )}
+                  </Button>
+                  {editingIndex !== null ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => resetItemEditor()}
+                    >
+                      Batal edit
+                    </Button>
+                  ) : hasDraftInput ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => resetItemEditor()}
+                    >
+                      <RotateCcw aria-hidden="true" />
+                      Bersihkan
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               {errors.items?.root?.message && (
@@ -337,49 +472,14 @@ export function ReceiptReviewForm({ manual, draft, catalog }: { manual: boolean;
                 </p>
               )}
 
-              {fields.map((field, index) => {
-                const item = items[index];
-                if (!item) return null;
-
-                const itemErrors = errors.items?.[index];
-                return (
-                  <div key={field.id} className="space-y-2">
-                    <ReceiptItemRow
-                      item={item}
-                      catalog={catalog}
-                      onChange={(updatedItem) =>
-                        updateItem(index, updatedItem)
-                      }
-                      errors={{
-                        raw_name: itemErrors?.proposed_name?.message ?? itemErrors?.raw_name?.message,
-                        qty: itemErrors?.qty?.message,
-                        unit: itemErrors?.unit?.message,
-                        unit_price: itemErrors?.unit_price?.message,
-                        line_total: itemErrors?.line_total?.message,
-                        discount: getLineDiscountError(item) ?? itemErrors?.discount?.message,
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      className="w-full sm:w-auto"
-                      onClick={() => {
-                        updatePayableTotal(items.filter((_, i) => i !== index), receipt.discount);
-                        remove(index);
-                      }}
-                    >
-                      <Trash2 aria-hidden="true" />
-                      Hapus barang
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {items.length === 0 && (
-                <p className="rounded-xl border border-dashed p-5 text-center text-base text-muted-foreground">
-                  Belum ada barang di nota.
-                </p>
-              )}
+              <ReceiptItemsTable
+                items={items}
+                catalog={catalog}
+                editingIndex={editingIndex}
+                itemErrors={Array.isArray(errors.items) ? errors.items : undefined}
+                onEdit={startEditingItem}
+                onRemove={removeItem}
+              />
             </section>
 
             <section aria-label="Ringkasan nota" className="space-y-4 border-t pt-5">

@@ -4,8 +4,12 @@ import type { ScanReceipt } from "../types/scan";
 import { getReceiptImageProblem } from "./receipt-image-rules";
 import {
   countFieldsNeedingReview,
+  createEmptyReceiptItem,
   hasTotalMismatch,
+  hasUnsavedItemDraft,
   sumLineTotals,
+  syncReceiptItemTotals,
+  validateDraftReceiptItem,
 } from "./receipt-review-rules";
 
 const item = {
@@ -60,4 +64,33 @@ test("photos must be a supported type, not empty, and at most 8 MB", () => {
     getReceiptImageProblem({ type: "image/png", size: 9 * 1024 * 1024 })?.code,
     "file_too_large",
   );
+});
+
+test("syncReceiptItemTotals keeps unit price and line total aligned", () => {
+  const base = createEmptyReceiptItem();
+  const byLineTotal = syncReceiptItemTotals(base, { ...base, qty: 2, line_total: 30000 });
+  assert.equal(byLineTotal.unit_price, 15000);
+
+  const byUnitPrice = syncReceiptItemTotals(base, { ...base, qty: 3, unit_price: 4000 });
+  assert.equal(byUnitPrice.line_total, 12000);
+});
+
+test("hasUnsavedItemDraft detects active edits and partial add-form input", () => {
+  const empty = createEmptyReceiptItem();
+  assert.equal(hasUnsavedItemDraft(empty, null), false);
+  assert.equal(hasUnsavedItemDraft(empty, 0), true);
+  assert.equal(hasUnsavedItemDraft({ ...empty, raw_name: "Gula" }, null), true);
+  assert.equal(hasUnsavedItemDraft({ ...empty, line_total: 10000 }, null), true);
+});
+
+test("validateDraftReceiptItem checks required fields and line discounts", () => {
+  const empty = createEmptyReceiptItem();
+  const emptyErrors = validateDraftReceiptItem(empty);
+  assert.ok(emptyErrors.raw_name);
+
+  const badQtyErrors = validateDraftReceiptItem({ ...item, qty: 0, discount: 60000 });
+  assert.ok(badQtyErrors.qty);
+  assert.ok(badQtyErrors.discount);
+
+  assert.deepEqual(validateDraftReceiptItem(item), {});
 });

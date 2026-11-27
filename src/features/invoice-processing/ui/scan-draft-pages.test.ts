@@ -38,13 +38,65 @@ test("both scan pages render a persisted extraction on successive requests", asy
     const review = renderToStaticMarkup(await ReviewPage({
       searchParams: Promise.resolve({ receiptId: draft.draftId }), params: Promise.resolve({}),
     }));
+    assert.match(review, /<table/);
     assert.match(review, /Beras/);
+    assert.match(review, /Edit Beras/);
+    assert.match(review, /Hapus Beras/);
     assert.match(review, /role="combobox"/);
     assert.match(review, /Barang ini akan ditambahkan saat nota disimpan/);
     assert.match(review, /Setujui dan simpan/);
     assert.ok(review.includes(draft.imageUrl));
   }
   assert.equal(scan.mock.callCount(), 0);
+});
+
+test("manual mode renders and ReceiptItemsTable displays empty, populated, and editing states", async () => {
+  const { default: ReviewPage } = await import("@/app/(authenticated)/scan/review/page");
+  const { ReceiptItemsTable } = await import("./review/receipt-items-table");
+  const manualHtml = renderToStaticMarkup(await ReviewPage({
+    searchParams: Promise.resolve({ mode: "manual" }), params: Promise.resolve({}),
+  }));
+  assert.match(manualHtml, /Menyiapkan struk untuk dicek/);
+
+  const emptyTableHtml = renderToStaticMarkup(
+    ReceiptItemsTable({
+      items: [],
+      catalog: [],
+      editingIndex: null,
+      onEdit: () => {},
+      onRemove: () => {},
+    }),
+  );
+  assert.match(emptyTableHtml, /Belum ada barang di nota/);
+
+  const tableHtml = renderToStaticMarkup(
+    ReceiptItemsTable({
+      items: [
+        {
+          raw_name: "Gula Pasir",
+          qty: 2,
+          unit: "kg",
+          unit_price: 15000,
+          line_total: 30000,
+          discount: 2000,
+          confidence: 0.7,
+          matched_item: null,
+        },
+      ],
+      catalog: [],
+      editingIndex: 0,
+      onEdit: () => {},
+      onRemove: () => {},
+    }),
+  );
+  for (const heading of ["Barang", "Jumlah", "Harga satuan", "Jumlah harga", "Potongan", "Subtotal", "Aksi"]) {
+    assert.ok(tableHtml.includes(heading), heading);
+  }
+  assert.match(tableHtml, /Gula Pasir/);
+  assert.match(tableHtml, /Sedang diedit/);
+  assert.match(tableHtml, /Perlu dicek/);
+  assert.match(tableHtml, /Edit Gula Pasir/);
+  assert.match(tableHtml, /Hapus Gula Pasir/);
 });
 
 test("the upload panel stays visible while drafts load and when they are empty or unavailable", async (context) => {

@@ -2,9 +2,13 @@
 
 import { useId } from "react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { CatalogItemPicker } from "./catalog-item-picker";
 import { CurrencyInput } from "./currency-input";
-import { calculateNetLineTotal } from "../../core/receipt-review-rules";
+import {
+  calculateNetLineTotal,
+  type ReceiptItemFieldErrors,
+} from "../../core/receipt-review-rules";
 import { formatRupiah } from "@/lib/utils/format";
 import type { ReceiptCatalogItem, ScanReceiptItem } from "../../types/scan";
 
@@ -12,14 +16,8 @@ type ReceiptItemRowProps = {
   item: ScanReceiptItem;
   catalog: ReceiptCatalogItem[];
   onChange: (item: ScanReceiptItem) => void;
-  errors?: {
-    raw_name?: string;
-    qty?: string;
-    unit?: string;
-    unit_price?: string;
-    line_total?: string;
-    discount?: string;
-  };
+  errors?: ReceiptItemFieldErrors;
+  className?: string;
 };
 
 function ReceiptItemRow({
@@ -27,15 +25,19 @@ function ReceiptItemRow({
   catalog,
   onChange,
   errors,
+  className,
 }: ReceiptItemRowProps) {
   const rowId = useId();
 
   return (
-    <section
-      aria-label={`Barang: ${item.raw_name}`}
-      className="min-w-0 space-y-4 rounded-xl border bg-card p-4"
-    >
-      <CatalogItemPicker id={`${rowId}-name`} item={item} catalog={catalog} error={errors?.raw_name} onChange={onChange} />
+    <div className={cn("min-w-0 space-y-4", className)}>
+      <CatalogItemPicker
+        id={`${rowId}-name`}
+        item={item}
+        catalog={catalog}
+        error={errors?.raw_name}
+        onChange={onChange}
+      />
 
       <div className="grid min-w-0 grid-cols-2 gap-3">
         <div className="min-w-0 space-y-2">
@@ -52,13 +54,14 @@ function ReceiptItemRow({
             min="0"
             step="any"
             aria-invalid={Boolean(errors?.qty) || undefined}
-            value={item.qty}
-            onChange={(event) =>
+            value={Number.isFinite(item.qty) ? item.qty : ""}
+            onChange={(event) => {
+              const raw = event.currentTarget.value;
               onChange({
                 ...item,
-                qty: Number(event.currentTarget.value),
-              })
-            }
+                qty: raw === "" ? 0 : Number(raw),
+              });
+            }}
           />
           {errors?.qty && (
             <p className="text-sm font-medium text-destructive">{errors.qty}</p>
@@ -85,7 +88,7 @@ function ReceiptItemRow({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
         <CurrencyInput
           id={`${rowId}-unit-price`}
           label="Harga satuan"
@@ -100,18 +103,23 @@ function ReceiptItemRow({
           error={errors?.line_total}
           onValueChange={(line_total) => onChange({ ...item, line_total })}
         />
+      </div>
+
+      <div className="grid min-w-0 items-end gap-3 sm:grid-cols-2">
         <CurrencyInput
           label="Potongan barang"
           value={item.discount ?? 0}
           error={errors?.discount}
           onValueChange={(discount) => onChange({ ...item, discount })}
         />
-        <div className="flex justify-between gap-3 text-sm font-medium">
-          <span>Jumlah setelah potongan</span>
-          <span className="tabular-nums">{errors?.discount ? "—" : formatRupiah(calculateNetLineTotal(item))}</span>
+        <div className="flex min-h-10 items-center justify-between gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm font-medium">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span className="tabular-nums">
+            {errors?.discount ? "—" : formatRupiah(calculateNetLineTotal(item))}
+          </span>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 

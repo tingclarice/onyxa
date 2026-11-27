@@ -1,4 +1,4 @@
-import type { ScanReceipt, ScanReceiptItem } from "../types/scan";
+import { ReviewedReceiptItemSchema, type ScanReceipt, type ScanReceiptItem } from "../types/scan";
 
 // Rules for the receipt review screen. These run in the browser on every
 // keystroke (approved exception: client UI may call core for instant
@@ -121,4 +121,94 @@ export function countFieldsNeedingReview(receipt: ScanReceipt): number {
   }
   if (hasTotalMismatch(receipt)) count += 1;
   return count;
+}
+
+export type ReceiptItemFieldErrors = {
+  raw_name?: string;
+  qty?: string;
+  unit?: string;
+  unit_price?: string;
+  line_total?: string;
+  discount?: string;
+};
+
+export function createEmptyReceiptItem(): ScanReceiptItem {
+  return {
+    raw_name: "",
+    qty: 1,
+    unit: "pcs",
+    unit_price: 0,
+    line_total: 0,
+    confidence: 1,
+    matched_item: null,
+  };
+}
+
+/** Keeps unit_price and line_total consistent when a user edits an item field. */
+export function syncReceiptItemTotals(
+  previous: ScanReceiptItem,
+  next: ScanReceiptItem,
+): ScanReceiptItem {
+  const needsUnitPrice =
+    next.qty !== previous.qty && next.unit_price === 0 && next.line_total > 0;
+  if (next.line_total !== previous.line_total || needsUnitPrice) {
+    return { ...next, unit_price: deriveUnitPrice(next.line_total, next.qty) };
+  }
+  if (next.qty !== previous.qty || next.unit_price !== previous.unit_price) {
+    return {
+      ...next,
+      line_total: Math.round(next.qty * next.unit_price * 100) / 100,
+    };
+  }
+  return next;
+}
+
+/** True when the persistent item editor holds un-submitted input or an active edit. */
+export function hasUnsavedItemDraft(
+  draftItem: ScanReceiptItem,
+  editingIndex: number | null,
+): boolean {
+  if (editingIndex !== null) return true;
+  return (
+    Boolean(draftItem.raw_name.trim()) ||
+    Boolean(draftItem.proposed_name?.trim()) ||
+    Boolean(draftItem.catalog_item_id) ||
+    draftItem.qty !== 1 ||
+    draftItem.unit.trim().toLowerCase() !== "pcs" ||
+    draftItem.unit_price > 0 ||
+    draftItem.line_total > 0 ||
+    (draftItem.discount ?? 0) > 0
+  );
+}
+
+/** Validates one draft item for the persistent Add/Edit form. */
+export function validateDraftReceiptItem(
+  item: ScanReceiptItem,
+): ReceiptItemFieldErrors {
+  const parsed = ReviewedReceiptItemSchema.safeParse(item);
+  const errors: ReceiptItemFieldErrors = {};
+
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if (field === "proposed_name" || field === "raw_name") {
+        errors.raw_name ??= issue.message;
+      } else if (
+        field === "qty" ||
+        field === "unit" ||
+        field === "unit_price" ||
+        field === "line_total" ||
+        field === "discount"
+      ) {
+        errors[field] ??= issue.message;
+      }
+    }
+  }
+
+  const lineDiscountError = getLineDiscountError(item);
+  if (lineDiscountError) {
+    errors.discount ??= lineDiscountError;
+  }
+
+  return errors;
 }
