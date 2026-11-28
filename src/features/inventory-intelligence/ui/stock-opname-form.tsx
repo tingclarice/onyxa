@@ -31,16 +31,15 @@ export function StockOpnameForm({
     setError(null);
     setSuccess(null);
 
-    const trimmed = countedQty.trim();
+    const submitted = new FormData(event.currentTarget);
+    const trimmed = String(submitted.get("countedQty") ?? countedQty).trim();
+    const submittedDate = String(submitted.get("recordedAt") ?? recordedAt).trim();
+
     if (trimmed === "") {
       setError("Masukkan jumlah stok fisik (isi 0 jika rak kosong).");
       return;
     }
-    if (!recordedAt.trim()) {
-      setError("Pilih tanggal hitung terlebih dahulu.");
-      return;
-    }
-    if (!recordedAt.trim()) {
+    if (!submittedDate) {
       setError("Pilih tanggal hitung terlebih dahulu.");
       return;
     }
@@ -48,7 +47,7 @@ export function StockOpnameForm({
     const formData = new FormData();
     formData.set("itemId", itemId);
     formData.set("countedQty", trimmed);
-    formData.set("recordedAt", recordedAt);
+    formData.set("recordedAt", submittedDate);
 
     startTransition(async () => {
       const result = await recordStockOpnameAction(formData);
@@ -91,6 +90,7 @@ export function StockOpnameForm({
           </label>
           <Input
             id={`${formId}-qty`}
+            name="countedQty"
             type="number"
             inputMode="decimal"
             min="0"
@@ -112,6 +112,7 @@ export function StockOpnameForm({
           </label>
           <Input
             id={`${formId}-date`}
+            name="recordedAt"
             type="date"
             required
             value={recordedAt}

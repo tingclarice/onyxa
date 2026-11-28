@@ -148,7 +148,7 @@ function ReceiptItemRow({
           aria-invalid={Boolean(errors?.current_stock_before) || undefined}
           value={
             item.current_stock_before === null ||
-            item.current_stock_before === undefined
+              item.current_stock_before === undefined
               ? ""
               : item.current_stock_before
           }
