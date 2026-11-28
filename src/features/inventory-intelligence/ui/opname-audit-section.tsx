@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 import type { ItemMovementDetail } from "../types/inventory";
 import { formatDays, formatPerDay, formatQuantity } from "./movement-format";
@@ -19,10 +20,10 @@ export function OpnameAuditSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            Speedflow &amp; Stock Opname
+            Kecepatan Jual &amp; Stock Opname
           </h2>
           <p className="text-sm text-muted-foreground">
-            Kecepatan keluar aktual berdasarkan anchor stock opname atau estimasi rolling restock.
+            Kecepatan keluar aktual berdasarkan catatan stock opname atau perkiraan dari riwayat restock.
           </p>
         </div>
         <SpeedflowBadge speedflow={item.speedflow} baseUnit={item.baseUnit} />
@@ -41,7 +42,7 @@ export function OpnameAuditSection({
               Rekonsiliasi Opname (Audit Periode)
             </h3>
             <p className="text-sm text-muted-foreground">
-              Perhitungan unit keluar dan HPP aktual di antara dua titik stock opname.
+              Perhitungan unit keluar dan HPP aktual (keluar aktual × harga beli rata-rata dari nota tersimpan) di antara dua titik stock opname.
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -49,12 +50,60 @@ export function OpnameAuditSection({
               <thead className="border-b bg-muted/40 text-xs text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Periode</th>
-                  <th className="px-4 py-2.5 font-medium">Stok awal</th>
-                  <th className="px-4 py-2.5 font-medium">Restock</th>
-                  <th className="px-4 py-2.5 font-medium">Stok akhir</th>
-                  <th className="px-4 py-2.5 font-medium">Keluar aktual</th>
-                  <th className="px-4 py-2.5 font-medium">Kecepatan</th>
-                  <th className="px-4 py-2.5 font-medium">HPP aktual</th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Stok awal
+                      <InfoTooltip
+                        label="Stok awal"
+                        text="Stok fisik di awal periode. Jika titik awal dicatat saat restock, nilainya adalah sisa stok ditambah jumlah restock tersebut."
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Restock
+                      <InfoTooltip
+                        label="Restock"
+                        text="Total barang masuk dari nota pembelian yang tersimpan di dalam rentang tanggal periode ini."
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Stok akhir
+                      <InfoTooltip
+                        label="Stok akhir"
+                        text="Hasil hitung fisik di akhir periode (sebelum restock baru ditambahkan jika dicatat saat restock)."
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Keluar aktual
+                      <InfoTooltip
+                        label="Keluar aktual"
+                        text="Dihitung dari: Stok awal + Restock − Stok akhir. Jika hasilnya minus, nilainya dijepit ke 0 dan ditandai Selisih hitung."
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      Kecepatan
+                      <InfoTooltip
+                        label="Kecepatan"
+                        text="Rata-rata barang keluar per hari pada periode ini (Keluar aktual dibagi jumlah hari periode)."
+                      />
+                    </span>
+                  </th>
+                  <th className="px-4 py-2.5 font-medium">
+                    <span className="inline-flex items-center gap-1">
+                      HPP aktual
+                      <InfoTooltip
+                        label="HPP aktual"
+                        text="Keluar aktual dikali harga beli rata-rata tertimbang dari nota pembelian pada periode ini (atau riwayat nota sebelumnya jika belum ada restock di periode ini)."
+                      />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -88,7 +137,11 @@ export function OpnameAuditSection({
                       {audit.hasCountDiscrepancy && (
                         <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                           <AlertTriangle aria-hidden="true" className="size-3" />
-                          COUNT_DISCREPANCY
+                          Selisih hitung
+                          <InfoTooltip
+                            label="Selisih hitung"
+                            text="Stok akhir tercatat lebih besar daripada Stok awal + Restock. Biasanya karena ada nota pembelian yang belum dicatat atau salah hitung fisik."
+                          />
                         </span>
                       )}
                     </td>
@@ -137,7 +190,7 @@ export function OpnameAuditSection({
                   {snapshot.source === "INLINE_RESTOCK" && (
                     <>
                       {" "}
-                      → Baseline baru:{" "}
+                      → Stok setelah restock:{" "}
                       <span className="font-medium text-foreground">
                         {formatQuantity(snapshot.postEventStock, item.baseUnit)}
                       </span>

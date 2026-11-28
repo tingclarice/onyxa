@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { Input } from "@/components/ui/input";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { cn } from "@/lib/utils";
 import { CatalogItemPicker } from "./catalog-item-picker";
 import { CurrencyInput } from "./currency-input";
@@ -129,9 +130,13 @@ function ReceiptItemRow({
       <div className="min-w-0 space-y-1.5">
         <label
           htmlFor={`${rowId}-stock-before`}
-          className="block text-sm font-medium text-muted-foreground"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
         >
-          Sisa stok sebelum restock (opsional, {stockUnitHint})
+          <span>Sisa stok sebelum restock (opsional, {stockUnitHint})</span>
+          <InfoTooltip
+            label="Sisa stok sebelum restock"
+            text="Opsional. Isi jumlah stok fisik di rak tepat sebelum barang baru ini ditambahkan (isi 0 jika rak kosong). Kosongkan jika tidak sempat menghitung."
+          />
         </label>
         <Input
           id={`${rowId}-stock-before`}

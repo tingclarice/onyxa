@@ -5,15 +5,15 @@ import { findTransactionForBusiness } from "@/features/invoice-processing/reposi
 import { Prisma } from "@/generated/prisma/client";
 
 afterEach(async () => {
-  await globalThis.onyxaPrismaV4?.$disconnect?.();
-  globalThis.onyxaPrismaV4 = undefined;
+  await globalThis.onyxaPrismaV3?.$disconnect?.();
+  globalThis.onyxaPrismaV3 = undefined;
   delete process.env.SUPABASE_URL;
 });
 
 test("database configuration is checked only when the client is requested", () => {
   delete process.env.SUPABASE_URL;
   assert.throws(getPrisma, /Set SUPABASE_URL/);
-  assert.equal(globalThis.onyxaPrismaV4, undefined);
+  assert.equal(globalThis.onyxaPrismaV3, undefined);
 });
 
 test("client construction is lazy and reuses the process connection pool", () => {

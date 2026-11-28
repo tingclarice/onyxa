@@ -36,6 +36,14 @@ export function StockOpnameForm({
       setError("Masukkan jumlah stok fisik (isi 0 jika rak kosong).");
       return;
     }
+    if (!recordedAt.trim()) {
+      setError("Pilih tanggal hitung terlebih dahulu.");
+      return;
+    }
+    if (!recordedAt.trim()) {
+      setError("Pilih tanggal hitung terlebih dahulu.");
+      return;
+    }
 
     const formData = new FormData();
     formData.set("itemId", itemId);
@@ -60,6 +68,7 @@ export function StockOpnameForm({
   return (
     <form
       onSubmit={handleSubmit}
+      noValidate
       className="rounded-xl border bg-card p-4 shadow-xs sm:p-5"
     >
       <div className="mb-4 flex items-center gap-2">

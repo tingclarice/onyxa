@@ -78,6 +78,14 @@ export function selectIntervalRestocks(
       return false;
     }
     const ts = Date.parse(restock.recordedAt);
+    if (fromMs === toMs) {
+      if (ts !== fromMs) return false;
+      const createdMs = Date.parse(restock.createdAt);
+      return (
+        createdMs > Date.parse(fromSnapshot.createdAt) &&
+        createdMs <= Date.parse(toSnapshot.createdAt)
+      );
+    }
     return ts > fromMs && ts <= toMs;
   });
 }
