@@ -9,7 +9,9 @@ import type {
   ScanReceiptActionResult,
 } from "../types/scan";
 import { ReceiptDiscountError, ReceiptDraftError, ScanReceiptError } from "../types/scan";
+import { TransactionError, type PayTransactionResult } from "../types/transactions";
 import { confirmReceipt, deleteScanDraft, extractAndStoreDraft } from "../services/receipt-draft-service";
+import { payBusinessTransaction } from "../services/transaction-service";
 
 export async function scanReceiptAction(
   imageUrl?: unknown,
@@ -125,4 +127,33 @@ export async function discardDraftAction(id: string) {
   }
   revalidatePath("/scan");
   return { ok: true } as const;
+}
+
+export async function payTransactionAction(
+  receiptId: unknown,
+): Promise<PayTransactionResult> {
+  await requireUser();
+  const { membership } = await requireActiveBusiness();
+
+  let id: string;
+  try {
+    id = z.uuid().parse(receiptId);
+    await payBusinessTransaction(membership.businessId, id);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { ok: false, message: "ID nota tidak valid." };
+    }
+    if (error instanceof TransactionError) {
+      return { ok: false, message: error.message };
+    }
+    console.error("[receipt] pay failed");
+    return {
+      ok: false,
+      message: "Status pembayaran belum bisa diperbarui. Coba lagi.",
+    };
+  }
+
+  revalidatePath("/transaksi");
+  revalidatePath(`/transaksi/${id}`);
+  return { ok: true };
 }

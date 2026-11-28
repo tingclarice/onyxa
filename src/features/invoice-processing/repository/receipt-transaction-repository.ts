@@ -18,7 +18,7 @@ export async function listReceiptsForBusiness(
       orderBy: [{ receiptDate: "desc" }, { id: "desc" }],
       skip,
       take: BATCH_SIZE,
-      select: { id: true, receiptDate: true, supplierName: true, status: true, total: true },
+      select: { id: true, receiptDate: true, supplierName: true, status: true, paidAt: true, total: true },
     });
 
     for (const row of rows) {
@@ -27,6 +27,7 @@ export async function listReceiptsForBusiness(
         date: row.receiptDate.toISOString().slice(0, 10),
         supplierName: row.supplierName,
         status: row.status === "SAVED" ? "saved" : "needs-check",
+        isPaid: row.paidAt !== null,
         total: row.total.toNumber(),
       });
     }
@@ -81,4 +82,24 @@ export async function findTransactionForBusiness(
     imageUrl: row.imageUrl,
     lines,
   };
+}
+
+export async function markReceiptPaidForBusiness(
+  businessId: string,
+  id: string,
+  paidAt: Date,
+  db: DatabaseClient = getPrisma(),
+): Promise<"paid" | "already-paid" | "not-found"> {
+  const existing = await db.receipt.findUnique({
+    where: { businessId_id: { businessId, id } },
+    select: { paidAt: true },
+  });
+  if (!existing) return "not-found";
+  if (existing.paidAt !== null) return "already-paid";
+
+  await db.receipt.update({
+    where: { businessId_id: { businessId, id } },
+    data: { paidAt },
+  });
+  return "paid";
 }

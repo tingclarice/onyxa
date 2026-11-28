@@ -3,18 +3,24 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, FileText, Search } from "lucide-react";
+import { CalendarDays, Check, Clock, FileText, Search } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { payTransactionAction } from "./actions";
 import type { ReceiptTransaction, TransactionStatus } from "../types/transactions";
 import { formatDate, formatRupiah } from "@/lib/utils/format";
 
+type StatusFilter = "all" | TransactionStatus | "unpaid" | "paid";
+
 const statusOptions: {
-  value: "all" | TransactionStatus;
+  value: StatusFilter;
   label: string;
 }[] = [
     { value: "all", label: "Semua status" },
+    { value: "unpaid", label: "Belum dibayar" },
+    { value: "paid", label: "Sudah dibayar" },
     { value: "needs-check", label: "Perlu dicek" },
   ];
 const noTransactions: ReceiptTransaction[] = [];
@@ -24,10 +30,16 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
   const [supplierFilter, setSupplierFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | TransactionStatus
-  >("all");
-  const transactions = receipts ?? noTransactions;
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [optimisticPaidIds, setOptimisticPaidIds] = useState<Record<string, true>>({});
+  const [actionError, setActionError] = useState<string | null>(null);
+  const transactions = useMemo(
+    () => (receipts ?? noTransactions).map((item) => (
+      optimisticPaidIds[item.id] ? { ...item, isPaid: true } : item
+    )),
+    [optimisticPaidIds, receipts],
+  );
   const filteredTransactions = useMemo(() => {
     const normalizedSupplier = supplierFilter.trim().toLocaleLowerCase("id-ID");
 
@@ -40,10 +52,31 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
       const matchesStart = !startDate || transaction.date >= startDate;
       const matchesEnd = !endDate || transaction.date <= endDate;
       const matchesStatus =
-        statusFilter === "all" || transaction.status === statusFilter;
+        statusFilter === "all" ||
+        (statusFilter === "unpaid" && !transaction.isPaid) ||
+        (statusFilter === "paid" && transaction.isPaid) ||
+        (statusFilter === "needs-check" && transaction.status === "needs-check");
       return matchesSupplier && matchesStart && matchesEnd && matchesStatus;
     });
   }, [endDate, startDate, statusFilter, supplierFilter, transactions]);
+
+  async function handlePay(id: string) {
+    setActionError(null);
+    setPendingId(id);
+    try {
+      const result = await payTransactionAction(id);
+      if (!result.ok) {
+        setActionError(result.message);
+        return;
+      }
+      setOptimisticPaidIds((prev) => ({ ...prev, [id]: true }));
+      router.refresh();
+    } catch {
+      setActionError("Status pembayaran belum bisa diperbarui. Coba lagi.");
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   function resetFilters() {
     setSupplierFilter("");
@@ -198,6 +231,11 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
         </section>
       ) : (
         <section aria-label="Daftar transaksi" className="space-y-3">
+          {actionError ? (
+            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {actionError}
+            </p>
+          ) : null}
           <p aria-live="polite" className="text-sm text-muted-foreground">
             {filteredTransactions.length} nota
           </p>
@@ -208,7 +246,9 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
                 <tr>
                   <th scope="col" className="px-3 py-3 font-medium sm:px-5">Tanggal</th>
                   <th scope="col" className="px-3 py-3 font-medium sm:px-5">Pemasok</th>
+                  <th scope="col" className="px-3 py-3 font-medium sm:px-5">Status</th>
                   <th scope="col" className="px-3 py-3 text-right font-medium sm:px-5">Total bayar</th>
+                  <th scope="col" className="px-3 py-3 text-right font-medium sm:px-5">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -223,8 +263,37 @@ export function ReceiptTransactions({ receipts }: { receipts: ReceiptTransaction
                       </Link>
                       {transaction.status === "needs-check" && <div className="mt-1"><StatusBadge status="needs-check" /></div>}
                     </td>
+                    <td className="whitespace-nowrap px-3 py-4 sm:px-5">
+                      {transaction.isPaid ? (
+                        <Badge variant="success">
+                          <Check aria-hidden="true" />
+                          Sudah dibayar
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning">
+                          <Clock aria-hidden="true" />
+                          Belum dibayar
+                        </Badge>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-4 text-right font-semibold tabular-nums sm:px-5">
                       {formatRupiah(transaction.total)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-right sm:px-5">
+                      {transaction.isPaid ? (
+                        <span className="text-xs text-muted-foreground">Lunas</span>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="relative z-10"
+                          disabled={pendingId === transaction.id}
+                          onClick={() => void handlePay(transaction.id)}
+                        >
+                          {pendingId === transaction.id ? "Menyimpan..." : "PAY"}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -45,6 +45,21 @@ mock.module(
     },
   },
 );
+mock.module(
+  pathToFileURL(
+    resolve("src/features/inventory-intelligence/repository/stock-snapshot-repository.ts"),
+  ).href,
+  {
+    namedExports: {
+      async listStockSnapshotsForBusiness() {
+        return [];
+      },
+      async listStockSnapshotsForItem() {
+        return [];
+      },
+    },
+  },
+);
 const service = import("./movement-service");
 // 12:00 WIB on 30 Oct.
 const now = new Date("2026-10-30T05:00:00Z");

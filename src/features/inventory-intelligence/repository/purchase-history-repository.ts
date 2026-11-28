@@ -15,11 +15,14 @@ const itemWithPurchases = {
   receiptLines: {
     where: { receipt: { status: "SAVED" } },
     select: {
+      id: true,
       quantity: true,
       unit: true,
       unitPrice: true,
+      lineTotal: true,
       baseQuantity: true,
       baseUnit: true,
+      createdAt: true,
       receipt: { select: { receiptDate: true, supplierName: true, status: true } },
     },
   },
@@ -76,11 +79,15 @@ function toPurchaseHistory(row: ItemRow): ItemPurchaseHistory {
           ? line.baseUnit?.toLowerCase() ?? "Tidak diketahui"
           : rawUnit;
       return {
+        receiptLineId: line.id,
         date: line.receipt.receiptDate.toISOString().slice(0, 10),
+        recordedAt: line.receipt.receiptDate.toISOString(),
+        createdAt: line.createdAt.toISOString(),
         supplierName: line.receipt.supplierName,
         quantity: line.quantity.toNumber(),
         unit,
         unitPrice: line.unitPrice.toNumber(),
+        lineTotal: line.lineTotal.toNumber(),
         // Only lines stored in the item's own unit can be compared.
         baseQuantity:
           line.baseUnit === row.baseUnit
@@ -98,6 +105,20 @@ function toPurchaseHistory(row: ItemRow): ItemPurchaseHistory {
     baseUnit: row.baseUnit,
     purchases: lines.flatMap((line) =>
       line.baseQuantity === null ? [] : [{ date: line.date, quantity: line.baseQuantity }],
+    ),
+    restocks: lines.flatMap((line) =>
+      line.baseQuantity === null
+        ? []
+        : [
+            {
+              receiptLineId: line.receiptLineId,
+              date: line.date,
+              recordedAt: line.recordedAt,
+              quantity: line.baseQuantity,
+              lineTotal: line.lineTotal,
+              createdAt: line.createdAt,
+            },
+          ],
     ),
     lastPurchase: last
       ? {

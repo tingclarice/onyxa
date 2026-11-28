@@ -104,6 +104,7 @@ function line(
   qty: number,
   unit: string,
   matched: string | null = null,
+  currentStockBefore?: number | null,
 ) {
   return {
     raw_name: rawName,
@@ -113,6 +114,9 @@ function line(
     line_total: 1000 * qty,
     confidence: 0.95,
     matched_item: matched,
+    ...(currentStockBefore !== undefined
+      ? { current_stock_before: currentStockBefore }
+      : {}),
   };
 }
 
@@ -253,4 +257,41 @@ test("failed writes roll back all changes in the business transaction", async ()
   assert.deepEqual(items, []);
   assert.deepEqual(suppliers, []);
   assert.deepEqual(savedReceipts, []);
+});
+
+test("distinguishes null vs 0 for inline current_stock_before when saving a receipt", async () => {
+  await saveReviewedReceipt(
+    saver,
+    receiptWith([
+      line("Gula Pasir", 10, "kg", null, null),
+      line("Tepung Terigu", 5, "kg", null, 0),
+    ]),
+    dependencies,
+  );
+
+  assert.equal(savedReceipts.length, 1);
+  assert.equal(savedReceipts[0].lines[0].currentStockBefore, null);
+  assert.equal(savedReceipts[0].lines[1].currentStockBefore, 0);
+});
+
+test("rejects inline current_stock_before when line unit cannot convert to item baseUnit", async () => {
+  items.push({
+    id: "item-kg",
+    name: "Minyak Goreng",
+    nameKey: "minyak goreng",
+    baseUnit: "LITER",
+  });
+
+  await assert.rejects(
+    () =>
+      saveReviewedReceipt(
+        saver,
+        receiptWith([
+          line("Minyak Goreng", 2, "kg", null, 3),
+        ]),
+        dependencies,
+      ),
+    /tidak sesuai dengan satuan dasar liter/i,
+  );
+  assert.equal(savedReceipts.length, 0);
 });

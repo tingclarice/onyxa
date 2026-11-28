@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE "Receipt"
+  ADD COLUMN "paidAt" TIMESTAMPTZ(3);
+
+COMMIT;

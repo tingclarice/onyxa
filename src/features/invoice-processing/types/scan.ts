@@ -38,6 +38,11 @@ export const ScanReceiptItemSchema = z.object({
   matched_item: z.string().nullable(),
   catalog_item_id: z.uuid().optional(),
   proposed_name: z.string().trim().min(1, "Isi nama barang katalog.").optional(),
+  current_stock_before: z
+    .number({ error: "Sisa stok harus berupa angka." })
+    .nonnegative({ error: "Sisa stok tidak boleh kurang dari 0." })
+    .nullable()
+    .optional(),
 });
 
 export const ScanReceiptSchema = z.object({
@@ -191,6 +196,8 @@ export interface ReceiptLineToSave {
   /** null when the unit cannot be converted to the item's base unit. */
   baseQuantity: number | null;
   baseUnit: BaseUnit | null;
+  /** Physical shelf count observed immediately before adding this restock (in baseUnit). null = skipped. */
+  currentStockBefore?: number | null;
 }
 
 export interface ReceiptCatalogItem extends CatalogItem {

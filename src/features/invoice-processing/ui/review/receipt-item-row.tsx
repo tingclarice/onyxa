@@ -28,6 +28,12 @@ function ReceiptItemRow({
   className,
 }: ReceiptItemRowProps) {
   const rowId = useId();
+  const matchedCatalogItem = item.catalog_item_id
+    ? catalog.find((entry) => entry.id === item.catalog_item_id)
+    : undefined;
+  const stockUnitHint = matchedCatalogItem
+    ? matchedCatalogItem.baseUnit.toLowerCase()
+    : item.unit.trim() || "pcs";
 
   return (
     <div className={cn("min-w-0 space-y-4", className)}>
@@ -118,6 +124,46 @@ function ReceiptItemRow({
             {errors?.discount ? "—" : formatRupiah(calculateNetLineTotal(item))}
           </span>
         </div>
+      </div>
+
+      <div className="min-w-0 space-y-1.5">
+        <label
+          htmlFor={`${rowId}-stock-before`}
+          className="block text-sm font-medium text-muted-foreground"
+        >
+          Sisa stok sebelum restock (opsional, {stockUnitHint})
+        </label>
+        <Input
+          id={`${rowId}-stock-before`}
+          type="number"
+          inputMode="decimal"
+          min="0"
+          step="any"
+          placeholder="Kosongkan jika tidak dihitung · isi 0 jika rak kosong"
+          aria-invalid={Boolean(errors?.current_stock_before) || undefined}
+          value={
+            item.current_stock_before === null ||
+            item.current_stock_before === undefined
+              ? ""
+              : item.current_stock_before
+          }
+          onChange={(event) => {
+            const raw = event.currentTarget.value.trim();
+            if (raw === "") {
+              onChange({ ...item, current_stock_before: null });
+              return;
+            }
+            const parsed = Number(raw);
+            if (Number.isFinite(parsed) && parsed >= 0) {
+              onChange({ ...item, current_stock_before: parsed });
+            }
+          }}
+        />
+        {errors?.current_stock_before && (
+          <p className="text-sm font-medium text-destructive">
+            {errors.current_stock_before}
+          </p>
+        )}
       </div>
     </div>
   );

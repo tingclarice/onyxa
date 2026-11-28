@@ -1,10 +1,17 @@
 export type TransactionStatus = "needs-check" | "saved";
 
+export class TransactionError extends Error {}
+
+export type PayTransactionResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
 export interface ReceiptTransaction {
   id: string;
   supplierName: string;
   date: string;
   status: TransactionStatus;
+  isPaid: boolean;
   total: number;
 }
 

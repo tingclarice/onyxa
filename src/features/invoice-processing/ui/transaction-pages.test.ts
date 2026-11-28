@@ -10,6 +10,9 @@ const receipt: TransactionDetail = {
   lines: [{ position: 1, name: "Roti", printedName: "RT TWR", quantity: 3, unit: "pcs", unitPrice: 11000, discount: 3000, lineTotal: 30000 }],
   imageUrl: null,
 };
+mock.module(new URL("./actions.ts", import.meta.url).href, {
+  namedExports: { payTransactionAction: mock.fn(async () => ({ ok: true })) },
+});
 mock.module("next/navigation", { namedExports: {
   useRouter: () => ({}),
   notFound: () => { throw new Error("404"); },
@@ -18,15 +21,24 @@ mock.module("@/features/invoice-processing/server", {
   namedExports: { getActiveBusinessTransaction: async (requested: string) => requested === id ? receipt : null },
 });
 
-test("transaction rows link to the detail page and omit the saved label", async () => {
+test("transaction rows link to the detail page, show payment status, and render PAY action when unpaid", async () => {
   const { ReceiptTransactions } = await import("./receipt-transactions");
+  const paidId = "22222222-2222-4222-8222-222222222222";
   const html = renderToStaticMarkup(createElement(ReceiptTransactions, {
-    receipts: [{ ...receipt, id, status: "saved" }],
+    receipts: [
+      { ...receipt, id, status: "saved", isPaid: false },
+      { ...receipt, id: paidId, status: "saved", isPaid: true },
+    ],
   }));
   assert.match(html, /<table/);
   assert.ok(html.includes(`href="/transaksi/${id}"`));
   assert.match(html, /Rp27\.000/);
   assert.doesNotMatch(html, /Tersimpan/);
+  assert.match(html, /Status/);
+  assert.match(html, /Belum dibayar/);
+  assert.match(html, /Sudah dibayar/);
+  assert.match(html, />PAY</);
+  assert.match(html, /Lunas/);
 });
 
 test("detail shows purchased items, discounts, final total and the available receipt image", async () => {

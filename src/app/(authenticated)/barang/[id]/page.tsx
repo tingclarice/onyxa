@@ -7,6 +7,7 @@ import { formatDate, formatRupiah } from "@/lib/utils/format";
 import { getActiveBusinessItemDetail } from "@/features/inventory-intelligence/server";
 import { DeleteItemButton } from "@/features/inventory-intelligence/ui/delete-item-button";
 import { MovementExplanation } from "@/features/inventory-intelligence/ui/movement-explanation";
+import { OpnameAuditSection } from "@/features/inventory-intelligence/ui/opname-audit-section";
 import { unitLabel } from "@/features/inventory-intelligence/ui/movement-format";
 import { getActiveBusinessItemPriceDetail } from "@/features/procurement-pricing/server";
 import { ItemPriceAnalysis } from "@/features/procurement-pricing/ui/item-price-analysis";
@@ -31,6 +32,12 @@ export default async function ItemDetailPage({
   ]);
   if (!item) notFound();
   const last = item.lastPurchase;
+  const todayWib = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-7 px-4 py-6 sm:px-6 md:py-10">
@@ -58,6 +65,7 @@ export default async function ItemDetailPage({
       </header>
 
       {priceDetail && <ItemPriceAnalysis detail={priceDetail} />}
+      <OpnameAuditSection item={item} defaultDate={todayWib} />
       <MovementExplanation item={item} />
     </div>
   );

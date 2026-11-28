@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { getPrisma } from "@/lib/prisma";
 import type { DatabaseClient } from "@/lib/database-transaction";
 import type {
@@ -122,6 +123,7 @@ export async function createSavedReceipt(
   },
   db: DatabaseClient = getPrisma(),
 ): Promise<string> {
+  const receiptDate = new Date(`${receipt.receiptDate}T00:00:00.000Z`);
   const { id: receiptId } = await db.receipt.create({
     data: {
       businessId: receipt.businessId,
@@ -130,7 +132,7 @@ export async function createSavedReceipt(
       supplierId: receipt.supplierId,
       supplierName: receipt.supplierName,
       // Receipt dates are calendar days (YYYY-MM-DD), stored as a DATE column.
-      receiptDate: new Date(`${receipt.receiptDate}T00:00:00.000Z`),
+      receiptDate,
       status: "SAVED",
       total: receipt.total,
       discount: receipt.discount,
@@ -141,8 +143,14 @@ export async function createSavedReceipt(
     select: { id: true },
   });
 
+  const lineRows = receipt.lines.map((line) => ({
+    id: randomUUID(),
+    line,
+  }));
+
   await db.receiptLine.createMany({
-    data: receipt.lines.map((line) => ({
+    data: lineRows.map(({ id, line }) => ({
+      id,
       businessId: receipt.businessId,
       receiptId,
       itemId: line.itemId,
@@ -158,6 +166,32 @@ export async function createSavedReceipt(
       baseUnit: line.baseUnit,
     })),
   });
+
+  const snapshotRows = lineRows.flatMap(({ id: receiptLineId, line }) => {
+    if (
+      line.currentStockBefore === null ||
+      line.currentStockBefore === undefined ||
+      line.baseQuantity === null
+    ) {
+      return [];
+    }
+    return [
+      {
+        businessId: receipt.businessId,
+        itemId: line.itemId,
+        recordedByMemberId: receipt.createdByMemberId,
+        source: "INLINE_RESTOCK" as const,
+        receiptLineId,
+        countedQty: line.currentStockBefore,
+        postEventStock: line.currentStockBefore + line.baseQuantity,
+        recordedAt: receiptDate,
+      },
+    ];
+  });
+
+  if (snapshotRows.length > 0) {
+    await db.stockSnapshot.createMany({ data: snapshotRows });
+  }
 
   return receiptId;
 }

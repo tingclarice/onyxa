@@ -130,6 +130,7 @@ export type ReceiptItemFieldErrors = {
   unit_price?: string;
   line_total?: string;
   discount?: string;
+  current_stock_before?: string;
 };
 
 export function createEmptyReceiptItem(): ScanReceiptItem {

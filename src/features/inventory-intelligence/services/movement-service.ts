@@ -2,6 +2,8 @@ import type {
   ItemMovement,
   ItemMovementDetail,
   ItemPurchaseHistory,
+  RestockEvent,
+  StockSnapshotRecord,
 } from "../types/inventory";
 import {
   calculateItemMovement,
@@ -10,10 +12,19 @@ import {
   toLocalDateKey,
 } from "../core/burn-rate-rules";
 import {
+  calculateLiveSpeedflow,
+  calculateOpnameAuditHistory,
+  sortSnapshotsChronologically,
+} from "../core/speedflow-rules";
+import {
   archiveItem,
   findItemPurchaseHistory,
   listItemPurchaseHistories,
 } from "../repository/purchase-history-repository";
+import {
+  listStockSnapshotsForBusiness,
+  listStockSnapshotsForItem,
+} from "../repository/stock-snapshot-repository";
 
 /** Owner settings that change how items are judged. */
 export interface MovementSettings {
@@ -30,17 +41,32 @@ export async function deleteCatalogItem(
   return archiveItem(businessId, itemId, now);
 }
 
-/** Every item of the business with its movement status, slowing items first. */
+/** Every item of the business with its movement status and speedflow, slowing items first. */
 export async function getItemMovements(
   businessId: string,
   settings: MovementSettings,
   now: Date = new Date(),
 ): Promise<ItemMovement[]> {
-  const histories = await listItemPurchaseHistories(businessId);
+  const [histories, allSnapshots] = await Promise.all([
+    listItemPurchaseHistories(businessId),
+    listStockSnapshotsForBusiness(businessId),
+  ]);
+  const snapshotsByItem = new Map<string, StockSnapshotRecord[]>();
+  for (const snapshot of allSnapshots) {
+    const list = snapshotsByItem.get(snapshot.itemId) ?? [];
+    list.push(snapshot);
+    snapshotsByItem.set(snapshot.itemId, list);
+  }
   const today = toLocalDateKey(now);
 
   const movements = histories.map((history) =>
-    toItemMovement(history, today, settings.gracePercent),
+    toItemMovement(
+      history,
+      snapshotsByItem.get(history.itemId) ?? [],
+      today,
+      settings.gracePercent,
+      now,
+    ),
   );
   return movements.sort(compareByUrgency);
 }
@@ -55,26 +81,58 @@ export async function getSlowingItems(
   return movements.filter((movement) => movement.status.kind === "slowing");
 }
 
-/** One item with its movement and purchase days (for the item page). Null if not found. */
+/** One item with its movement, speedflow, opname history and audits (for the item page). Null if not found. */
 export async function getItemMovementDetail(
   businessId: string,
   itemId: string,
   settings: MovementSettings,
   now: Date = new Date(),
 ): Promise<ItemMovementDetail | null> {
-  const history = await findItemPurchaseHistory(businessId, itemId);
+  const [history, snapshots] = await Promise.all([
+    findItemPurchaseHistory(businessId, itemId),
+    listStockSnapshotsForItem(businessId, itemId),
+  ]);
   if (!history) return null;
 
-  const movement = toItemMovement(history, toLocalDateKey(now), settings.gracePercent);
+  const restocks = resolveRestockEvents(history);
+  const movement = toItemMovement(
+    history,
+    snapshots,
+    toLocalDateKey(now),
+    settings.gracePercent,
+    now,
+  );
   const purchases = combineSameDayPurchases(history.purchases).reverse();
-  return { ...movement, purchases };
+  const sortedSnapshots = sortSnapshotsChronologically(snapshots);
+  const audits = calculateOpnameAuditHistory(sortedSnapshots, restocks);
+  return {
+    ...movement,
+    purchases,
+    snapshots: [...sortedSnapshots].reverse(),
+    audits,
+  };
+}
+
+function resolveRestockEvents(history: ItemPurchaseHistory): RestockEvent[] {
+  if (history.restocks) return history.restocks;
+  return history.purchases.map((purchase, index) => ({
+    receiptLineId: `legacy-${history.itemId}-${index}`,
+    date: purchase.date,
+    recordedAt: `${purchase.date}T00:00:00.000Z`,
+    quantity: purchase.quantity,
+    lineTotal: 0,
+    createdAt: `${purchase.date}T00:00:00.000Z`,
+  }));
 }
 
 function toItemMovement(
   history: ItemPurchaseHistory,
+  snapshots: StockSnapshotRecord[],
   today: string,
   gracePercent: number,
+  now: Date,
 ): ItemMovement {
+  const restocks = resolveRestockEvents(history);
   return {
     itemId: history.itemId,
     name: history.name,
@@ -82,5 +140,6 @@ function toItemMovement(
     baseUnit: history.baseUnit,
     lastPurchase: history.lastPurchase,
     status: calculateItemMovement(history, today, gracePercent),
+    speedflow: calculateLiveSpeedflow(restocks, snapshots, now),
   };
 }

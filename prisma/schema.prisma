@@ -52,6 +52,11 @@ enum ExpenseCategory {
   CAPEX
 }
 
+enum StockSnapshotSource {
+  INLINE_RESTOCK
+  STANDALONE_OPNAME
+}
+
 model Business {
   id                            String       @id @default(uuid()) @db.Uuid
   name                          String
@@ -70,9 +75,10 @@ model Business {
   suppliers    Supplier[]
   items        Item[]
   aliases      ItemAlias[]
-  receipts     Receipt[]
-  receiptLines ReceiptLine[]
-  settlements IncomeSettlement[]
+  receipts       Receipt[]
+  receiptLines   ReceiptLine[]
+  stockSnapshots StockSnapshot[]
+  settlements    IncomeSettlement[]
 }
 
 model BusinessMember {
@@ -88,9 +94,10 @@ model BusinessMember {
   business    Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
   user        User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   invitations BusinessInvitation[]
-  receipts    Receipt[]
-  scanDrafts  ReceiptDraft[]
-  settlements IncomeSettlement[]
+  receipts       Receipt[]
+  scanDrafts     ReceiptDraft[]
+  stockSnapshots StockSnapshot[]
+  settlements    IncomeSettlement[]
 
   @@unique([businessId, id])
   @@unique([businessId, userId])
@@ -146,9 +153,10 @@ model Item {
   createdAt  DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
 
-  business     Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  aliases      ItemAlias[]
-  receiptLines ReceiptLine[]
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  aliases        ItemAlias[]
+  receiptLines   ReceiptLine[]
+  stockSnapshots StockSnapshot[]
 
   @@unique([businessId, id])
   @@unique([businessId, nameKey])
@@ -214,6 +222,7 @@ model Receipt {
   imageUrl          String?
   imageSha256       String?       @db.Char(64)
   confirmedAt       DateTime?     @db.Timestamptz(3)
+  paidAt            DateTime?     @db.Timestamptz(3)
   createdAt         DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
 
@@ -249,10 +258,32 @@ model ReceiptLine {
   createdAt       DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
-  receipt  Receipt  @relation(fields: [businessId, receiptId], references: [businessId, id], onDelete: Cascade)
-  item     Item?    @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Restrict)
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  receipt       Receipt        @relation(fields: [businessId, receiptId], references: [businessId, id], onDelete: Cascade)
+  item          Item?          @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Restrict)
+  stockSnapshot StockSnapshot?
 
   @@unique([businessId, receiptId, position])
   @@index([businessId, itemId, receiptId])
+}
+
+model StockSnapshot {
+  id                 String              @id @default(uuid()) @db.Uuid
+  businessId         String              @db.Uuid
+  itemId             String              @db.Uuid
+  recordedByMemberId String              @db.Uuid
+  source             StockSnapshotSource
+  receiptLineId      String?             @unique @db.Uuid
+  countedQty         Decimal             @db.Decimal(18, 6)
+  postEventStock     Decimal             @db.Decimal(18, 6)
+  recordedAt         DateTime            @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  item        Item           @relation(fields: [businessId, itemId], references: [businessId, id], onDelete: Cascade)
+  recordedBy  BusinessMember @relation(fields: [businessId, recordedByMemberId], references: [businessId, id], onDelete: Restrict)
+  receiptLine ReceiptLine?   @relation(fields: [receiptLineId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, receiptLineId])
+  @@index([businessId, itemId, recordedAt])
 }

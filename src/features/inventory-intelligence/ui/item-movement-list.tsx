@@ -8,6 +8,7 @@ import { formatDate, formatRupiah } from "@/lib/utils/format";
 import type { ItemMovement } from "../types/inventory";
 import { CatalogItemControls } from "./catalog-item-controls";
 import { MovementBadge } from "./movement-badge";
+import { SpeedflowBadge } from "./speedflow-badge";
 import { describeMovement, unitLabel } from "./movement-format";
 
 export function ItemMovementList({ items, priceCells, canOpenDetail }: {
@@ -58,7 +59,10 @@ export function ItemMovementList({ items, priceCells, canOpenDetail }: {
                   ) : <span className="text-muted-foreground">Belum ada pembelian</span>}
                 </td>
                 <td className="px-4 py-3" title={describeMovement(item.status)}>
-                  <MovementBadge status={item.status} />
+                  <div className="space-y-1.5">
+                    <MovementBadge status={item.status} />
+                    <SpeedflowBadge speedflow={item.speedflow} baseUnit={item.baseUnit} />
+                  </div>
                 </td>
                 <td className="px-4 py-3">{priceCells[item.itemId] ?? "—"}</td>
                 <td className="px-3 py-3"><div className="relative z-10 w-fit"><CatalogItemControls item={item} /></div></td>

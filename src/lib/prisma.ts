@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 declare global {
-  var onyxaPrismaV3: PrismaClient | undefined;
+  var onyxaPrismaV4: PrismaClient | undefined;
   var onyxaPostgres: PrismaClient | undefined;
 }
 
@@ -41,6 +41,7 @@ const MODEL_TO_TABLE: Record<string, string> = {
   itemAlias: "ItemAlias",
   receipt: "Receipt",
   receiptLine: "ReceiptLine",
+  stockSnapshot: "StockSnapshot",
 };
 
 const DATE_FIELDS = new Set([
@@ -54,6 +55,8 @@ const DATE_FIELDS = new Set([
   "archivedAt",
   "receiptDate",
   "confirmedAt",
+  "paidAt",
+  "recordedAt",
 ]);
 
 const DECIMAL_FIELDS = new Set([
@@ -66,6 +69,8 @@ const DECIMAL_FIELDS = new Set([
   "discount",
   "confidence",
   "baseQuantity",
+  "countedQty",
+  "postEventStock",
 ]);
 
 type QueryObject = Record<string, unknown>;
@@ -180,6 +185,13 @@ function hydrateRow(row: unknown): unknown {
   return result;
 }
 
+const TABLES_WITHOUT_UPDATED_AT = new Set([
+  "ItemAlias",
+  "StockSnapshot",
+  "IncomeSettlement",
+  "ReceiptDraft",
+]);
+
 function serializePayload(
   table: string,
   data: QueryObject,
@@ -194,7 +206,7 @@ function serializePayload(
   if (isCreate && !("createdAt" in data) && table !== "ItemAlias") {
     payload.createdAt = nowIso;
   }
-  if (table !== "ItemAlias" && !("updatedAt" in data)) {
+  if (!TABLES_WITHOUT_UPDATED_AT.has(table) && !("updatedAt" in data)) {
     payload.updatedAt = nowIso;
   }
 
@@ -479,7 +491,10 @@ function createSupabaseRestPrismaClient(
 }
 
 export function getPrisma(): PrismaClient {
-  if (globalThis.onyxaPrismaV3) return globalThis.onyxaPrismaV3;
+  const cached = globalThis.onyxaPrismaV4;
+  if (cached && Object.keys(MODEL_TO_TABLE).every((name) => name in cached)) {
+    return cached;
+  }
 
   const connectionString = process.env.SUPABASE_URL;
   if (!connectionString) {
@@ -488,15 +503,15 @@ export function getPrisma(): PrismaClient {
 
   const secretKey = process.env.SUPABASE_SECRET_KEY;
   if (connectionString.startsWith("https://") && secretKey) {
-    globalThis.onyxaPrismaV3 = createSupabaseRestPrismaClient(
+    globalThis.onyxaPrismaV4 = createSupabaseRestPrismaClient(
       connectionString,
       secretKey,
     );
-    return globalThis.onyxaPrismaV3;
+    return globalThis.onyxaPrismaV4;
   }
 
-  globalThis.onyxaPrismaV3 = new PrismaClient({
+  globalThis.onyxaPrismaV4 = new PrismaClient({
     adapter: new PrismaPg({ connectionString }),
   });
-  return globalThis.onyxaPrismaV3;
+  return globalThis.onyxaPrismaV4;
 }

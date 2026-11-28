@@ -98,6 +98,12 @@ export async function saveReceiptInTransaction(
       line.unit,
       item.baseUnit,
     );
+    const currentStockBefore = line.current_stock_before ?? null;
+    if (currentStockBefore !== null && baseQuantity === null) {
+      throw new ReceiptDraftError(
+        `Sisa stok untuk "${item.name}" tidak dapat dicatat karena satuan "${line.unit}" tidak sesuai dengan satuan dasar ${item.baseUnit.toLowerCase()}.`,
+      );
+    }
     itemIds.add(item.id);
     lines.push({
       position: index + 1,
@@ -112,6 +118,7 @@ export async function saveReceiptInTransaction(
       confidence: line.confidence,
       baseQuantity,
       baseUnit: baseQuantity === null ? null : item.baseUnit,
+      currentStockBefore,
     });
   }
 
